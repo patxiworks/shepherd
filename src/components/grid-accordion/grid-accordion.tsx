@@ -1,16 +1,13 @@
 
 "use client";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
+import * as AccordionPrimitive from "@radix-ui/react-accordion";
+import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown } from 'lucide-react';
 import type { AccordionItemData, ImageData } from '@/types';
 import { GridAccordionItemContent } from './grid-accordion-item-content';
+import { cn } from "@/lib/utils";
 
 interface GridAccordionProps {
   items: AccordionItemData[];
@@ -29,16 +26,25 @@ export function GridAccordion({ items, onUploadRequest, onImageClick, onEditRequ
     <Accordion type="single" collapsible className="w-full max-w-4xl mx-auto space-y-2">
       {items.map((item) => (
         <AccordionItem value={item.id} key={item.id} className="border border-border rounded-lg shadow-sm bg-card overflow-hidden">
-          <AccordionTrigger className="px-6 py-4 hover:bg-secondary/50 transition-colors duration-150 group">
-            <div className="flex flex-col items-start text-left flex-grow mr-2">
-              <span className="text-base font-semibold group-hover:underline">
-                {item.parishLocation}{item.diocese ? ` - ${item.diocese}` : ''}
-              </span>
-              <span className="text-xs text-muted-foreground mt-1">
-                {item.date} - {item.time}
-              </span>
-            </div>
-            <div className="flex items-center space-x-1 ml-auto" onClick={(e) => e.stopPropagation()}>
+          <AccordionPrimitive.Header className="flex items-center group">
+            <AccordionPrimitive.Trigger
+              className={cn(
+                "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline",
+                "px-6 group-hover:bg-secondary/50" // Applied custom styles here
+              )}
+            >
+              <div className="flex flex-col items-start text-left flex-grow mr-2">
+                <span className="text-base font-semibold group-hover:underline">
+                  {item.parishLocation}{item.diocese ? ` - ${item.diocese}` : ''}
+                </span>
+                <span className="text-xs text-muted-foreground mt-1">
+                  {item.date} - {item.time}
+                </span>
+              </div>
+              <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+            </AccordionPrimitive.Trigger>
+            
+            <div className="flex items-center space-x-1 pr-4 pl-2 group-hover:bg-secondary/50" onClick={(e) => e.stopPropagation()}>
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -60,7 +66,7 @@ export function GridAccordion({ items, onUploadRequest, onImageClick, onEditRequ
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
-          </AccordionTrigger>
+          </AccordionPrimitive.Header>
           <AccordionContent className="bg-background/50 border-t border-border">
             <GridAccordionItemContent 
               item={item} 
