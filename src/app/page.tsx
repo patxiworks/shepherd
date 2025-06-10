@@ -5,7 +5,8 @@ import * as React from 'react';
 import { GridAccordion } from '@/components/grid-accordion/grid-accordion';
 import { AuthModal } from '@/components/grid-accordion/auth-modal';
 import { ImageDetailModal } from '@/components/grid-accordion/image-detail-modal';
-import type { AccordionItemData, ImageData, PhotoUploadFormData } from '@/types';
+import { AddCollectionModal } from '@/components/grid-accordion/add-collection-modal';
+import type { AccordionItemData, ImageData, PhotoUploadFormData, NewCollectionFormData } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
@@ -13,33 +14,13 @@ import { PlusCircle } from 'lucide-react';
 const initialAccordionData: AccordionItemData[] = [
   {
     id: 'item-1',
-    title: 'Summer Vacation Snaps',
-    images: [
-      { src: 'https://placehold.co/600x400.png', alt: 'Beach view', hint: 'beach sunset' },
-      { src: 'https://placehold.co/600x600.png', alt: 'Mountain hike', hint: 'mountain trail' },
-      { src: 'https://placehold.co/400x600.png', alt: 'City skyline', hint: 'city night' },
-      { src: 'https://placehold.co/600x400.png', alt: 'Forest path', hint: 'forest trees' },
-      { src: 'https://placehold.co/600x400.png', alt: 'Desert landscape', hint: 'desert dunes' },
-    ],
+    title: 'St. Matthew Chaplaincy, Regina Pacis College - Abuja - July 1 - 18:00',
+    images: [],
   },
   {
     id: 'item-2',
-    title: 'Winter Wonderland',
-    images: [
-      { src: 'https://placehold.co/600x400.png', alt: 'Snowy cabin', hint: 'snow cabin' },
-      { src: 'https://placehold.co/400x400.png', alt: 'Frozen lake', hint: 'frozen lake' },
-      { src: 'https://placehold.co/600x400.png', alt: 'Ski slope', hint: 'ski slope' },
-    ],
-  },
-  {
-    id: 'item-3',
-    title: 'Urban Exploration',
-    images: [
-      { src: 'https://placehold.co/600x600.png', alt: 'Street art', hint: 'street graffiti' },
-      { src: 'https://placehold.co/600x400.png', alt: 'Old building', hint: 'historic architecture' },
-      { src: 'https://placehold.co/400x600.png', alt: 'Busy market', hint: 'market people' },
-      { src: 'https://placehold.co/600x400.png', alt: 'Modern skyscraper', hint: 'modern building' },
-    ],
+    title: 'St. Bernadette, Akinogun, Shagari Estate, Ipaja, Lagos - Lagos - July 1 - 18:30',
+    images: [],
   },
 ];
 
@@ -53,6 +34,8 @@ export default function HomePage() {
   const [activeSlideshowImages, setActiveSlideshowImages] = React.useState<ImageData[] | null>(null);
   const [activeSlideshowIndex, setActiveSlideshowIndex] = React.useState<number | null>(null);
   const [isImageDetailModalOpen, setIsImageDetailModalOpen] = React.useState(false);
+
+  const [isAddCollectionModalOpen, setIsAddCollectionModalOpen] = React.useState(false);
   
   const { toast } = useToast();
 
@@ -96,18 +79,24 @@ export default function HomePage() {
     setIsAuthModalOpen(false);
   };
   
-  const handleAddNewAccordionItem = () => {
-    const newItemId = `item-${accordionItems.length + 1}`;
+  const openAddCollectionModal = () => {
+    setIsAddCollectionModalOpen(true);
+  };
+
+  const handleCreateNewCollection = (data: NewCollectionFormData) => {
+    const newItemId = `item-${accordionItems.length + 1 + Math.random().toString(36).substring(7)}`; // Ensure unique ID
+    const newTitle = `${data.parishLocation} - ${data.diocese} - ${data.date} - ${data.time}`;
     const newItem: AccordionItemData = {
       id: newItemId,
-      title: `New Collection ${accordionItems.length + 1}`,
+      title: newTitle,
       images: [],
     };
     setAccordionItems(prevItems => [...prevItems, newItem]);
     toast({
       title: "New Collection Added!",
-      description: `"${newItem.title}" is ready for photos.`,
+      description: `"${newTitle}" is ready for photos.`,
     });
+    setIsAddCollectionModalOpen(false);
   };
   
   const handleAuthModalOpenChange = (open: boolean) => {
@@ -145,7 +134,7 @@ export default function HomePage() {
       </header>
 
       <div className="mb-8 flex justify-end">
-        <Button onClick={handleAddNewAccordionItem} variant="outline" className="text-primary border-primary hover:bg-primary/10">
+        <Button onClick={openAddCollectionModal} variant="outline" className="text-primary border-primary hover:bg-primary/10">
           <PlusCircle className="mr-2 h-5 w-5" />
           Add New Collection
         </Button>
@@ -164,6 +153,12 @@ export default function HomePage() {
         onSignInSuccess={handleSignInSuccess}
         onUploadSubmit={handlePhotoUpload}
         itemName={activeItemTitleForUpload || undefined}
+      />
+
+      <AddCollectionModal
+        isOpen={isAddCollectionModalOpen}
+        onOpenChange={setIsAddCollectionModalOpen}
+        onSubmit={handleCreateNewCollection}
       />
 
       <ImageDetailModal

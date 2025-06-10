@@ -21,3 +21,11 @@ export interface SignInFormData {
   email: string;
   password?: string; // Password might not be strictly needed for a prototype
 }
+
+export interface NewCollectionFormData {
+  parishLocation: string;
+  diocese: string;
+  date: string;
+  time: string;
+}
+
