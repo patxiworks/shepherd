@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  /* font-family is now primarily handled by the font-body class in layout.tsx */
   background-image: url('https://fs-sd.s3.amazonaws.com/uploads/image/image_file/42514/st_josemaria_escriva_de_balaguer_foundation_of_opus_dei.jpg'); /* URL of the image you provided */
   background-size: cover;
   background-position: center center;
