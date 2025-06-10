@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -6,15 +7,16 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import type { AccordionItemData } from '@/types';
+import type { AccordionItemData, ImageData } from '@/types';
 import { GridAccordionItemContent } from './grid-accordion-item-content';
 
 interface GridAccordionProps {
   items: AccordionItemData[];
   onUploadRequest: (itemId: string, itemTitle: string) => void;
+  onImageClick?: (image: ImageData) => void;
 }
 
-export function GridAccordion({ items, onUploadRequest }: GridAccordionProps) {
+export function GridAccordion({ items, onUploadRequest, onImageClick }: GridAccordionProps) {
   if (!items || items.length === 0) {
     return <p className="text-center text-muted-foreground py-10">No items to display in the accordion.</p>;
   }
@@ -30,6 +32,7 @@ export function GridAccordion({ items, onUploadRequest }: GridAccordionProps) {
             <GridAccordionItemContent 
               item={item} 
               onUploadClick={() => onUploadRequest(item.id, item.title)} 
+              onImageClick={onImageClick}
             />
           </AccordionContent>
         </AccordionItem>

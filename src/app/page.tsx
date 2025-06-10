@@ -1,8 +1,10 @@
+
 "use client";
 
 import * as React from 'react';
 import { GridAccordion } from '@/components/grid-accordion/grid-accordion';
 import { AuthModal } from '@/components/grid-accordion/auth-modal';
+import { ImageDetailModal } from '@/components/grid-accordion/image-detail-modal';
 import type { AccordionItemData, ImageData, PhotoUploadFormData } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
@@ -43,29 +45,30 @@ const initialAccordionData: AccordionItemData[] = [
 
 export default function HomePage() {
   const [accordionItems, setAccordionItems] = React.useState<AccordionItemData[]>(initialAccordionData);
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [modalStep, setModalStep] = React.useState<'signIn' | 'upload'>('signIn');
+  const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
+  const [authModalStep, setAuthModalStep] = React.useState<'signIn' | 'upload'>('signIn');
   const [activeItemIdForUpload, setActiveItemIdForUpload] = React.useState<string | null>(null);
   const [activeItemTitleForUpload, setActiveItemTitleForUpload] = React.useState<string | null>(null);
+  
+  const [selectedImage, setSelectedImage] = React.useState<ImageData | null>(null);
+  const [isImageDetailModalOpen, setIsImageDetailModalOpen] = React.useState(false);
+  
   const { toast } = useToast();
 
   const handleUploadRequest = (itemId: string, itemTitle: string) => {
     setActiveItemIdForUpload(itemId);
     setActiveItemTitleForUpload(itemTitle);
-    setModalStep('signIn'); // Always start with sign-in
-    setIsModalOpen(true);
+    setAuthModalStep('signIn');
+    setIsAuthModalOpen(true);
   };
 
   const handleSignInSuccess = () => {
-    setModalStep('upload');
-    // Modal remains open
+    setAuthModalStep('upload');
   };
 
   const handlePhotoUpload = (data: PhotoUploadFormData) => {
-    console.log('Photo upload data:', data);
     if (activeItemIdForUpload && data.photo && data.photo.length > 0) {
       const newImage: ImageData = {
-        // For prototype, using placeholder. In real app, this would be uploaded URL
         src: URL.createObjectURL(data.photo[0]), 
         alt: data.title,
         hint: data.title.toLowerCase().split(' ').slice(0,2).join(' '),
@@ -81,7 +84,6 @@ export default function HomePage() {
       toast({
         title: "Photo Uploaded!",
         description: `"${data.title}" has been added to ${activeItemTitleForUpload || 'the gallery'}.`,
-        variant: "default",
       });
     } else {
        toast({
@@ -90,10 +92,7 @@ export default function HomePage() {
         variant: "destructive",
       });
     }
-    setIsModalOpen(false);
-    // Optionally reset activeItemIdForUpload and activeItemTitleForUpload here if needed
-    // setActiveItemIdForUpload(null);
-    // setActiveItemTitleForUpload(null);
+    setIsAuthModalOpen(false);
   };
   
   const handleAddNewAccordionItem = () => {
@@ -110,18 +109,26 @@ export default function HomePage() {
     });
   };
   
-  const handleModalOpenChange = (open: boolean) => {
-    setIsModalOpen(open);
+  const handleAuthModalOpenChange = (open: boolean) => {
+    setIsAuthModalOpen(open);
     if (!open) {
-      // Reset to signIn step when modal is closed externally
-      // This ensures that if the user closes the modal (e.g. by pressing Esc or clicking outside)
-      // while on the 'upload' step, it will revert to 'signIn' for the next opening.
-      setModalStep('signIn');
+      setAuthModalStep('signIn');
       setActiveItemIdForUpload(null);
       setActiveItemTitleForUpload(null);
     }
   };
 
+  const handleImageClick = (image: ImageData) => {
+    setSelectedImage(image);
+    setIsImageDetailModalOpen(true);
+  };
+
+  const handleImageDetailModalOpenChange = (open: boolean) => {
+    setIsImageDetailModalOpen(open);
+    if (!open) {
+      setSelectedImage(null);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen">
@@ -141,15 +148,25 @@ export default function HomePage() {
         </Button>
       </div>
 
-      <GridAccordion items={accordionItems} onUploadRequest={handleUploadRequest} />
+      <GridAccordion 
+        items={accordionItems} 
+        onUploadRequest={handleUploadRequest}
+        onImageClick={handleImageClick} 
+      />
 
       <AuthModal
-        isOpen={isModalOpen}
-        onOpenChange={handleModalOpenChange}
-        currentStep={modalStep}
+        isOpen={isAuthModalOpen}
+        onOpenChange={handleAuthModalOpenChange}
+        currentStep={authModalStep}
         onSignInSuccess={handleSignInSuccess}
         onUploadSubmit={handlePhotoUpload}
         itemName={activeItemTitleForUpload || undefined}
+      />
+
+      <ImageDetailModal
+        isOpen={isImageDetailModalOpen}
+        onOpenChange={handleImageDetailModalOpenChange}
+        image={selectedImage}
       />
       
       <footer className="text-center mt-12 py-6 border-t border-border">
