@@ -5,9 +5,15 @@ export interface ImageData {
   hint?: string; // For data-ai-hint
 }
 
-export interface AccordionItemData {
+export interface NewCollectionFormData {
+  parishLocation: string;
+  diocese: string;
+  date: string;
+  time: string;
+}
+
+export interface AccordionItemData extends NewCollectionFormData {
   id: string;
-  title: string;
   images: ImageData[];
 }
 
@@ -21,11 +27,3 @@ export interface SignInFormData {
   email: string;
   password?: string; // Password might not be strictly needed for a prototype
 }
-
-export interface NewCollectionFormData {
-  parishLocation: string;
-  diocese: string;
-  date: string;
-  time: string;
-}
-

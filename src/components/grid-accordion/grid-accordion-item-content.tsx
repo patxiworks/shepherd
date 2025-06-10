@@ -6,7 +6,7 @@ import { Camera } from 'lucide-react';
 
 interface GridAccordionItemContentProps {
   item: AccordionItemData;
-  onUploadClick: () => void;
+  onUploadClick: () => void; // This implies `item` is already known, matches change in GridAccordion
   onImageClick: (image: ImageData, index: number, allImages: ImageData[]) => void;
 }
 
