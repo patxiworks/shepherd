@@ -11,6 +11,7 @@ export interface AccordionItemData {
   id: string;
   parishLocation: string;
   diocese: string;
+  state: string; // Added state field
   date: string; // e.g., "July 1"
   time: string; // e.g., "18:00"
   images: ImageData[];
@@ -22,6 +23,7 @@ export interface AccordionItemData {
 export interface NewCollectionFormData {
   parishLocation: string;
   diocese: string;
+  state: string; // Added state field
   date: Date; // Date object from calendar
   time: string;
 }

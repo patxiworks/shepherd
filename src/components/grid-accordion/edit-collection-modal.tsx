@@ -15,12 +15,14 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import type { AccordionItemData } from '@/types';
 import { nigerianDioceses } from '@/lib/nigerian-dioceses';
+import { nigerianStates } from '@/lib/nigerian-states'; // Import states
 import { CalendarIcon, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const editCollectionSchema = z.object({
   parishLocation: z.string().min(1, { message: "Parish/Catholic Church - Location is required." }),
   diocese: z.string().min(1, { message: "Diocese is required." }),
+  state: z.string().min(1, { message: "State is required." }), // Add state validation
   date: z.date({
     required_error: "Date is required.",
     invalid_type_error: "That's not a valid date!",
@@ -33,18 +35,15 @@ type EditCollectionFormValues = z.infer<typeof editCollectionSchema>;
 interface EditCollectionModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: EditCollectionFormValues) => void; // Changed to EditCollectionFormValues
+  onSubmit: (data: EditCollectionFormValues) => void;
   initialData: AccordionItemData;
 }
 
 const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
 const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
 
-// Helper to parse "Month Day" string to Date, assuming current year
 const parseDateString = (dateStr: string): Date | undefined => {
   try {
-    // Append current year to make it a parsable date string
-    // e.g., "July 1" becomes "July 1, 2024"
     const fullDateStr = `${dateStr} ${new Date().getFullYear()}`;
     const parsedDate = new Date(fullDateStr);
     return isNaN(parsedDate.getTime()) ? undefined : parsedDate;
@@ -62,7 +61,8 @@ export function EditCollectionModal({ isOpen, onOpenChange, onSubmit, initialDat
     defaultValues: {
       parishLocation: initialData.parishLocation,
       diocese: initialData.diocese,
-      date: parseDateString(initialData.date) || new Date(), // Convert string to Date
+      state: initialData.state || '', // Initialize state
+      date: parseDateString(initialData.date) || new Date(),
       time: initialData.time,
     },
   });
@@ -72,6 +72,7 @@ export function EditCollectionModal({ isOpen, onOpenChange, onSubmit, initialDat
       form.reset({
         parishLocation: initialData.parishLocation,
         diocese: initialData.diocese,
+        state: initialData.state || '', // Reset state
         date: parseDateString(initialData.date) || new Date(),
         time: initialData.time,
       });
@@ -131,6 +132,30 @@ export function EditCollectionModal({ isOpen, onOpenChange, onSubmit, initialDat
                       {nigerianDioceses.map((dioceseName) => (
                         <SelectItem key={dioceseName} value={dioceseName}>
                           {dioceseName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="state"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>State</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a state" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {nigerianStates.map((stateName) => (
+                        <SelectItem key={stateName} value={stateName}>
+                          {stateName}
                         </SelectItem>
                       ))}
                     </SelectContent>

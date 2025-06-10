@@ -46,7 +46,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const newCollection: AccordionItemData = await request.json();
-    if (!newCollection.id || !newCollection.parishLocation) {
+    if (!newCollection.id || !newCollection.parishLocation || !newCollection.state) { // Added state check
       return NextResponse.json({ message: 'Invalid collection data' }, { status: 400 });
     }
 

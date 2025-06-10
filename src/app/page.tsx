@@ -8,19 +8,11 @@ import { ImageDetailModal } from '@/components/grid-accordion/image-detail-modal
 import { AddCollectionModal } from '@/components/grid-accordion/add-collection-modal';
 import { EditCollectionModal } from '@/components/grid-accordion/edit-collection-modal';
 import { DeleteConfirmModal } from '@/components/grid-accordion/delete-confirm-modal';
-import type { AccordionItemData, ImageData, PhotoUploadFormData } from '@/types';
+import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData } from '@/types'; // Updated type name
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Loader2 } from 'lucide-react';
-import { format as formatDateFns } from 'date-fns'; // Renamed to avoid conflict
-
-// Define the type for form data coming from Add/Edit modals (where date is a Date object)
-interface CollectionFormSubmitData {
-  parishLocation: string;
-  diocese: string;
-  date: Date; // Date object from calendar
-  time: string;
-}
+import { format as formatDateFns } from 'date-fns';
 
 export default function HomePage() {
   const [accordionItems, setAccordionItems] = React.useState<AccordionItemData[]>([]);
@@ -78,7 +70,7 @@ export default function HomePage() {
     setAuthModalStep('upload');
   };
 
-  const handlePhotoUpload = (data: PhotoUploadFormData) => {
+  const handlePhotoUpload = (data: import('@/types').PhotoUploadFormData) => { // Use PhotoUploadFormData from types
     if (activeItemIdForUpload && data.photo && data.photo.length > 0) {
       const newImage: ImageData = {
         src: URL.createObjectURL(data.photo[0]), 
@@ -114,14 +106,14 @@ export default function HomePage() {
   const handleCreateNewCollection = async (formData: CollectionFormSubmitData) => {
     const newItemId = `item-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     
-    // Format date from Date object to "MMMM d" string for storage/API
     const formattedDate = formatDateFns(formData.date, "MMMM d");
 
     const newItem: AccordionItemData = {
       id: newItemId,
       parishLocation: formData.parishLocation,
       diocese: formData.diocese,
-      date: formattedDate, // Use formatted date string
+      state: formData.state, // Add state
+      date: formattedDate,
       time: formData.time,
       images: [], 
     };
@@ -133,7 +125,7 @@ export default function HomePage() {
       const response = await fetch('/api/collections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newItem), // Send newItem with formatted date
+        body: JSON.stringify(newItem),
       });
 
       if (!response.ok) {
@@ -195,16 +187,15 @@ export default function HomePage() {
     const originalItem = accordionItems.find(item => item.id === editingItem.id);
     if (!originalItem) return;
 
-    // Format date from Date object to "MMMM d" string
     const formattedDate = formatDateFns(formData.date, "MMMM d");
 
     const itemWithUpdates: AccordionItemData = {
       ...editingItem,
       parishLocation: formData.parishLocation,
       diocese: formData.diocese,
-      date: formattedDate, // Use formatted date
+      state: formData.state, // Add state
+      date: formattedDate,
       time: formData.time,
-      // images are preserved from editingItem
     };
     
     setAccordionItems(prevItems =>
@@ -215,12 +206,13 @@ export default function HomePage() {
     setIsEditModalOpen(false);
 
     try {
-      const payload = { // This payload goes to the API
+      const payload = { 
         parishLocation: itemWithUpdates.parishLocation,
         diocese: itemWithUpdates.diocese,
-        date: itemWithUpdates.date, // Already formatted string
+        state: itemWithUpdates.state, // Add state to payload
+        date: itemWithUpdates.date,
         time: itemWithUpdates.time,
-        images: itemWithUpdates.images.filter(img => !img.src.startsWith('blob:')) // Persist only non-blob images
+        images: itemWithUpdates.images.filter(img => !img.src.startsWith('blob:'))
       };
 
       const response = await fetch(`/api/collections/${editingItem.id}`, {

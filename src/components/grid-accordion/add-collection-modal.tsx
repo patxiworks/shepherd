@@ -15,12 +15,14 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import type { NewCollectionFormData } from '@/types';
 import { nigerianDioceses } from '@/lib/nigerian-dioceses';
+import { nigerianStates } from '@/lib/nigerian-states'; // Import states
 import { CalendarIcon, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const newCollectionSchema = z.object({
   parishLocation: z.string().min(1, { message: "Parish/Catholic Church - Location is required." }),
   diocese: z.string().min(1, { message: "Diocese is required." }),
+  state: z.string().min(1, { message: "State is required." }), // Add state validation
   date: z.date({
     required_error: "Date is required.",
     invalid_type_error: "That's not a valid date!",
@@ -33,7 +35,7 @@ type NewCollectionFormValues = z.infer<typeof newCollectionSchema>;
 interface AddCollectionModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: NewCollectionFormValues) => void; // Changed to NewCollectionFormValues
+  onSubmit: (data: NewCollectionFormValues) => void;
 }
 
 const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
@@ -45,8 +47,9 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
     defaultValues: {
       parishLocation: '',
       diocese: '',
-      date: undefined, // Date will be a Date object
-      time: '12:00', // Default time
+      state: '', // Default state
+      date: undefined,
+      time: '12:00',
     },
   });
 
@@ -123,6 +126,30 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
             />
             <FormField
               control={form.control}
+              name="state"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>State</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a state" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {nigerianStates.map((stateName) => (
+                        <SelectItem key={stateName} value={stateName}>
+                          {stateName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="date"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
@@ -138,7 +165,7 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
                           )}
                         >
                           {field.value ? (
-                            format(field.value, "PPP") // "PPP" gives like "Jul 1st, 2024"
+                            format(field.value, "PPP")
                           ) : (
                             <span>Pick a date</span>
                           )}
