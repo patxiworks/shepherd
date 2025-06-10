@@ -8,7 +8,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+// import { Label } from '@/components/ui/label'; // Label is part of FormLabel
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import type { PhotoUploadFormData } from '@/types';
 import { UploadCloud } from 'lucide-react';
@@ -16,12 +16,12 @@ import { UploadCloud } from 'lucide-react';
 const photoFieldSchema = typeof window !== 'undefined'
   ? z.instanceof(FileList)
     .refine(files => files?.length > 0, "A photo is required.")
-    .refine(files => files?.[0]?.size <= 5 * 1024 * 1024, "Max file size is 5MB.") // 5MB max size
+    .refine(files => files?.[0]?.size <= 5 * 1024 * 1024, "Max file size is 5MB.") 
     .refine(
       files => files?.[0] && ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(files[0].type),
       "Only .jpg, .png, .webp, .gif formats are supported."
     )
-  : z.any(); // Fallback for SSR, actual validation happens client-side
+  : z.any(); 
 
 const photoUploadSchema = z.object({
   title: z.string().min(3, { message: "Title must be at least 3 characters." }).max(100),
@@ -40,11 +40,14 @@ export function PhotoUploadForm({ onSubmit, onCancel }: PhotoUploadFormProps) {
     defaultValues: {
       title: '',
       description: '',
+      photo: undefined,
     },
   });
 
   const handleSubmit = (values: z.infer<typeof photoUploadSchema>) => {
-    onSubmit(values as PhotoUploadFormData); // Cast as PhotoUploadFormData because server schema for photo is z.any()
+    // The actual FileList is in values.photo
+    onSubmit(values as PhotoUploadFormData); 
+    form.reset(); // Reset form after submission
   };
 
   return (
@@ -57,7 +60,7 @@ export function PhotoUploadForm({ onSubmit, onCancel }: PhotoUploadFormProps) {
             <FormItem>
               <FormLabel>Photo Title</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Sunset Bliss" {...field} />
+                <Input placeholder="e.g., Main Altar" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -79,15 +82,18 @@ export function PhotoUploadForm({ onSubmit, onCancel }: PhotoUploadFormProps) {
         <FormField
           control={form.control}
           name="photo"
-          render={({ field: { onChange, value, ...rest } }) => (
+          render={({ field }) => ( // `field` contains onChange, onBlur, value, name, ref
             <FormItem>
               <FormLabel>Upload Photo</FormLabel>
               <FormControl>
                 <Input 
                   type="file" 
                   accept="image/jpeg,image/png,image/webp,image/gif"
-                  onChange={(e) => onChange(e.target.files)}
-                  {...rest} 
+                  onChange={(e) => field.onChange(e.target.files)} // Pass FileList to RHF
+                  // Do not spread `value` for file inputs, it's handled by onChange
+                  name={field.name}
+                  ref={field.ref}
+                  onBlur={field.onBlur}
                   className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
                 />
               </FormControl>
@@ -96,7 +102,7 @@ export function PhotoUploadForm({ onSubmit, onCancel }: PhotoUploadFormProps) {
           )}
         />
         <div className="flex justify-end space-x-3 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={() => { onCancel(); form.reset(); }}>
             Cancel
           </Button>
           <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground">

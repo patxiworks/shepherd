@@ -23,15 +23,10 @@ import { nigerianStates } from '@/lib/nigerian-states';
 const sortCollections = (a: AccordionItemData, b: AccordionItemData): number => {
   const currentYear = new Date().getFullYear();
   
-  // Attempt to parse dates. Handle potential invalid date strings gracefully.
   let dateA = new Date(`${a.date} ${currentYear}`);
   let dateB = new Date(`${b.date} ${currentYear}`);
 
-  // If parsing results in Invalid Date, treat them as very old dates to sort them consistently
-  // or handle as per specific requirements (e.g., place them at the end).
-  // For simplicity, if a date is invalid, it might sort unpredictably or at the start/end depending on NaN behavior.
-  // A more robust solution would validate date strings upon entry or use a more reliable parsing.
-  if (isNaN(dateA.getTime())) dateA = new Date(0); // Treat as epoch if invalid
+  if (isNaN(dateA.getTime())) dateA = new Date(0);
   if (isNaN(dateB.getTime())) dateB = new Date(0);
 
 
@@ -125,7 +120,7 @@ export default function HomePage() {
     if (!accordionItems.length) {
       return { count: 0, total: nigerianStates.length, breakdown: [] as SummaryItem[] };
     }
-    const statesInAccordion = accordionItems.map(item => item.state).filter(Boolean); // Filter out empty/null states
+    const statesInAccordion = accordionItems.map(item => item.state).filter(Boolean);
     const uniqueStatesWithItems = new Set(statesInAccordion);
     
     const breakdownMap = new Map<string, number>();
@@ -159,25 +154,93 @@ export default function HomePage() {
     setAuthModalStep('upload');
   };
 
-  const handlePhotoUpload = (data: import('@/types').PhotoUploadFormData) => {
+  const handlePhotoUpload = async (data: import('@/types').PhotoUploadFormData) => {
     if (activeItemIdForUpload && data.photo && data.photo.length > 0) {
-      const newImage: ImageData = {
-        src: URL.createObjectURL(data.photo[0]), 
-        alt: data.title,
-        hint: data.title.toLowerCase().split(' ').slice(0,2).join(' '),
-      };
+      const file = data.photo[0];
+      const uploadFormData = new FormData();
+      uploadFormData.append('photo', file);
+      uploadFormData.append('title', data.title);
+      if (data.description) {
+        uploadFormData.append('description', data.description);
+      }
 
-      setAccordionItems(prevItems =>
-        prevItems.map(item =>
-          item.id === activeItemIdForUpload
-            ? { ...item, images: [...item.images, newImage] }
-            : item
-        ).sort(sortCollections) // Re-sort after adding an image locally, though this change isn't persisted
-      );
-      toast({
-        title: "Photo Added Locally!",
-        description: `"${data.title}" has been added to ${activeItemTitleForUpload || 'the gallery'} for this session. It will not be saved permanently.`,
-      });
+      try {
+        const uploadResponse = await fetch('/api/image-upload', {
+          method: 'POST',
+          body: uploadFormData,
+        });
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json().catch(() => ({ message: 'Image upload failed with non-JSON response' }));
+          throw new Error(errorData.message || 'Image upload failed');
+        }
+
+        const uploadedImageResult: { imageUrl: string; altText: string; hint: string } = await uploadResponse.json();
+
+        const newImage: ImageData = {
+          src: uploadedImageResult.imageUrl,
+          alt: uploadedImageResult.altText,
+          hint: uploadedImageResult.hint,
+        };
+
+        let collectionToUpdate = accordionItems.find(item => item.id === activeItemIdForUpload);
+        if (!collectionToUpdate) {
+            throw new Error("Could not find the collection to add the image to.");
+        }
+
+        const updatedImages = [...collectionToUpdate.images, newImage];
+        const updatedCollectionWithNewImage: AccordionItemData = {
+          ...collectionToUpdate,
+          images: updatedImages,
+        };
+        
+        // Optimistically update UI
+        setAccordionItems(prevItems =>
+          prevItems.map(item =>
+            item.id === activeItemIdForUpload ? updatedCollectionWithNewImage : item
+          ).sort(sortCollections)
+        );
+        setIsAuthModalOpen(false); // Close modal after optimistic update
+
+        // Persist the updated collection (with the new image URL) to collections.json
+        const persistPayload = { ...updatedCollectionWithNewImage }; // API expects the full item
+
+        const persistResponse = await fetch(`/api/collections/${activeItemIdForUpload}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(persistPayload),
+        });
+
+        if (!persistResponse.ok) {
+          const errorData = await persistResponse.json().catch(() => ({ message: 'Failed to save updated collection with non-JSON response' }));
+          // Revert optimistic update if save fails
+          setAccordionItems(prevItems =>
+            prevItems.map(item =>
+              item.id === activeItemIdForUpload ? collectionToUpdate : item // Revert to collectionToUpdate state
+            ).sort(sortCollections)
+          );
+          throw new Error(errorData.message || 'Failed to save updated collection with new image');
+        }
+        
+        const savedItem = await persistResponse.json();
+         // Update with server response if it differs
+        setAccordionItems(prevItems => 
+          prevItems.map(item => item.id === activeItemIdForUpload ? { ...item, ...savedItem } : item).sort(sortCollections)
+        );
+
+        toast({
+          title: "Photo Uploaded & Saved!",
+          description: `"${newImage.alt}" has been added to ${activeItemTitleForUpload || 'the gallery'} and persisted.`,
+        });
+
+      } catch (error) {
+        console.error("Error uploading photo or saving collection:", error);
+        toast({
+          title: "Upload or Save Error",
+          description: (error as Error).message || "Could not complete photo upload process.",
+          variant: "destructive",
+        });
+      }
     } else {
        toast({
         title: "Upload Failed",
@@ -185,7 +248,15 @@ export default function HomePage() {
         variant: "destructive",
       });
     }
-    setIsAuthModalOpen(false);
+    // Reset auth modal step, but keep it open on failure if it was already at upload step.
+    // If it successfully closed, this won't reopen it.
+    if (isAuthModalOpen && authModalStep === 'upload' && !(data.photo && data.photo.length > 0) ) {
+        // Don't close if the form submission itself was invalid, let user correct
+    } else if (!isAuthModalOpen) { // if it got closed due to success
+        setAuthModalStep('signIn');
+        setActiveItemIdForUpload(null);
+        setActiveItemTitleForUpload(null);
+    }
   };
   
   const openAddCollectionModal = () => {
@@ -207,7 +278,6 @@ export default function HomePage() {
       images: [], 
     };
 
-    // Optimistically add and sort
     setAccordionItems(prevItems => [...prevItems, newItem].sort(sortCollections));
     setIsAddCollectionModalOpen(false); 
 
@@ -224,7 +294,6 @@ export default function HomePage() {
       }
       
       const savedItem = await response.json();
-      // Replace optimistic item with server response and re-sort
       setAccordionItems(prevItems => 
         prevItems.map(item => item.id === newItemId ? savedItem : item).sort(sortCollections)
       );
@@ -242,7 +311,6 @@ export default function HomePage() {
         description: (error as Error).message || "Could not save new collection to the server.",
         variant: "destructive",
       });
-      // Revert optimistic update on error
       setAccordionItems(prevItems => prevItems.filter(item => item.id !== newItemId).sort(sortCollections));
     }
   };
@@ -279,7 +347,7 @@ export default function HomePage() {
     if (!editingItem) return;
 
     const originalItem = accordionItems.find(item => item.id === editingItem.id);
-    if (!originalItem) return; // Should not happen
+    if (!originalItem) return; 
 
     const formattedDate = formatDateFns(formData.date, "MMMM d");
 
@@ -290,9 +358,9 @@ export default function HomePage() {
       state: formData.state,
       date: formattedDate,
       time: formData.time,
+      // images are not part of this form, they are preserved from editingItem
     };
     
-    // Optimistically update and sort
     setAccordionItems(prevItems =>
       prevItems.map(item =>
         item.id === editingItem.id ? itemWithUpdates : item
@@ -301,19 +369,18 @@ export default function HomePage() {
     setIsEditModalOpen(false);
 
     try {
-      const payload = { 
-        parishLocation: itemWithUpdates.parishLocation,
-        diocese: itemWithUpdates.diocese,
-        state: itemWithUpdates.state,
-        date: itemWithUpdates.date,
-        time: itemWithUpdates.time,
+      // The PUT request payload should match what the API expects.
+      // It should include all fields of AccordionItemData.
+      // Images are already part of itemWithUpdates and should be filtered for blobs if any.
+      const payloadToPersist = {
+        ...itemWithUpdates,
         images: itemWithUpdates.images.filter(img => !img.src.startsWith('blob:'))
       };
 
       const response = await fetch(`/api/collections/${editingItem.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadToPersist),
       });
 
       if (!response.ok) {
@@ -322,7 +389,6 @@ export default function HomePage() {
       }
       
       const savedItem = await response.json();
-       // Replace optimistic item with server response and re-sort
       setAccordionItems(prevItems => 
         prevItems.map(item => item.id === editingItem.id ? { ...item, ...savedItem } : item).sort(sortCollections)
       );
@@ -339,7 +405,6 @@ export default function HomePage() {
         description: (error as Error).message || "Could not save updates to the server.",
         variant: "destructive",
       });
-      // Revert optimistic update on error
       setAccordionItems(prevItems => prevItems.map(item => item.id === editingItem.id ? originalItem : item).sort(sortCollections));
     } finally {
       setEditingItem(null);
@@ -355,10 +420,9 @@ export default function HomePage() {
     if (!deletingItem) return;
 
     const itemToDeleteId = deletingItem.id;
-    const originalItems = [...accordionItems]; // Keep a copy for potential revert
+    const originalItems = [...accordionItems]; 
 
-    // Optimistically delete
-    setAccordionItems(prevItems => prevItems.filter(item => item.id !== itemToDeleteId)); // No need to re-sort here
+    setAccordionItems(prevItems => prevItems.filter(item => item.id !== itemToDeleteId));
     setIsDeleteConfirmModalOpen(false);
     
     try {
@@ -382,7 +446,6 @@ export default function HomePage() {
         description: (error as Error).message || "Could not delete collection from the server.",
         variant: "destructive",
       });
-      // Revert optimistic delete on error by restoring and re-sorting original list
       setAccordionItems(originalItems.sort(sortCollections));
     } finally {
       setDeletingItem(null);
@@ -391,7 +454,7 @@ export default function HomePage() {
 
   const filteredAccordionItems = React.useMemo(() => {
     if (!filterQuery) {
-      return accordionItems; // Already sorted
+      return accordionItems; 
     }
     const lowercasedQuery = filterQuery.toLowerCase();
     return accordionItems.filter(item =>
@@ -400,7 +463,7 @@ export default function HomePage() {
       (item.state && item.state.toLowerCase().includes(lowercasedQuery)) ||
       item.date.toLowerCase().includes(lowercasedQuery) ||
       item.time.toLowerCase().includes(lowercasedQuery)
-    ); // This filtered list maintains the original sort order
+    ); 
   }, [accordionItems, filterQuery]);
 
   const handleApplySummaryFilter = (filterTerm: string) => {
