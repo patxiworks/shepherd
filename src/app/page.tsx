@@ -100,7 +100,7 @@ export default function HomePage() {
     
     const breakdownMap = new Map<string, number>();
     statesInAccordion.forEach(stateItem => {
-      if (stateItem) { // Ensure stateItem is not null or undefined before setting
+      if (stateItem) { 
          breakdownMap.set(stateItem, (breakdownMap.get(stateItem) || 0) + 1);
       }
     });
@@ -372,11 +372,11 @@ export default function HomePage() {
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen">
-      <header className="mb-6 text-center">
-        <h1 className="text-5xl font-headline font-bold text-primary mb-3">
-          GridAccordion
+      <header className="mb-6 text-right">
+        <h1 className="text-4xl md:text-5xl font-headline font-bold text-primary mb-3">
+          Masses in honour of St. Josemaria, 2025
         </h1>
-        <div className="text-md text-muted-foreground font-body flex justify-center items-center space-x-2">
+        <div className="text-md text-muted-foreground font-body flex justify-end items-center space-x-2">
           <Button variant="link" onClick={() => setIsDioceseSummaryModalOpen(true)} className="p-0 h-auto text-md">
             Dioceses ({dioceseSummary.count}/{dioceseSummary.total})
           </Button>
@@ -387,7 +387,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <div className="mb-6 mt-10 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div className="mb-2 mt-10 flex flex-col sm:flex-row justify-between items-center gap-4">
         <Input
           type="text"
           placeholder="Filter collections..."
@@ -399,6 +399,12 @@ export default function HomePage() {
           <PlusCircle className="mr-2 h-5 w-5" />
           Add New Collection
         </Button>
+      </div>
+      
+      <div className="text-right text-sm text-muted-foreground mb-4">
+        {filterQuery
+          ? `${filteredAccordionItems.length} of ${accordionItems.length} collections found`
+          : `${accordionItems.length} collections`}
       </div>
 
       <GridAccordion 
