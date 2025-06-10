@@ -22,28 +22,22 @@ export function ImageDetailModal({ isOpen, onOpenChange, images, initialIndex }:
     setCurrentIndex(initialIndex);
   }, [initialIndex, images]);
 
-  if (!images || images.length === 0 || currentIndex === null || currentIndex < 0 || currentIndex >= images.length) {
-    return null;
-  }
-
-  const currentImage = images[currentIndex];
-
   const handlePrevious = () => {
-    if (currentIndex > 0) {
+    if (images && currentIndex !== null && currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
     }
   };
 
   const handleNext = () => {
-    if (currentIndex < images.length - 1) {
+    if (images && currentIndex !== null && currentIndex < images.length - 1) {
       setCurrentIndex(currentIndex + 1);
     }
   };
 
-  // Keyboard navigation
+  // Keyboard navigation - Moved before early return to respect Rules of Hooks
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isOpen) return;
+      if (!isOpen || !images || currentIndex === null) return; // Guard clause inside the effect
       if (event.key === 'ArrowLeft') {
         handlePrevious();
       } else if (event.key === 'ArrowRight') {
@@ -55,8 +49,13 @@ export function ImageDetailModal({ isOpen, onOpenChange, images, initialIndex }:
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, currentIndex, images]);
+  }, [isOpen, currentIndex, images]); // Dependencies remain the same
 
+  if (!images || images.length === 0 || currentIndex === null || currentIndex < 0 || currentIndex >= images.length) {
+    return null;
+  }
+
+  const currentImage = images[currentIndex];
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
