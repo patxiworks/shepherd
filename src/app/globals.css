@@ -5,11 +5,17 @@
 
 body {
   font-family: Arial, Helvetica, sans-serif;
+  background-image: url('https://fs-sd.s3.amazonaws.com/uploads/image/image_file/42514/st_josemaria_escriva_de_balaguer_foundation_of_opus_dei.jpg'); /* URL of the image you provided */
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  min-height: 100vh; /* Ensure body covers viewport height */
 }
 
 @layer base {
   :root {
-    --background: 0 0% 96%; /* #F5F5F5 Very light gray */
+    --background: 0 0% 96%; /* #F5F5F5 Very light gray - Card/component backgrounds will use this or similar */
     --foreground: 0 0% 20%; /* #333333 Dark gray for text */
 
     --card: 0 0% 100%; /* White cards */
@@ -55,7 +61,7 @@ body {
   }
 
   .dark {
-    --background: 262 15% 10%; /* Dark purple background */
+    --background: 262 15% 10%; /* Dark purple background - Card/component backgrounds will use this */
     --foreground: 0 0% 95%; /* Light gray text */
 
     --card: 262 15% 15%; /* Darker purple for cards */
@@ -99,7 +105,13 @@ body {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    /* The background-image is set above. 
+       text-foreground ensures text color defaults appropriately.
+       bg-background is removed here to prevent it from painting over the image,
+       assuming the CSS background-image is the primary body background.
+       Components should define their own backgrounds (e.g. cards).
+    */
+    @apply text-foreground;
   }
 
   /* Custom styles for ImageDetailModal close button */
