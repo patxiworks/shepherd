@@ -8,9 +8,10 @@ import { ImageDetailModal } from '@/components/grid-accordion/image-detail-modal
 import { AddCollectionModal } from '@/components/grid-accordion/add-collection-modal';
 import { EditCollectionModal } from '@/components/grid-accordion/edit-collection-modal';
 import { DeleteConfirmModal } from '@/components/grid-accordion/delete-confirm-modal';
-import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData } from '@/types'; // Updated type name
+import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input'; // Added Input import
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { format as formatDateFns } from 'date-fns';
 
@@ -32,6 +33,8 @@ export default function HomePage() {
   const [isDeleteConfirmModalOpen, setIsDeleteConfirmModalOpen] = React.useState(false);
   const [deletingItem, setDeletingItem] = React.useState<AccordionItemData | null>(null);
   
+  const [filterQuery, setFilterQuery] = React.useState(''); // State for filter query
+
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -70,7 +73,7 @@ export default function HomePage() {
     setAuthModalStep('upload');
   };
 
-  const handlePhotoUpload = (data: import('@/types').PhotoUploadFormData) => { // Use PhotoUploadFormData from types
+  const handlePhotoUpload = (data: import('@/types').PhotoUploadFormData) => {
     if (activeItemIdForUpload && data.photo && data.photo.length > 0) {
       const newImage: ImageData = {
         src: URL.createObjectURL(data.photo[0]), 
@@ -112,7 +115,7 @@ export default function HomePage() {
       id: newItemId,
       parishLocation: formData.parishLocation,
       diocese: formData.diocese,
-      state: formData.state, // Add state
+      state: formData.state,
       date: formattedDate,
       time: formData.time,
       images: [], 
@@ -193,7 +196,7 @@ export default function HomePage() {
       ...editingItem,
       parishLocation: formData.parishLocation,
       diocese: formData.diocese,
-      state: formData.state, // Add state
+      state: formData.state,
       date: formattedDate,
       time: formData.time,
     };
@@ -209,7 +212,7 @@ export default function HomePage() {
       const payload = { 
         parishLocation: itemWithUpdates.parishLocation,
         diocese: itemWithUpdates.diocese,
-        state: itemWithUpdates.state, // Add state to payload
+        state: itemWithUpdates.state,
         date: itemWithUpdates.date,
         time: itemWithUpdates.time,
         images: itemWithUpdates.images.filter(img => !img.src.startsWith('blob:'))
@@ -288,6 +291,21 @@ export default function HomePage() {
     }
   };
 
+  // Derived state for filtered accordion items
+  const filteredAccordionItems = React.useMemo(() => {
+    if (!filterQuery) {
+      return accordionItems;
+    }
+    const lowercasedQuery = filterQuery.toLowerCase();
+    return accordionItems.filter(item =>
+      item.parishLocation.toLowerCase().includes(lowercasedQuery) ||
+      item.diocese.toLowerCase().includes(lowercasedQuery) ||
+      (item.state && item.state.toLowerCase().includes(lowercasedQuery)) ||
+      item.date.toLowerCase().includes(lowercasedQuery) ||
+      item.time.toLowerCase().includes(lowercasedQuery)
+    );
+  }, [accordionItems, filterQuery]);
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
@@ -308,15 +326,22 @@ export default function HomePage() {
         </p>
       </header>
 
-      <div className="mb-8 flex justify-end">
-        <Button onClick={openAddCollectionModal} variant="outline" className="text-primary border-primary hover:bg-primary/10">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <Input
+          type="text"
+          placeholder="Filter collections..."
+          value={filterQuery}
+          onChange={(e) => setFilterQuery(e.target.value)}
+          className="w-full sm:max-w-md h-10 text-base"
+        />
+        <Button onClick={openAddCollectionModal} variant="outline" className="text-primary border-primary hover:bg-primary/10 w-full sm:w-auto">
           <PlusCircle className="mr-2 h-5 w-5" />
           Add New Collection
         </Button>
       </div>
 
       <GridAccordion 
-        items={accordionItems} 
+        items={filteredAccordionItems} 
         onUploadRequest={handleUploadRequest}
         onImageClick={handleImageClick} 
         onEditRequest={handleEditRequest}
@@ -377,3 +402,4 @@ export default function HomePage() {
     </div>
   );
 }
+
