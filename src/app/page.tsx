@@ -8,10 +8,19 @@ import { ImageDetailModal } from '@/components/grid-accordion/image-detail-modal
 import { AddCollectionModal } from '@/components/grid-accordion/add-collection-modal';
 import { EditCollectionModal } from '@/components/grid-accordion/edit-collection-modal';
 import { DeleteConfirmModal } from '@/components/grid-accordion/delete-confirm-modal';
-import type { AccordionItemData, ImageData, PhotoUploadFormData, NewCollectionFormData } from '@/types';
+import type { AccordionItemData, ImageData, PhotoUploadFormData } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Loader2 } from 'lucide-react';
+import { format as formatDateFns } from 'date-fns'; // Renamed to avoid conflict
+
+// Define the type for form data coming from Add/Edit modals (where date is a Date object)
+interface CollectionFormSubmitData {
+  parishLocation: string;
+  diocese: string;
+  date: Date; // Date object from calendar
+  time: string;
+}
 
 export default function HomePage() {
   const [accordionItems, setAccordionItems] = React.useState<AccordionItemData[]>([]);
@@ -84,11 +93,9 @@ export default function HomePage() {
             : item
         )
       );
-      // Note: This client-side uploaded image (blob: URL) will not be persisted in collections.json
-      // To persist, actual file upload to server and storing a persistent URL would be needed.
       toast({
         title: "Photo Added Locally!",
-        description: `"${data.title}" has been added to ${activeItemTitleForUpload || 'the gallery'} for this session. It will not be saved permanently with the current setup.`,
+        description: `"${data.title}" has been added to ${activeItemTitleForUpload || 'the gallery'} for this session. It will not be saved permanently.`,
       });
     } else {
        toast({
@@ -104,23 +111,29 @@ export default function HomePage() {
     setIsAddCollectionModalOpen(true);
   };
 
-  const handleCreateNewCollection = async (data: NewCollectionFormData) => {
+  const handleCreateNewCollection = async (formData: CollectionFormSubmitData) => {
     const newItemId = `item-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    
+    // Format date from Date object to "MMMM d" string for storage/API
+    const formattedDate = formatDateFns(formData.date, "MMMM d");
+
     const newItem: AccordionItemData = {
       id: newItemId,
-      ...data,
-      images: [], // New collections start with no images
+      parishLocation: formData.parishLocation,
+      diocese: formData.diocese,
+      date: formattedDate, // Use formatted date string
+      time: formData.time,
+      images: [], 
     };
 
-    // Optimistic UI update
     setAccordionItems(prevItems => [...prevItems, newItem]);
-    setIsAddCollectionModalOpen(false); // Close modal immediately
+    setIsAddCollectionModalOpen(false); 
 
     try {
       const response = await fetch('/api/collections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newItem),
+        body: JSON.stringify(newItem), // Send newItem with formatted date
       });
 
       if (!response.ok) {
@@ -129,11 +142,9 @@ export default function HomePage() {
       }
       
       const savedItem = await response.json();
-      // Optionally update local state with server response if it differs (e.g., server-generated fields)
-      // For now, we assume client and server data match for new items after filtering blobs.
       setAccordionItems(prevItems => prevItems.map(item => item.id === newItemId ? savedItem : item));
 
-      const displayTitle = `${data.parishLocation}${data.diocese ? ` - ${data.diocese}` : ''}`;
+      const displayTitle = `${formData.parishLocation}${formData.diocese ? ` - ${formData.diocese}` : ''}`;
       toast({
         title: "New Collection Added!",
         description: `"${displayTitle}" has been saved.`,
@@ -146,7 +157,6 @@ export default function HomePage() {
         description: (error as Error).message || "Could not save new collection to the server.",
         variant: "destructive",
       });
-      // Revert optimistic update
       setAccordionItems(prevItems => prevItems.filter(item => item.id !== newItemId));
     }
   };
@@ -179,15 +189,24 @@ export default function HomePage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateCollection = async (updatedData: NewCollectionFormData) => {
+  const handleUpdateCollection = async (formData: CollectionFormSubmitData) => {
     if (!editingItem) return;
 
     const originalItem = accordionItems.find(item => item.id === editingItem.id);
     if (!originalItem) return;
 
-    const itemWithUpdates = { ...editingItem, ...updatedData };
+    // Format date from Date object to "MMMM d" string
+    const formattedDate = formatDateFns(formData.date, "MMMM d");
+
+    const itemWithUpdates: AccordionItemData = {
+      ...editingItem,
+      parishLocation: formData.parishLocation,
+      diocese: formData.diocese,
+      date: formattedDate, // Use formatted date
+      time: formData.time,
+      // images are preserved from editingItem
+    };
     
-    // Optimistic UI update
     setAccordionItems(prevItems =>
       prevItems.map(item =>
         item.id === editingItem.id ? itemWithUpdates : item
@@ -196,10 +215,12 @@ export default function HomePage() {
     setIsEditModalOpen(false);
 
     try {
-      // Prepare payload for API: filter out blob images
-      const payload = {
-        ...itemWithUpdates,
-        images: itemWithUpdates.images.filter(img => !img.src.startsWith('blob:'))
+      const payload = { // This payload goes to the API
+        parishLocation: itemWithUpdates.parishLocation,
+        diocese: itemWithUpdates.diocese,
+        date: itemWithUpdates.date, // Already formatted string
+        time: itemWithUpdates.time,
+        images: itemWithUpdates.images.filter(img => !img.src.startsWith('blob:')) // Persist only non-blob images
       };
 
       const response = await fetch(`/api/collections/${editingItem.id}`, {
@@ -214,11 +235,9 @@ export default function HomePage() {
       }
       
       const savedItem = await response.json();
-       // Update local state with server response (which includes filtered images)
       setAccordionItems(prevItems => prevItems.map(item => item.id === editingItem.id ? { ...item, ...savedItem } : item));
 
-
-      const displayTitle = `${updatedData.parishLocation}${updatedData.diocese ? ` - ${updatedData.diocese}` : ''}`;
+      const displayTitle = `${formData.parishLocation}${formData.diocese ? ` - ${formData.diocese}` : ''}`;
       toast({
         title: "Collection Updated!",
         description: `"${displayTitle}" has been saved.`,
@@ -230,7 +249,6 @@ export default function HomePage() {
         description: (error as Error).message || "Could not save updates to the server.",
         variant: "destructive",
       });
-      // Revert optimistic update to original state from before edit attempt
       setAccordionItems(prevItems => prevItems.map(item => item.id === editingItem.id ? originalItem : item));
     } finally {
       setEditingItem(null);
@@ -248,7 +266,6 @@ export default function HomePage() {
     const itemToDeleteId = deletingItem.id;
     const originalItems = [...accordionItems];
 
-    // Optimistic UI update
     setAccordionItems(prevItems => prevItems.filter(item => item.id !== itemToDeleteId));
     setIsDeleteConfirmModalOpen(false);
     
@@ -273,7 +290,6 @@ export default function HomePage() {
         description: (error as Error).message || "Could not delete collection from the server.",
         variant: "destructive",
       });
-      // Revert optimistic update
       setAccordionItems(originalItems);
     } finally {
       setDeletingItem(null);

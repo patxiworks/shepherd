@@ -1,4 +1,3 @@
-
 [
   {
     "id": "item-1",
@@ -14,6 +13,14 @@
     "diocese": "Lagos",
     "date": "July 1",
     "time": "18:30",
+    "images": []
+  },
+  {
+    "id": "item-1749554494720-s47l9w",
+    "parishLocation": "St Agnes, Maryland",
+    "diocese": "Lagos",
+    "date": "June 28",
+    "time": "18:00",
     "images": []
   }
 ]

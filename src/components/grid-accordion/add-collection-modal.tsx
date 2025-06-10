@@ -2,47 +2,77 @@
 "use client";
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import type { NewCollectionFormData } from '@/types';
-import { PlusCircle } from 'lucide-react';
+import { nigerianDioceses } from '@/lib/nigerian-dioceses';
+import { CalendarIcon, PlusCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const newCollectionSchema = z.object({
   parishLocation: z.string().min(1, { message: "Parish/Catholic Church - Location is required." }),
   diocese: z.string().min(1, { message: "Diocese is required." }),
-  date: z.string().min(1, { message: "Date is required." }), // Basic validation, can be enhanced
+  date: z.date({
+    required_error: "Date is required.",
+    invalid_type_error: "That's not a valid date!",
+  }),
   time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Invalid time format. Use HH:MM." }),
 });
+
+type NewCollectionFormValues = z.infer<typeof newCollectionSchema>;
 
 interface AddCollectionModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: NewCollectionFormData) => void;
+  onSubmit: (data: NewCollectionFormValues) => void; // Changed to NewCollectionFormValues
 }
 
+const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
+
 export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollectionModalProps) {
-  const form = useForm<z.infer<typeof newCollectionSchema>>({
+  const form = useForm<NewCollectionFormValues>({
     resolver: zodResolver(newCollectionSchema),
     defaultValues: {
       parishLocation: '',
       diocese: '',
-      date: '',
-      time: '',
+      date: undefined, // Date will be a Date object
+      time: '12:00', // Default time
     },
   });
 
-  const handleSubmit = (values: z.infer<typeof newCollectionSchema>) => {
+  const [selectedHour, setSelectedHour] = React.useState<string>('12');
+  const [selectedMinute, setSelectedMinute] = React.useState<string>('00');
+
+  React.useEffect(() => {
+    form.setValue('time', `${selectedHour}:${selectedMinute}`, { shouldValidate: true });
+  }, [selectedHour, selectedMinute, form]);
+
+  const handleFormSubmit = (values: NewCollectionFormValues) => {
     onSubmit(values);
-    form.reset(); // Reset form after submission
+    form.reset();
+    setSelectedHour('12');
+    setSelectedMinute('00');
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      onOpenChange(open);
+      if (!open) {
+        form.reset();
+        setSelectedHour('12');
+        setSelectedMinute('00');
+      }
+    }}>
       <DialogContent className="sm:max-w-[520px] p-6 rounded-lg shadow-xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-headline text-center mb-2">
@@ -53,7 +83,7 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="parishLocation"
@@ -73,9 +103,20 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Diocese</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Abuja" {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a diocese" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {nigerianDioceses.map((dioceseName) => (
+                        <SelectItem key={dioceseName} value={dioceseName}>
+                          {dioceseName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -84,30 +125,84 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
               control={form.control}
               name="date"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Date</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., July 1" {...field} />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP") // "PPP" gives like "Jul 1st, 2024"
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="time"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Time</FormLabel>
+            
+            <FormItem>
+              <FormLabel>Time</FormLabel>
+              <div className="flex space-x-2">
+                <Select onValueChange={setSelectedHour} value={selectedHour}>
                   <FormControl>
-                    <Input placeholder="e.g., 18:00" {...field} />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Hour" />
+                    </SelectTrigger>
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                  <SelectContent>
+                    {hours.map(hour => <SelectItem key={hour} value={hour}>{hour}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select onValueChange={setSelectedMinute} value={selectedMinute}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Minute" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {minutes.map(minute => <SelectItem key={minute} value={minute}>{minute}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Controller
+                name="time"
+                control={form.control}
+                render={({ fieldState }) => (
+                  fieldState.error ? <FormMessage>{fieldState.error.message}</FormMessage> : null
+                )}
+              />
+            </FormItem>
+
             <div className="flex justify-end space-x-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => {
+                onOpenChange(false);
+                form.reset();
+                setSelectedHour('12');
+                setSelectedMinute('00');
+              }}>
                 Cancel
               </Button>
               <Button type="submit">
