@@ -39,3 +39,17 @@ export interface SummaryItem {
   name: string;
   count: number;
 }
+
+export interface DioceseSummaryModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  summaryData: SummaryItem[];
+  onApplyFilter: (filterTerm: string) => void;
+}
+
+export interface StateSummaryModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  summaryData: SummaryItem[];
+  onApplyFilter: (filterTerm: string) => void;
+}

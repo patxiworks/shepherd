@@ -3,22 +3,17 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { SummaryItem } from '@/types';
+import { Button } from '@/components/ui/button';
+import type { StateSummaryModalProps } from '@/types';
 
-interface StateSummaryModalProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  summaryData: SummaryItem[];
-}
-
-export function StateSummaryModal({ isOpen, onOpenChange, summaryData }: StateSummaryModalProps) {
+export function StateSummaryModal({ isOpen, onOpenChange, summaryData, onApplyFilter }: StateSummaryModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>State Summary</DialogTitle>
           <DialogDescription>
-            Breakdown of collections by state.
+            Breakdown of collections by state. Click a count to filter.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[300px] w-full rounded-md border p-4 mt-4">
@@ -27,7 +22,13 @@ export function StateSummaryModal({ isOpen, onOpenChange, summaryData }: StateSu
               {summaryData.map((item) => (
                 <li key={item.name} className="flex justify-between items-center text-sm">
                   <span>{item.name}</span>
-                  <span className="font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">{item.count}</span>
+                   <Button
+                    variant="link"
+                    className="font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full h-auto hover:bg-primary/20"
+                    onClick={() => onApplyFilter(item.name)}
+                  >
+                    {item.count}
+                  </Button>
                 </li>
               ))}
             </ul>

@@ -19,6 +19,36 @@ import { format as formatDateFns } from 'date-fns';
 import { nigerianDioceses } from '@/lib/nigerian-dioceses';
 import { nigerianStates } from '@/lib/nigerian-states';
 
+// Helper function to sort collections by date and then by time
+const sortCollections = (a: AccordionItemData, b: AccordionItemData): number => {
+  const currentYear = new Date().getFullYear();
+  
+  // Attempt to parse dates. Handle potential invalid date strings gracefully.
+  let dateA = new Date(`${a.date} ${currentYear}`);
+  let dateB = new Date(`${b.date} ${currentYear}`);
+
+  // If parsing results in Invalid Date, treat them as very old dates to sort them consistently
+  // or handle as per specific requirements (e.g., place them at the end).
+  // For simplicity, if a date is invalid, it might sort unpredictably or at the start/end depending on NaN behavior.
+  // A more robust solution would validate date strings upon entry or use a more reliable parsing.
+  if (isNaN(dateA.getTime())) dateA = new Date(0); // Treat as epoch if invalid
+  if (isNaN(dateB.getTime())) dateB = new Date(0);
+
+
+  if (dateA.getTime() !== dateB.getTime()) {
+    return dateA.getTime() - dateB.getTime();
+  }
+
+  const [hoursA, minutesA] = a.time.split(':').map(Number);
+  const [hoursB, minutesB] = b.time.split(':').map(Number);
+
+  if (hoursA !== hoursB) {
+    return hoursA - hoursB;
+  }
+  return minutesA - minutesB;
+};
+
+
 export default function HomePage() {
   const [accordionItems, setAccordionItems] = React.useState<AccordionItemData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -52,8 +82,8 @@ export default function HomePage() {
         if (!response.ok) {
           throw new Error('Failed to fetch collections');
         }
-        const data = await response.json();
-        setAccordionItems(data);
+        const data: AccordionItemData[] = await response.json();
+        setAccordionItems(data.sort(sortCollections));
       } catch (error) {
         console.error("Error fetching collections:", error);
         toast({
@@ -95,7 +125,7 @@ export default function HomePage() {
     if (!accordionItems.length) {
       return { count: 0, total: nigerianStates.length, breakdown: [] as SummaryItem[] };
     }
-    const statesInAccordion = accordionItems.map(item => item.state).filter(Boolean);
+    const statesInAccordion = accordionItems.map(item => item.state).filter(Boolean); // Filter out empty/null states
     const uniqueStatesWithItems = new Set(statesInAccordion);
     
     const breakdownMap = new Map<string, number>();
@@ -142,7 +172,7 @@ export default function HomePage() {
           item.id === activeItemIdForUpload
             ? { ...item, images: [...item.images, newImage] }
             : item
-        )
+        ).sort(sortCollections) // Re-sort after adding an image locally, though this change isn't persisted
       );
       toast({
         title: "Photo Added Locally!",
@@ -177,7 +207,8 @@ export default function HomePage() {
       images: [], 
     };
 
-    setAccordionItems(prevItems => [...prevItems, newItem]);
+    // Optimistically add and sort
+    setAccordionItems(prevItems => [...prevItems, newItem].sort(sortCollections));
     setIsAddCollectionModalOpen(false); 
 
     try {
@@ -193,7 +224,10 @@ export default function HomePage() {
       }
       
       const savedItem = await response.json();
-      setAccordionItems(prevItems => prevItems.map(item => item.id === newItemId ? savedItem : item));
+      // Replace optimistic item with server response and re-sort
+      setAccordionItems(prevItems => 
+        prevItems.map(item => item.id === newItemId ? savedItem : item).sort(sortCollections)
+      );
 
       const displayTitle = `${formData.parishLocation}${formData.diocese ? ` - ${formData.diocese}` : ''}`;
       toast({
@@ -208,7 +242,8 @@ export default function HomePage() {
         description: (error as Error).message || "Could not save new collection to the server.",
         variant: "destructive",
       });
-      setAccordionItems(prevItems => prevItems.filter(item => item.id !== newItemId));
+      // Revert optimistic update on error
+      setAccordionItems(prevItems => prevItems.filter(item => item.id !== newItemId).sort(sortCollections));
     }
   };
   
@@ -244,7 +279,7 @@ export default function HomePage() {
     if (!editingItem) return;
 
     const originalItem = accordionItems.find(item => item.id === editingItem.id);
-    if (!originalItem) return;
+    if (!originalItem) return; // Should not happen
 
     const formattedDate = formatDateFns(formData.date, "MMMM d");
 
@@ -257,10 +292,11 @@ export default function HomePage() {
       time: formData.time,
     };
     
+    // Optimistically update and sort
     setAccordionItems(prevItems =>
       prevItems.map(item =>
         item.id === editingItem.id ? itemWithUpdates : item
-      )
+      ).sort(sortCollections)
     );
     setIsEditModalOpen(false);
 
@@ -286,7 +322,10 @@ export default function HomePage() {
       }
       
       const savedItem = await response.json();
-      setAccordionItems(prevItems => prevItems.map(item => item.id === editingItem.id ? { ...item, ...savedItem } : item));
+       // Replace optimistic item with server response and re-sort
+      setAccordionItems(prevItems => 
+        prevItems.map(item => item.id === editingItem.id ? { ...item, ...savedItem } : item).sort(sortCollections)
+      );
 
       const displayTitle = `${formData.parishLocation}${formData.diocese ? ` - ${formData.diocese}` : ''}`;
       toast({
@@ -300,7 +339,8 @@ export default function HomePage() {
         description: (error as Error).message || "Could not save updates to the server.",
         variant: "destructive",
       });
-      setAccordionItems(prevItems => prevItems.map(item => item.id === editingItem.id ? originalItem : item));
+      // Revert optimistic update on error
+      setAccordionItems(prevItems => prevItems.map(item => item.id === editingItem.id ? originalItem : item).sort(sortCollections));
     } finally {
       setEditingItem(null);
     }
@@ -315,9 +355,10 @@ export default function HomePage() {
     if (!deletingItem) return;
 
     const itemToDeleteId = deletingItem.id;
-    const originalItems = [...accordionItems];
+    const originalItems = [...accordionItems]; // Keep a copy for potential revert
 
-    setAccordionItems(prevItems => prevItems.filter(item => item.id !== itemToDeleteId));
+    // Optimistically delete
+    setAccordionItems(prevItems => prevItems.filter(item => item.id !== itemToDeleteId)); // No need to re-sort here
     setIsDeleteConfirmModalOpen(false);
     
     try {
@@ -341,7 +382,8 @@ export default function HomePage() {
         description: (error as Error).message || "Could not delete collection from the server.",
         variant: "destructive",
       });
-      setAccordionItems(originalItems);
+      // Revert optimistic delete on error by restoring and re-sorting original list
+      setAccordionItems(originalItems.sort(sortCollections));
     } finally {
       setDeletingItem(null);
     }
@@ -349,7 +391,7 @@ export default function HomePage() {
 
   const filteredAccordionItems = React.useMemo(() => {
     if (!filterQuery) {
-      return accordionItems;
+      return accordionItems; // Already sorted
     }
     const lowercasedQuery = filterQuery.toLowerCase();
     return accordionItems.filter(item =>
@@ -358,8 +400,15 @@ export default function HomePage() {
       (item.state && item.state.toLowerCase().includes(lowercasedQuery)) ||
       item.date.toLowerCase().includes(lowercasedQuery) ||
       item.time.toLowerCase().includes(lowercasedQuery)
-    );
+    ); // This filtered list maintains the original sort order
   }, [accordionItems, filterQuery]);
+
+  const handleApplySummaryFilter = (filterTerm: string) => {
+    setFilterQuery(filterTerm);
+    setIsDioceseSummaryModalOpen(false);
+    setIsStateSummaryModalOpen(false);
+  };
+
 
   if (isLoading) {
     return (
@@ -465,12 +514,14 @@ export default function HomePage() {
         isOpen={isDioceseSummaryModalOpen}
         onOpenChange={setIsDioceseSummaryModalOpen}
         summaryData={dioceseSummary.breakdown}
+        onApplyFilter={handleApplySummaryFilter}
       />
 
       <StateSummaryModal
         isOpen={isStateSummaryModalOpen}
         onOpenChange={setIsStateSummaryModalOpen}
         summaryData={stateSummary.breakdown}
+        onApplyFilter={handleApplySummaryFilter}
       />
       
       <footer className="text-center mt-12 py-6 border-t border-border">
