@@ -18,13 +18,13 @@ export function ImageDetailModal({ isOpen, onOpenChange, image }: ImageDetailMod
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl p-2 sm:p-4 max-h-[90vh] flex flex-col bg-card rounded-lg shadow-xl">
-        <DialogHeader className="flex-shrink-0 px-2 pt-2 sm:px-4 sm:pt-4">
-          <DialogTitle className="text-lg sm:text-xl font-headline mb-1 sm:mb-2 truncate">
+      <DialogContent className="image-modal-content sm:max-w-2xl md:max-w-3xl lg:max-w-4xl p-0 max-h-[90vh] flex flex-col bg-transparent border-0 shadow-none">
+        <DialogHeader className="flex-shrink-0 px-4 pt-4 z-10">
+          <DialogTitle className="text-lg sm:text-xl font-headline mb-1 sm:mb-2 truncate text-primary-foreground">
             {image.alt || 'Image Detail'}
           </DialogTitle>
         </DialogHeader>
-        <div className="flex-grow relative mt-2 min-h-[200px] sm:min-h-[300px] md:min-h-[400px]">
+        <div className="flex-grow relative mt-2 min-h-[200px] sm:min-h-[300px] md:min-h-[400px] p-4">
           <Image
             src={image.src}
             alt={image.alt}

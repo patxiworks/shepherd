@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -99,5 +100,19 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Custom styles for ImageDetailModal close button */
+  .image-modal-content > button[data-radix-dialog-close] {
+    color: hsl(var(--primary-foreground)) !important; /* Ensure text/icon color is light */
+    opacity: 0.7 !important; /* Maintain a base opacity */
+    z-index: 20; /* Ensure close button is above the image title if they overlap */
+  }
+  .image-modal-content > button[data-radix-dialog-close]:hover {
+    background-color: hsla(var(--primary-foreground), 0.1) !important; /* Light hover effect */
+    opacity: 1 !important; /* Full opacity on hover */
+  }
+  .image-modal-content > button[data-radix-dialog-close][data-state=open] {
+    background-color: transparent !important; /* Override any theme-specific background on open */
   }
 }
