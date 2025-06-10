@@ -1,4 +1,3 @@
-
 [
   {
     "id": "item-1",
@@ -34,6 +33,12 @@
     "state": "Lagos",
     "date": "June 10",
     "time": "12:00",
-    "images": []
+    "images": [
+      {
+        "src": "https://placehold.co/600x400.png?text=Man",
+        "alt": "Man",
+        "hint": "man"
+      }
+    ]
   }
 ]
