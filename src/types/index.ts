@@ -12,7 +12,7 @@ export interface AccordionItemData {
 }
 
 export interface PhotoUploadFormData {
-  title: string;
+  title:string;
   description: string;
   photo?: FileList;
 }

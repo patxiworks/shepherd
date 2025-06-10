@@ -4,7 +4,7 @@ import type { ImageData } from '@/types';
 
 interface ImageGridProps {
   images: ImageData[];
-  onImageClick?: (image: ImageData) => void;
+  onImageClick: (image: ImageData, index: number, allImages: ImageData[]) => void;
 }
 
 export function ImageGrid({ images, onImageClick }: ImageGridProps) {
@@ -18,10 +18,10 @@ export function ImageGrid({ images, onImageClick }: ImageGridProps) {
         <div 
           key={index} 
           className="aspect-square relative overflow-hidden rounded-lg shadow-md group cursor-pointer"
-          onClick={() => onImageClick?.(image)}
+          onClick={() => onImageClick(image, index, images)}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onImageClick?.(image);}}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onImageClick(image, index, images);}}
           aria-label={`View image: ${image.alt}`}
         >
           <Image

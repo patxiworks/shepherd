@@ -50,7 +50,8 @@ export default function HomePage() {
   const [activeItemIdForUpload, setActiveItemIdForUpload] = React.useState<string | null>(null);
   const [activeItemTitleForUpload, setActiveItemTitleForUpload] = React.useState<string | null>(null);
   
-  const [selectedImage, setSelectedImage] = React.useState<ImageData | null>(null);
+  const [activeSlideshowImages, setActiveSlideshowImages] = React.useState<ImageData[] | null>(null);
+  const [activeSlideshowIndex, setActiveSlideshowIndex] = React.useState<number | null>(null);
   const [isImageDetailModalOpen, setIsImageDetailModalOpen] = React.useState(false);
   
   const { toast } = useToast();
@@ -118,15 +119,17 @@ export default function HomePage() {
     }
   };
 
-  const handleImageClick = (image: ImageData) => {
-    setSelectedImage(image);
+  const handleImageClick = (image: ImageData, index: number, allImages: ImageData[]) => {
+    setActiveSlideshowImages(allImages);
+    setActiveSlideshowIndex(index);
     setIsImageDetailModalOpen(true);
   };
 
   const handleImageDetailModalOpenChange = (open: boolean) => {
     setIsImageDetailModalOpen(open);
     if (!open) {
-      setSelectedImage(null);
+      setActiveSlideshowImages(null);
+      setActiveSlideshowIndex(null);
     }
   };
 
@@ -166,7 +169,8 @@ export default function HomePage() {
       <ImageDetailModal
         isOpen={isImageDetailModalOpen}
         onOpenChange={handleImageDetailModalOpenChange}
-        image={selectedImage}
+        images={activeSlideshowImages}
+        initialIndex={activeSlideshowIndex}
       />
       
       <footer className="text-center mt-12 py-6 border-t border-border">

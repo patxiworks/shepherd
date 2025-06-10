@@ -13,7 +13,7 @@ import { GridAccordionItemContent } from './grid-accordion-item-content';
 interface GridAccordionProps {
   items: AccordionItemData[];
   onUploadRequest: (itemId: string, itemTitle: string) => void;
-  onImageClick?: (image: ImageData) => void;
+  onImageClick: (image: ImageData, index: number, allImages: ImageData[]) => void;
 }
 
 export function GridAccordion({ items, onUploadRequest, onImageClick }: GridAccordionProps) {
@@ -32,7 +32,7 @@ export function GridAccordion({ items, onUploadRequest, onImageClick }: GridAcco
             <GridAccordionItemContent 
               item={item} 
               onUploadClick={() => onUploadRequest(item.id, item.title)} 
-              onImageClick={onImageClick}
+              onImageClick={(image, index) => onImageClick(image, index, item.images)}
             />
           </AccordionContent>
         </AccordionItem>
