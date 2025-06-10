@@ -1,0 +1,19 @@
+
+[
+  {
+    "id": "item-1",
+    "parishLocation": "St. Matthew Chaplaincy, Regina Pacis College",
+    "diocese": "Abuja",
+    "date": "July 1",
+    "time": "18:00",
+    "images": []
+  },
+  {
+    "id": "item-2",
+    "parishLocation": "St. Bernadette, Akinogun, Shagari Estate, Ipaja, Lagos",
+    "diocese": "Lagos",
+    "date": "July 1",
+    "time": "18:30",
+    "images": []
+  }
+]

@@ -11,29 +11,11 @@ import { DeleteConfirmModal } from '@/components/grid-accordion/delete-confirm-m
 import type { AccordionItemData, ImageData, PhotoUploadFormData, NewCollectionFormData } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
-
-const initialAccordionData: AccordionItemData[] = [
-  {
-    id: 'item-1',
-    parishLocation: 'St. Matthew Chaplaincy, Regina Pacis College',
-    diocese: 'Abuja',
-    date: 'July 1',
-    time: '18:00',
-    images: [],
-  },
-  {
-    id: 'item-2',
-    parishLocation: 'St. Bernadette, Akinogun, Shagari Estate, Ipaja, Lagos',
-    diocese: 'Lagos',
-    date: 'July 1',
-    time: '18:30',
-    images: [],
-  },
-];
+import { PlusCircle, Loader2 } from 'lucide-react';
 
 export default function HomePage() {
-  const [accordionItems, setAccordionItems] = React.useState<AccordionItemData[]>(initialAccordionData);
+  const [accordionItems, setAccordionItems] = React.useState<AccordionItemData[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
   const [authModalStep, setAuthModalStep] = React.useState<'signIn' | 'upload'>('signIn');
   const [activeItemIdForUpload, setActiveItemIdForUpload] = React.useState<string | null>(null);
@@ -50,6 +32,30 @@ export default function HomePage() {
   const [deletingItem, setDeletingItem] = React.useState<AccordionItemData | null>(null);
   
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    const fetchCollections = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/collections');
+        if (!response.ok) {
+          throw new Error('Failed to fetch collections');
+        }
+        const data = await response.json();
+        setAccordionItems(data);
+      } catch (error) {
+        console.error("Error fetching collections:", error);
+        toast({
+          title: "Error",
+          description: "Could not load collections data.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCollections();
+  }, [toast]);
 
   const handleUploadRequest = (item: AccordionItemData) => {
     setActiveItemIdForUpload(item.id);
@@ -78,9 +84,11 @@ export default function HomePage() {
             : item
         )
       );
+      // Note: This client-side uploaded image (blob: URL) will not be persisted in collections.json
+      // To persist, actual file upload to server and storing a persistent URL would be needed.
       toast({
-        title: "Photo Uploaded!",
-        description: `"${data.title}" has been added to ${activeItemTitleForUpload || 'the gallery'}.`,
+        title: "Photo Added Locally!",
+        description: `"${data.title}" has been added to ${activeItemTitleForUpload || 'the gallery'} for this session. It will not be saved permanently with the current setup.`,
       });
     } else {
        toast({
@@ -96,20 +104,51 @@ export default function HomePage() {
     setIsAddCollectionModalOpen(true);
   };
 
-  const handleCreateNewCollection = (data: NewCollectionFormData) => {
+  const handleCreateNewCollection = async (data: NewCollectionFormData) => {
     const newItemId = `item-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const newItem: AccordionItemData = {
       id: newItemId,
       ...data,
-      images: [],
+      images: [], // New collections start with no images
     };
+
+    // Optimistic UI update
     setAccordionItems(prevItems => [...prevItems, newItem]);
-    const displayTitle = `${data.parishLocation}${data.diocese ? ` - ${data.diocese}` : ''}`;
-    toast({
-      title: "New Collection Added!",
-      description: `"${displayTitle}" is ready for photos.`,
-    });
-    setIsAddCollectionModalOpen(false);
+    setIsAddCollectionModalOpen(false); // Close modal immediately
+
+    try {
+      const response = await fetch('/api/collections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newItem),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save new collection');
+      }
+      
+      const savedItem = await response.json();
+      // Optionally update local state with server response if it differs (e.g., server-generated fields)
+      // For now, we assume client and server data match for new items after filtering blobs.
+      setAccordionItems(prevItems => prevItems.map(item => item.id === newItemId ? savedItem : item));
+
+      const displayTitle = `${data.parishLocation}${data.diocese ? ` - ${data.diocese}` : ''}`;
+      toast({
+        title: "New Collection Added!",
+        description: `"${displayTitle}" has been saved.`,
+      });
+
+    } catch (error) {
+      console.error("Error creating collection:", error);
+      toast({
+        title: "Save Error",
+        description: (error as Error).message || "Could not save new collection to the server.",
+        variant: "destructive",
+      });
+      // Revert optimistic update
+      setAccordionItems(prevItems => prevItems.filter(item => item.id !== newItemId));
+    }
   };
   
   const handleAuthModalOpenChange = (open: boolean) => {
@@ -140,20 +179,62 @@ export default function HomePage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateCollection = (updatedData: NewCollectionFormData) => {
+  const handleUpdateCollection = async (updatedData: NewCollectionFormData) => {
     if (!editingItem) return;
+
+    const originalItem = accordionItems.find(item => item.id === editingItem.id);
+    if (!originalItem) return;
+
+    const itemWithUpdates = { ...editingItem, ...updatedData };
+    
+    // Optimistic UI update
     setAccordionItems(prevItems =>
       prevItems.map(item =>
-        item.id === editingItem.id ? { ...item, ...updatedData } : item
+        item.id === editingItem.id ? itemWithUpdates : item
       )
     );
-    const displayTitle = `${updatedData.parishLocation}${updatedData.diocese ? ` - ${updatedData.diocese}` : ''}`;
-    toast({
-      title: "Collection Updated!",
-      description: `"${displayTitle}" has been updated.`,
-    });
     setIsEditModalOpen(false);
-    setEditingItem(null);
+
+    try {
+      // Prepare payload for API: filter out blob images
+      const payload = {
+        ...itemWithUpdates,
+        images: itemWithUpdates.images.filter(img => !img.src.startsWith('blob:'))
+      };
+
+      const response = await fetch(`/api/collections/${editingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update collection');
+      }
+      
+      const savedItem = await response.json();
+       // Update local state with server response (which includes filtered images)
+      setAccordionItems(prevItems => prevItems.map(item => item.id === editingItem.id ? { ...item, ...savedItem } : item));
+
+
+      const displayTitle = `${updatedData.parishLocation}${updatedData.diocese ? ` - ${updatedData.diocese}` : ''}`;
+      toast({
+        title: "Collection Updated!",
+        description: `"${displayTitle}" has been saved.`,
+      });
+    } catch (error) {
+      console.error("Error updating collection:", error);
+      toast({
+        title: "Update Error",
+        description: (error as Error).message || "Could not save updates to the server.",
+        variant: "destructive",
+      });
+      // Revert optimistic update to original state from before edit attempt
+      setAccordionItems(prevItems => prevItems.map(item => item.id === editingItem.id ? originalItem : item));
+    } finally {
+      setEditingItem(null);
+    }
   };
 
   const handleDeleteRequest = (item: AccordionItemData) => {
@@ -161,19 +242,52 @@ export default function HomePage() {
     setIsDeleteConfirmModalOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deletingItem) return;
-    setAccordionItems(prevItems => prevItems.filter(item => item.id !== deletingItem.id));
-    const displayTitle = `${deletingItem.parishLocation}${deletingItem.diocese ? ` - ${deletingItem.diocese}` : ''}`;
-    toast({
-      title: "Collection Deleted",
-      description: `"${displayTitle}" has been removed.`,
-      variant: "destructive" 
-    });
+
+    const itemToDeleteId = deletingItem.id;
+    const originalItems = [...accordionItems];
+
+    // Optimistic UI update
+    setAccordionItems(prevItems => prevItems.filter(item => item.id !== itemToDeleteId));
     setIsDeleteConfirmModalOpen(false);
-    setDeletingItem(null);
+    
+    try {
+      const response = await fetch(`/api/collections/${itemToDeleteId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete collection');
+      }
+      const displayTitle = `${deletingItem.parishLocation}${deletingItem.diocese ? ` - ${deletingItem.diocese}` : ''}`;
+      toast({
+        title: "Collection Deleted",
+        description: `"${displayTitle}" has been removed from the server.`,
+      });
+    } catch (error) {
+      console.error("Error deleting collection:", error);
+      toast({
+        title: "Delete Error",
+        description: (error as Error).message || "Could not delete collection from the server.",
+        variant: "destructive",
+      });
+      // Revert optimistic update
+      setAccordionItems(originalItems);
+    } finally {
+      setDeletingItem(null);
+    }
   };
 
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-xl text-muted-foreground">Loading collections...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen">
