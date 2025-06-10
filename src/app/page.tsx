@@ -8,12 +8,16 @@ import { ImageDetailModal } from '@/components/grid-accordion/image-detail-modal
 import { AddCollectionModal } from '@/components/grid-accordion/add-collection-modal';
 import { EditCollectionModal } from '@/components/grid-accordion/edit-collection-modal';
 import { DeleteConfirmModal } from '@/components/grid-accordion/delete-confirm-modal';
-import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData } from '@/types';
+import { DioceseSummaryModal } from '@/components/grid-accordion/diocese-summary-modal';
+import { StateSummaryModal } from '@/components/grid-accordion/state-summary-modal';
+import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData, SummaryItem } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input'; // Added Input import
+import { Input } from '@/components/ui/input';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { format as formatDateFns } from 'date-fns';
+import { nigerianDioceses } from '@/lib/nigerian-dioceses';
+import { nigerianStates } from '@/lib/nigerian-states';
 
 export default function HomePage() {
   const [accordionItems, setAccordionItems] = React.useState<AccordionItemData[]>([]);
@@ -33,7 +37,10 @@ export default function HomePage() {
   const [isDeleteConfirmModalOpen, setIsDeleteConfirmModalOpen] = React.useState(false);
   const [deletingItem, setDeletingItem] = React.useState<AccordionItemData | null>(null);
   
-  const [filterQuery, setFilterQuery] = React.useState(''); // State for filter query
+  const [filterQuery, setFilterQuery] = React.useState('');
+
+  const [isDioceseSummaryModalOpen, setIsDioceseSummaryModalOpen] = React.useState(false);
+  const [isStateSummaryModalOpen, setIsStateSummaryModalOpen] = React.useState(false);
 
   const { toast } = useToast();
 
@@ -60,6 +67,55 @@ export default function HomePage() {
     };
     fetchCollections();
   }, [toast]);
+
+  const dioceseSummary = React.useMemo(() => {
+    if (!accordionItems.length) {
+      return { count: 0, total: nigerianDioceses.length, breakdown: [] as SummaryItem[] };
+    }
+    const diocesesInAccordion = accordionItems.map(item => item.diocese);
+    const uniqueDiocesesWithItems = new Set(diocesesInAccordion);
+    
+    const breakdownMap = new Map<string, number>();
+    diocesesInAccordion.forEach(diocese => {
+      breakdownMap.set(diocese, (breakdownMap.get(diocese) || 0) + 1);
+    });
+    
+    const breakdown = Array.from(breakdownMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)); 
+      
+    return {
+      count: uniqueDiocesesWithItems.size,
+      total: nigerianDioceses.length,
+      breakdown,
+    };
+  }, [accordionItems]);
+
+  const stateSummary = React.useMemo(() => {
+    if (!accordionItems.length) {
+      return { count: 0, total: nigerianStates.length, breakdown: [] as SummaryItem[] };
+    }
+    const statesInAccordion = accordionItems.map(item => item.state).filter(Boolean);
+    const uniqueStatesWithItems = new Set(statesInAccordion);
+    
+    const breakdownMap = new Map<string, number>();
+    statesInAccordion.forEach(stateItem => {
+      if (stateItem) { // Ensure stateItem is not null or undefined before setting
+         breakdownMap.set(stateItem, (breakdownMap.get(stateItem) || 0) + 1);
+      }
+    });
+    
+    const breakdown = Array.from(breakdownMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+      
+    return {
+      count: uniqueStatesWithItems.size,
+      total: nigerianStates.length,
+      breakdown,
+    };
+  }, [accordionItems]);
+
 
   const handleUploadRequest = (item: AccordionItemData) => {
     setActiveItemIdForUpload(item.id);
@@ -291,7 +347,6 @@ export default function HomePage() {
     }
   };
 
-  // Derived state for filtered accordion items
   const filteredAccordionItems = React.useMemo(() => {
     if (!filterQuery) {
       return accordionItems;
@@ -317,16 +372,22 @@ export default function HomePage() {
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen">
-      <header className="mb-10 text-center">
+      <header className="mb-6 text-center">
         <h1 className="text-5xl font-headline font-bold text-primary mb-3">
           GridAccordion
         </h1>
-        <p className="text-xl text-muted-foreground font-body">
-          Your Photo Collections, Beautifully Organized
-        </p>
+        <div className="text-md text-muted-foreground font-body flex justify-center items-center space-x-2">
+          <Button variant="link" onClick={() => setIsDioceseSummaryModalOpen(true)} className="p-0 h-auto text-md">
+            Dioceses ({dioceseSummary.count}/{dioceseSummary.total})
+          </Button>
+          <span>|</span>
+          <Button variant="link" onClick={() => setIsStateSummaryModalOpen(true)} className="p-0 h-auto text-md">
+            States ({stateSummary.count}/{stateSummary.total})
+          </Button>
+        </div>
       </header>
 
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div className="mb-6 mt-10 flex flex-col sm:flex-row justify-between items-center gap-4">
         <Input
           type="text"
           placeholder="Filter collections..."
@@ -393,6 +454,18 @@ export default function HomePage() {
         images={activeSlideshowImages}
         initialIndex={activeSlideshowIndex}
       />
+
+      <DioceseSummaryModal
+        isOpen={isDioceseSummaryModalOpen}
+        onOpenChange={setIsDioceseSummaryModalOpen}
+        summaryData={dioceseSummary.breakdown}
+      />
+
+      <StateSummaryModal
+        isOpen={isStateSummaryModalOpen}
+        onOpenChange={setIsStateSummaryModalOpen}
+        summaryData={stateSummary.breakdown}
+      />
       
       <footer className="text-center mt-12 py-6 border-t border-border">
         <p className="text-sm text-muted-foreground">
@@ -402,4 +475,3 @@ export default function HomePage() {
     </div>
   );
 }
-
