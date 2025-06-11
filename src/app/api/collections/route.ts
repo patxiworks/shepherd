@@ -4,9 +4,9 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import type { AccordionItemData } from '@/types';
 
-const REMOTE_COLLECTIONS_URL = process.env.REMOTE_COLLECTIONS_URL || 'https://criterionpublishers.ng/sj-masses/photos2025/collections.json';
+const REMOTE_COLLECTIONS_URL = process.env.REMOTE_COLLECTIONS_URL || 'https://criterionpublishers.org/sj-masses/photos2025/collections.json';
 const REMOTE_COLLECTIONS_WRITE_URL = process.env.REMOTE_COLLECTIONS_WRITE_URL;
-const COLLECTIONS_API_SECRET_KEY = process.env.COLLECTIONS_API_SECRET_KEY;
+const COLLECTIONS_API_SECRET_KEY = process.env.SECRET_KEY;
 
 async function readRemoteCollections(): Promise<AccordionItemData[]> {
   try {
