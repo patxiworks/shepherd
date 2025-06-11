@@ -6,7 +6,10 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { AccordionItemData } from '@/types';
 
-const collectionsFilePath = path.join(process.cwd(), 'src', 'data', 'collections.json');
+// Using /tmp directory for collections.json.
+// IMPORTANT: Files in /tmp are generally NOT PERSISTENT.
+// Data may be lost on server/instance restarts or deployments.
+const collectionsFilePath = path.join('/tmp', 'collections.json');
 
 async function readCollections(): Promise<AccordionItemData[]> {
   try {
@@ -14,11 +17,11 @@ async function readCollections(): Promise<AccordionItemData[]> {
     return JSON.parse(fileData) as AccordionItemData[];
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      console.warn(`Local collections file not found at ${collectionsFilePath}. Returning empty array.`);
+      console.warn(`Collections file not found at ${collectionsFilePath}. Returning empty array. This is expected if the /tmp directory was cleared or on first run.`);
       return []; 
     }
-    console.error('Error reading local collections data:', error);
-    throw new Error('Failed to read local collections data.');
+    console.error('Error reading collections data from /tmp:', error);
+    throw new Error('Failed to read collections data from /tmp.');
   }
 }
 
@@ -27,8 +30,8 @@ async function writeCollections(data: AccordionItemData[]): Promise<void> {
     const jsonData = JSON.stringify(data, null, 2);
     await fs.writeFile(collectionsFilePath, jsonData, 'utf-8');
   } catch (error) {
-    console.error('Error writing local collections data:', error);
-    throw new Error('Failed to write local collections data.');
+    console.error('Error writing collections data to /tmp:', error);
+    throw new Error('Failed to write collections data to /tmp.');
   }
 }
 
@@ -54,7 +57,4 @@ export async function POST(request: NextRequest) {
     collections.push(newCollection);
     await writeCollections(collections);
     return NextResponse.json(newCollection, { status: 201 });
-  } catch (error) {
-    return NextResponse.json({ message: (error as Error).message || 'Failed to create collection' }, { status: 500 });
-  }
-}
+  } catch (error)
