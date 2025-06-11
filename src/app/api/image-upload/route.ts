@@ -29,8 +29,8 @@ import { type NextRequest, NextResponse } from 'next/server';
 // const GOOGLE_DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID; // ID of the folder to upload to
 
 // --- Bluehost PHP Intermediary Configuration (Placeholder) ---
-// const BLUEHOST_PHP_UPLOAD_SCRIPT_URL = process.env.BLUEHOST_PHP_UPLOAD_SCRIPT_URL; // e.g., https://yourdomain.com/api/upload-image.php
-// const BLUEHOST_UPLOAD_SECRET_KEY = process.env.BLUEHOST_UPLOAD_SECRET_KEY; // A secret key to authenticate your Next.js backend to the PHP script
+const BLUEHOST_PHP_UPLOAD_SCRIPT_URL = process.env.BLUEHOST_PHP_UPLOAD_SCRIPT_URL; // e.g., https://yourdomain.com/api/upload-image.php
+const BLUEHOST_UPLOAD_SECRET_KEY = process.env.BLUEHOST_UPLOAD_SECRET_KEY; // A secret key to authenticate your Next.js backend to the PHP script
 
 
 export async function POST(request: NextRequest) {
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     let actualImageUrl: string | null = null;
-    let flickrPhotoId: string | null = null; // Or googleDriveFileId
+    // let flickrPhotoId: string | null = null; // Or googleDriveFileId
 
     // *********************************************************************
     // OPTION 1: ACTUAL FLICKR UPLOAD LOGIC (Commented out - for your implementation)
@@ -121,8 +121,13 @@ export async function POST(request: NextRequest) {
     // OPTION 2: GOOGLE DRIVE UPLOAD LOGIC (Commented out - for your implementation)
     // *********************************************************************
     /*
+    let googleDriveFileId: string | null = null;
     if (GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY_JSON && GOOGLE_DRIVE_FOLDER_ID) {
       try {
+        // Ensure you have 'googleapis' installed: npm install googleapis
+        const { google } = require('googleapis'); // Using require for conditional import
+        const stream = require('stream'); // Using require for conditional import
+
         const credentials = JSON.parse(GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY_JSON);
         const auth = new google.auth.GoogleAuth({
           credentials,
@@ -182,7 +187,9 @@ export async function POST(request: NextRequest) {
 
       } catch (driveError) {
         console.error('Google Drive API Error:', driveError);
-        throw new Error(`Google Drive upload failed: ${(driveError as Error).message}`);
+        // Potentially fall back to placeholder or re-throw
+        // For now, we let the main catch block handle it or fall through to placeholder.
+        // throw new Error(`Google Drive upload failed: ${(driveError as Error).message}`);
       }
     } else {
       console.warn("Google Drive credentials or folder ID not configured. Skipping actual Google Drive upload.");
@@ -194,9 +201,9 @@ export async function POST(request: NextRequest) {
 
 
     // *********************************************************************************
-    // OPTION 3: BLUEHOST PHP SCRIPT INTERMEDIARY LOGIC (Commented out - for your implementation)
+    // OPTION 3: BLUEHOST PHP SCRIPT INTERMEDIARY LOGIC (ACTIVE PATH)
     // *********************************************************************************
-    /*
+    
     if (BLUEHOST_PHP_UPLOAD_SCRIPT_URL && BLUEHOST_UPLOAD_SECRET_KEY) {
       const bluehostFormData = new FormData();
       bluehostFormData.append('photo', photo, photo.name);
@@ -212,50 +219,52 @@ export async function POST(request: NextRequest) {
       // 5. Construct the public URL: `https://yourdomain.com/uploads/images/your_image_name.jpg`.
       // 6. Return a JSON response: `echo json_encode(['imageUrl' => 'https://yourdomain.com/uploads/images/your_image_name.jpg']);`
       //    Or `echo json_encode(['error' => 'Some error message']);` on failure.
-
-      const bluehostResponse = await fetch(BLUEHOST_PHP_UPLOAD_SCRIPT_URL, {
-        method: 'POST',
-        body: bluehostFormData, // FormData handles multipart/form-data
-        // You might not need Content-Type header if using FormData, fetch sets it.
-      });
-
-      if (!bluehostResponse.ok) {
-        const errorText = await bluehostResponse.text();
-        console.error('Bluehost PHP Script Error:', bluehostResponse.status, errorText);
-        throw new Error(`Bluehost upload failed: ${bluehostResponse.statusText} - ${errorText}`);
-      }
-
-      const bluehostResult = await bluehostResponse.json();
-
-      if (bluehostResult.error) {
-        console.error('Bluehost PHP Script Reported Error:', bluehostResult.error);
-        throw new Error(`Bluehost upload error: ${bluehostResult.error}`);
-      }
       
-      if (!bluehostResult.imageUrl) {
-        throw new Error('PHP script did not return an imageUrl.');
-      }
-      actualImageUrl = bluehostResult.imageUrl;
+      try {
+        const bluehostResponse = await fetch(BLUEHOST_PHP_UPLOAD_SCRIPT_URL, {
+          method: 'POST',
+          body: bluehostFormData, // FormData handles multipart/form-data
+          // You might not need Content-Type header if using FormData, fetch sets it.
+        });
 
+        if (!bluehostResponse.ok) {
+          const errorText = await bluehostResponse.text();
+          console.error('Bluehost PHP Script Error:', bluehostResponse.status, errorText);
+          // Fall through to placeholder if Bluehost upload fails
+        } else {
+          const bluehostResult = await bluehostResponse.json();
+
+          if (bluehostResult.error) {
+            console.error('Bluehost PHP Script Reported Error:', bluehostResult.error);
+            // Fall through to placeholder
+          } else if (!bluehostResult.imageUrl) {
+            console.error('PHP script did not return an imageUrl.');
+            // Fall through to placeholder
+          } else {
+            actualImageUrl = bluehostResult.imageUrl;
+            console.log('Successfully uploaded to Bluehost, URL:', actualImageUrl);
+          }
+        }
+      } catch (bluehostError) {
+        console.error('Error during Bluehost upload attempt:', bluehostError);
+        // Fall through to placeholder
+      }
     } else {
-      console.warn("Bluehost PHP script URL or secret key not configured. Skipping actual Bluehost upload.");
+      console.warn("Bluehost PHP script URL or secret key not configured. Defaulting to placeholder image.");
     }
-    */
+    
     // *********************************************************************
     // END OF BLUEHOST PHP SCRIPT INTERMEDIARY LOGIC SECTION
     // *********************************************************************
 
-
-    // For now, we continue to simulate a successful upload and return a placeholder URL if actualImageUrl is not set.
-    // Replace `simulatedUrl` with `actualImageUrl` once an upload method is fully implemented.
+    // Fallback to placeholder if no actualImageUrl was set by any method
     const simulatedUrl = `https://placehold.co/600x400.png?text=${encodeURIComponent("Uploaded:"+title.substring(0,20))}`;
     const finalImageUrl = actualImageUrl || simulatedUrl;
     
     const hint = title.toLowerCase().split(' ').slice(0,2).join(' ');
 
-
     return NextResponse.json({
-      message: 'Photo processed (simulated actual upload for now)',
+      message: actualImageUrl ? 'Photo uploaded successfully' : 'Photo processed (using placeholder)',
       imageUrl: finalImageUrl,
       altText: title,
       hint: hint,
@@ -270,3 +279,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
+

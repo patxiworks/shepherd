@@ -38,6 +38,21 @@
         "src": "https://placehold.co/600x400.png?text=Man",
         "alt": "Man",
         "hint": "man"
+      },
+      {
+        "src": "https://criterionpublishers.org/sj-masses/photos2025/684972f3e62d0.jpg",
+        "alt": "test",
+        "hint": "test"
+      },
+      {
+        "src": "https://criterionpublishers.org/sj-masses/photos2025/6849882a4f3f0.jpg",
+        "alt": "Sample image",
+        "hint": "sample image"
+      },
+      {
+        "src": "https://criterionpublishers.org/sj-masses/photos2025/68498d10a4112.jpg",
+        "alt": "Sample image 2",
+        "hint": "sample image"
       }
     ]
   }

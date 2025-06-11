@@ -29,13 +29,13 @@ export function GridAccordion({ items, onUploadRequest, onImageClick, onEditRequ
           <AccordionPrimitive.Header className="flex items-center group">
             <AccordionPrimitive.Trigger
               className={cn(
-                "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline",
-                "px-6 group-hover:bg-secondary/50" // Applied custom styles here
+                "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:none",
+                "px-4 group-hover:bg-secondary/50" // Applied custom styles here
               )}
             >
               <div className="flex flex-col items-start text-left flex-grow mr-2">
-                <span className="text-base font-semibold group-hover:underline">
-                  {item.parishLocation}{item.diocese ? ` - ${item.diocese}` : ''}
+                <span className="text-base font-semibold group-hover:none">
+                  {item.parishLocation}{/*item.diocese ? ` - ${item.diocese}` : ''*/}
                 </span>
                 <span className="text-xs text-muted-foreground mt-1">
                   {item.date} - {item.time}

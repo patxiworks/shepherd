@@ -176,6 +176,7 @@ export default function HomePage() {
         }
 
         const uploadedImageResult: { imageUrl: string; altText: string; hint: string } = await uploadResponse.json();
+        console.log(uploadResponse, uploadedImageResult)
 
         const newImage: ImageData = {
           src: uploadedImageResult.imageUrl,
@@ -483,21 +484,26 @@ export default function HomePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 min-h-screen">
-      <header className="mb-6 text-right">
-        <h1 className="text-4xl md:text-5xl font-headline font-bold text-primary mb-3">
-          Masses in honour of St. Josemaria, 2025
-        </h1>
-        <div className="text-md text-muted-foreground font-body flex justify-end items-center space-x-2">
-          <Button variant="link" onClick={() => setIsDioceseSummaryModalOpen(true)} className="p-0 h-auto text-md">
-            Dioceses ({dioceseSummary.count}/{dioceseSummary.total})
-          </Button>
-          <span>|</span>
-          <Button variant="link" onClick={() => setIsStateSummaryModalOpen(true)} className="p-0 h-auto text-md">
-            States ({stateSummary.count}/{stateSummary.total})
-          </Button>
-        </div>
-      </header>
+    <>
+      <div className="main-header border-b border-t-2 border-black">
+        <header className="mx-auto container pt-20 px-4 text-left">
+          <div className="w-full h-[0px] bg-black"></div>
+          <h1 className="w-[200px] sm:w-full leading-none text-lg sm:text-xl md:text-2xl font-headline font-bold mb-3">
+            Masses in honour of St. Josemaria, 2025
+          </h1>
+          <div className="text-xs sm:text-lg text-muted-foreground font-body flex justify-start items-center space-x-2">
+            <Button variant="link" onClick={() => setIsDioceseSummaryModalOpen(true)} className="p-0 h-auto text-md">
+              Dioceses ({dioceseSummary.count}/{dioceseSummary.total})
+            </Button>
+            <span>|</span>
+            <Button variant="link" onClick={() => setIsStateSummaryModalOpen(true)} className="p-0 h-auto text-md">
+              States ({stateSummary.count}/{stateSummary.total})
+            </Button>
+          </div>
+        </header>
+      </div>
+    <div className="container mx-auto px-4 py-0 min-h-screen">
+      
 
       <div className="mb-2 mt-10 flex flex-col sm:flex-row justify-between items-center gap-4">
         <Input
@@ -593,5 +599,6 @@ export default function HomePage() {
         </p>
       </footer>
     </div>
+    </>
   );
 }

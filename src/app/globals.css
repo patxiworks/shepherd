@@ -3,13 +3,20 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
+header {
   /* font-family is now primarily handled by the font-body class in layout.tsx */
-  background-image: url('https://fs-sd.s3.amazonaws.com/uploads/image/image_file/42514/st_josemaria_escriva_de_balaguer_foundation_of_opus_dei.jpg'); /* URL of the image you provided */
-  background-size: cover;
-  background-position: center center;
+  background-image: url('/st-josemaria.jpeg'); /* URL of the image you provided */
+  background-size: contain;
+  background-position: right -15px top;
   background-repeat: no-repeat;
-  background-attachment: fixed;
+  /*background-attachment: fixed;*/
+}
+.main-header {
+  background-image: url('/sj-bg.png');
+}
+body {
+  /*background-image: url('/sj-bg.png'); /* URL of the image you provided */
+  background-repeat: repeat;
   min-height: 100vh; /* Ensure body covers viewport height */
 }
 
