@@ -594,8 +594,8 @@ export default function HomePage() {
       />
       
       <footer className="text-center mt-12 py-6 border-t border-border">
-        <p className="text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} GridAccordion App. Built with Next.js & ShadCN UI.
+        <p className="text-xs text-muted-foreground">
+          &copy; 2025 {/*new Date().getFullYear()*/} Masses of St Josemaria <br/> <a href="mail:patxiworks@gmail.com" className="text-[10px]">by Telluris</a>.
         </p>
       </footer>
     </div>

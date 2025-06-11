@@ -53,6 +53,36 @@
         "src": "https://criterionpublishers.org/sj-masses/photos2025/68498d10a4112.jpg",
         "alt": "Sample image 2",
         "hint": "sample image"
+      },
+      {
+        "src": "https://criterionpublishers.org/sj-masses/photos2025/68498f06a8351.png",
+        "alt": "Real image",
+        "hint": "real image"
+      },
+      {
+        "src": "https://placehold.co/600x400.png?text=Uploaded%3APhoto%202",
+        "alt": "Photo 2",
+        "hint": "photo 2"
+      },
+      {
+        "src": "https://criterionpublishers.org/sj-masses/photos2025/images/68499724b93aa.png",
+        "alt": "Test sample",
+        "hint": "test sample"
+      },
+      {
+        "src": "/home3/edilcent/public_html/criterionpublishers.org/criterionpublishers.org/sj-masses/photos2025/images/6849994dd8a5f.jpg",
+        "alt": "fadfa",
+        "hint": "fadfa"
+      },
+      {
+        "src": "/home3/edilcent/public_html/criterionpublishers.org/sj-masses/photos2025/images/684999c45c025.png",
+        "alt": "trrefgd",
+        "hint": "trrefgd"
+      },
+      {
+        "src": "https://criterionpublishers.org/sj-masses/photos2025/images/68499a2b5cade.jpg",
+        "alt": "A real image",
+        "hint": "a real"
       }
     ]
   }

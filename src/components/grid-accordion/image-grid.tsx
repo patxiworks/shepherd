@@ -13,11 +13,11 @@ export function ImageGrid({ images, onImageClick }: ImageGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-4 py-4">
+    <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-4 pb-4">
       {images.map((image, index) => (
         <div 
           key={index} 
-          className="aspect-square relative overflow-hidden rounded-lg shadow-md group cursor-pointer"
+          className="aspect-square relative overflow-hidden rounded-sm shadow-sm group cursor-pointer"
           onClick={() => onImageClick(image, index, images)}
           role="button"
           tabIndex={0}
