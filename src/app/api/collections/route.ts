@@ -2,42 +2,70 @@
 'use server';
 
 import { type NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
 import type { AccordionItemData } from '@/types';
 
-// Using /tmp directory for collections.json.
-// IMPORTANT: Files in /tmp are generally NOT PERSISTENT.
-// Data may be lost on server/instance restarts or deployments.
-const collectionsFilePath = path.join('/tmp', 'collections.json');
+const REMOTE_COLLECTIONS_URL = process.env.REMOTE_COLLECTIONS_URL || 'https://criterionpublishers.ng/sj-masses/photos2025/collections.json';
+const REMOTE_COLLECTIONS_WRITE_URL = process.env.REMOTE_COLLECTIONS_WRITE_URL;
+const COLLECTIONS_API_SECRET_KEY = process.env.COLLECTIONS_API_SECRET_KEY;
 
-async function readCollections(): Promise<AccordionItemData[]> {
+async function readRemoteCollections(): Promise<AccordionItemData[]> {
   try {
-    const fileData = await fs.readFile(collectionsFilePath, 'utf-8');
-    return JSON.parse(fileData) as AccordionItemData[];
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      console.warn(`Collections file not found at ${collectionsFilePath}. Returning empty array. This is expected if the /tmp directory was cleared or on first run.`);
-      return []; 
+    const response = await fetch(REMOTE_COLLECTIONS_URL, { cache: 'no-store' });
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.warn(`Remote collections file not found at ${REMOTE_COLLECTIONS_URL}. Returning empty array.`);
+        return []; // If not found, assume it's empty and can be created on first write
+      }
+      throw new Error(`Failed to fetch remote collections: ${response.statusText}`);
     }
-    console.error('Error reading collections data from /tmp:', error);
-    throw new Error('Failed to read collections data from /tmp.');
+    const data = await response.json();
+    return data as AccordionItemData[];
+  } catch (error) {
+    console.error('Error reading remote collections data:', error);
+    // If any error occurs (network, parsing, etc.), return empty array or rethrow
+    // For robustness, if the file is expected to exist, rethrowing might be better
+    // For now, returning empty to allow app to function and potentially create on write
+    return [];
   }
 }
 
-async function writeCollections(data: AccordionItemData[]): Promise<void> {
+async function writeRemoteCollections(data: AccordionItemData[]): Promise<void> {
+  if (!REMOTE_COLLECTIONS_WRITE_URL) {
+    throw new Error('Remote write URL is not configured. Cannot save collections.');
+  }
+  if (!COLLECTIONS_API_SECRET_KEY) {
+    throw new Error('Collections API secret key is not configured. Cannot save collections.');
+  }
+
   try {
-    const jsonData = JSON.stringify(data, null, 2);
-    await fs.writeFile(collectionsFilePath, jsonData, 'utf-8');
+    const response = await fetch(REMOTE_COLLECTIONS_WRITE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Secret': COLLECTIONS_API_SECRET_KEY,
+      },
+      body: JSON.stringify(data, null, 2), // Send the complete array as JSON
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to write remote collections: ${response.statusText} - ${errorText}`);
+    }
+    // Assuming the PHP script returns a success status or relevant JSON
+    const result = await response.json();
+    if (result.status !== 'success') { // Adjust based on your PHP script's actual response
+        console.warn('Remote write operation reported an issue:', result);
+    }
+
   } catch (error) {
-    console.error('Error writing collections data to /tmp:', error);
-    throw new Error('Failed to write collections data to /tmp.');
+    console.error('Error writing remote collections data:', error);
+    throw new Error('Failed to write remote collections data.');
   }
 }
 
 export async function GET() {
   try {
-    const collections = await readCollections();
+    const collections = await readRemoteCollections();
     return NextResponse.json(collections);
   } catch (error) {
     return NextResponse.json({ message: (error as Error).message || 'Failed to fetch collections' }, { status: 500 });
@@ -45,16 +73,23 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!REMOTE_COLLECTIONS_WRITE_URL || !COLLECTIONS_API_SECRET_KEY) {
+    return NextResponse.json({ message: 'Remote write functionality is not configured on the server.' }, { status: 503 });
+  }
   try {
     const newCollection: AccordionItemData = await request.json();
     if (!newCollection.id || !newCollection.parishLocation || !newCollection.state) {
       return NextResponse.json({ message: 'Invalid collection data' }, { status: 400 });
     }
 
+    // Ensure images are not blobs before saving
     newCollection.images = newCollection.images.filter(img => typeof img.src === 'string' && !img.src.startsWith('blob:'));
 
-    const collections = await readCollections();
+    const collections = await readRemoteCollections();
     collections.push(newCollection);
-    await writeCollections(collections);
+    await writeRemoteCollections(collections);
     return NextResponse.json(newCollection, { status: 201 });
-  } catch (error)
+  } catch (error) {
+    return NextResponse.json({ message: (error as Error).message || 'Failed to create collection' }, { status: 500 });
+  }
+}
