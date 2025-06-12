@@ -6,8 +6,8 @@ import { Camera } from 'lucide-react';
 
 interface GridAccordionItemContentProps {
   item: AccordionItemData;
-  onUploadClick: () => void; // This implies `item` is already known, matches change in GridAccordion
-  onImageClick: (image: ImageData, index: number, allImages: ImageData[]) => void;
+  onUploadClick: () => void;
+  onImageClick: (image: ImageData, index: number, allImages: ImageData[], collectionId: string) => void;
 }
 
 export function GridAccordionItemContent({ item, onUploadClick, onImageClick }: GridAccordionItemContentProps) {
@@ -15,7 +15,7 @@ export function GridAccordionItemContent({ item, onUploadClick, onImageClick }: 
     <div className="px-1 py-2 md:px-2">
       <ImageGrid 
         images={item.images} 
-        onImageClick={(image, index) => onImageClick(image, index, item.images)} 
+        onImageClick={(image, index) => onImageClick(image, index, item.images, item.id)} 
       />
       <div className="mt-4 flex justify-center md:justify-end">
         <Button onClick={onUploadClick} className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-full shadow-lg px-6 py-3 text-base">

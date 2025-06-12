@@ -10,7 +10,7 @@ import { EditCollectionModal } from '@/components/grid-accordion/edit-collection
 import { DeleteConfirmModal } from '@/components/grid-accordion/delete-confirm-modal';
 import { DioceseSummaryModal } from '@/components/grid-accordion/diocese-summary-modal';
 import { StateSummaryModal } from '@/components/grid-accordion/state-summary-modal';
-import { LoginModal } from '@/components/auth/login-modal'; // New Login Modal
+import { LoginModal } from '@/components/auth/login-modal';
 import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData, PhotoUploadFormData, SummaryItem, LoginFormData } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
@@ -52,6 +52,8 @@ export default function HomePage() {
   const [activeSlideshowImages, setActiveSlideshowImages] = React.useState<ImageData[] | null>(null);
   const [activeSlideshowIndex, setActiveSlideshowIndex] = React.useState<number | null>(null);
   const [isImageDetailModalOpen, setIsImageDetailModalOpen] = React.useState(false);
+  const [activeCollectionIdForModal, setActiveCollectionIdForModal] = React.useState<string | null>(null);
+
 
   const [isAddCollectionModalOpen, setIsAddCollectionModalOpen] = React.useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
@@ -98,7 +100,7 @@ export default function HomePage() {
     if (storedUser) {
       setCurrentUser(storedUser);
     }
-    setIsAuthenticating(false); // Finished checking localStorage
+    setIsAuthenticating(false);
   }, []);
 
   const handleLogin = async (formData: LoginFormData) => {
@@ -127,7 +129,7 @@ export default function HomePage() {
         description: (error as Error).message || "An unexpected error occurred.",
         variant: "destructive",
       });
-      throw error; // Re-throw to be caught by LoginModal for loading state
+      throw error; 
     }
   };
 
@@ -279,6 +281,7 @@ export default function HomePage() {
         title: "Photo Uploaded & Saved!",
         description: `"${newImage.alt}" has been added to ${activeItemTitleForUpload || 'the gallery'} and persisted.`,
       });
+      // Modal is kept open by PhotoUploadForm, form is reset there.
 
     } catch (error) {
       console.error("Error uploading photo or saving collection:", error);
@@ -361,9 +364,10 @@ export default function HomePage() {
     }
   };
 
-  const handleImageClick = (image: ImageData, index: number, allImages: ImageData[]) => {
+  const handleImageClick = (image: ImageData, index: number, allImages: ImageData[], collectionId: string) => {
     setActiveSlideshowImages(allImages);
     setActiveSlideshowIndex(index);
+    setActiveCollectionIdForModal(collectionId);
     setIsImageDetailModalOpen(true);
   };
 
@@ -372,6 +376,7 @@ export default function HomePage() {
     if (!open) {
       setActiveSlideshowImages(null);
       setActiveSlideshowIndex(null);
+      setActiveCollectionIdForModal(null);
     }
   };
 
@@ -488,6 +493,88 @@ export default function HomePage() {
     }
   };
 
+  const handleDeleteImageFromSlideshow = async (imageSrc: string) => {
+    if (!currentUser || !activeCollectionIdForModal || !activeSlideshowImages) return;
+
+    const collectionToUpdate = accordionItems.find(item => item.id === activeCollectionIdForModal);
+    if (!collectionToUpdate) {
+      toast({ title: "Error", description: "Could not find the collection for this image.", variant: "destructive" });
+      return;
+    }
+
+    const originalImages = [...collectionToUpdate.images];
+    const newCollectionImages = collectionToUpdate.images.filter(img => img.src !== imageSrc);
+
+    const updatedCollectionData: AccordionItemData = {
+      ...collectionToUpdate,
+      images: newCollectionImages,
+    };
+
+    // Optimistic UI for accordion items
+    setAccordionItems(prevItems =>
+      prevItems.map(item => (item.id === activeCollectionIdForModal ? updatedCollectionData : item)).sort(sortCollections)
+    );
+    
+    // For modal: We'll update after API success to avoid complex rollback in modal state
+    // setActiveSlideshowImages(newCollectionImages); // Optimistic for modal - maybe later if too slow
+
+    try {
+      const response = await fetch(`/api/collections/${activeCollectionIdForModal}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedCollectionData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Failed to save collection after image deletion."}));
+        throw new Error(errorData.message);
+      }
+
+      const savedItem = await response.json();
+      // Ensure accordionItems has the latest from server (though updatedCollectionData should be it)
+      setAccordionItems(prevItems => 
+        prevItems.map(item => item.id === activeCollectionIdForModal ? { ...item, ...savedItem } : item).sort(sortCollections)
+      );
+
+      // Now update modal state
+      setActiveSlideshowImages(newCollectionImages);
+      if (newCollectionImages.length === 0) {
+        handleImageDetailModalOpenChange(false); // Close modal if no images left
+      } else {
+        // Adjust index if current index was deleted
+        // If the deleted image was the last one, new index should be length - 1
+        // If deleted from middle, index might be okay or shift. Let current logic in modal handle adjustment.
+        const currentImageStillExists = newCollectionImages.some(img => img.src === (activeSlideshowImages.find((_,idx) => idx === activeSlideshowIndex)?.src));
+        if (!currentImageStillExists && activeSlideshowIndex !== null) {
+           setActiveSlideshowIndex(Math.max(0, activeSlideshowIndex -1));
+        } else if (activeSlideshowIndex !== null && activeSlideshowIndex >= newCollectionImages.length) {
+           setActiveSlideshowIndex(newCollectionImages.length - 1);
+        }
+        // If current index is still valid within newCollectionImages, no change needed here for index.
+        // The ImageDetailModal's own useEffect will handle further adjustments.
+      }
+
+      toast({
+        title: "Image Deleted",
+        description: "The image has been removed from the collection.",
+      });
+
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      toast({
+        title: "Delete Image Error",
+        description: (error as Error).message || "Could not delete image from the collection.",
+        variant: "destructive",
+      });
+      // Revert optimistic UI for accordion items
+      setAccordionItems(prevItems =>
+        prevItems.map(item => (item.id === activeCollectionIdForModal ? { ...item, images: originalImages } : item)).sort(sortCollections)
+      );
+      // Modal images were not changed optimistically, so no revert needed for modal images here.
+    }
+  };
+
+
   const filteredAccordionItems = React.useMemo(() => {
     if (!filterQuery) {
       return accordionItems; 
@@ -559,10 +646,10 @@ export default function HomePage() {
               Add New Mass
             </Button>
           )}
-          <div className="text-right text-sm text-muted-foreground mb-4">
+          <div className="text-right text-sm text-primary font-bold mb-4">
             {filterQuery
-              ? `${filteredAccordionItems.length} of ${accordionItems.length} collections found`
-              : `${accordionItems.length} collections`}
+              ? `${filteredAccordionItems.length} of ${accordionItems.length} Masses found`
+              : `${accordionItems.length} Masses`}
           </div>
 
           <GridAccordion 
@@ -620,6 +707,8 @@ export default function HomePage() {
           onOpenChange={handleImageDetailModalOpenChange}
           images={activeSlideshowImages}
           initialIndex={activeSlideshowIndex}
+          isUserLoggedIn={!!currentUser}
+          onDeleteImage={handleDeleteImageFromSlideshow}
         />
 
         <DioceseSummaryModal
@@ -662,5 +751,3 @@ export default function HomePage() {
     </>
   );
 }
-
-    

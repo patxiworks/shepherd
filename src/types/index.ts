@@ -26,7 +26,7 @@ export interface NewCollectionFormData {
 
 export interface PhotoUploadFormData {
   title:string;
-  description: string;
+  description?: string; // Made optional as per form
   photo?: FileList; // FileList can be undefined if no file is selected or after reset
 }
 
@@ -63,3 +63,8 @@ export interface StateSummaryModalProps {
   summaryData: SummaryItem[];
   onApplyFilter: (filterTerm: string) => void;
 }
+
+// Props for ImageDetailModal are implicitly part of DialogProps,
+// but explicitly defining custom ones is good practice.
+// We can add onDeleteImage and isUserLoggedIn here if we create a more specific type.
+// For now, they will be added directly in the component.

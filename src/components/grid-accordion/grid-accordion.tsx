@@ -12,9 +12,9 @@ import { cn } from "@/lib/utils";
 interface GridAccordionProps {
   items: AccordionItemData[];
   onUploadRequest: (item: AccordionItemData) => void;
-  onImageClick: (image: ImageData, index: number, allImages: ImageData[]) => void;
-  onEditRequest?: (item: AccordionItemData) => void; // Optional
-  onDeleteRequest?: (item: AccordionItemData) => void; // Optional
+  onImageClick: (image: ImageData, index: number, allImages: ImageData[], collectionId: string) => void;
+  onEditRequest?: (item: AccordionItemData) => void; 
+  onDeleteRequest?: (item: AccordionItemData) => void;
   isUserLoggedIn: boolean;
 }
 
@@ -81,7 +81,7 @@ export function GridAccordion({
             <GridAccordionItemContent 
               item={item} 
               onUploadClick={() => onUploadRequest(item)} 
-              onImageClick={(image, index) => onImageClick(image, index, item.images)}
+              onImageClick={(image, index, images) => onImageClick(image, index, images, item.id)}
             />
           </AccordionContent>
         </AccordionItem>
