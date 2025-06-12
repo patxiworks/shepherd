@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'GridAccordion App',
-  description: 'Display items in an accordion with image grids.',
+  title: 'Masses in honour of St. Josemaría in Nigeria',
+  description: 'Masses in honour of St. Josemaría in Nigeria, 2025',
 };
 
 export default function RootLayout({
