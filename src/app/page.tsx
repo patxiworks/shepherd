@@ -42,6 +42,7 @@ const sortCollections = (a: AccordionItemData, b: AccordionItemData): number => 
 export default function HomePage() {
   const [accordionItems, setAccordionItems] = React.useState<AccordionItemData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isAuthenticating, setIsAuthenticating] = React.useState(true);
   
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
   const [authModalStep, setAuthModalStep] = React.useState<'signIn' | 'upload'>('signIn');
@@ -97,6 +98,7 @@ export default function HomePage() {
     if (storedUser) {
       setCurrentUser(storedUser);
     }
+    setIsAuthenticating(false); // Finished checking localStorage
   }, []);
 
   const handleLogin = async (formData: LoginFormData) => {
@@ -189,7 +191,7 @@ export default function HomePage() {
     setIsAuthModalOpen(true);
   };
 
-  const handleSignInSuccessForUpload = () => { // Renamed to avoid conflict if we had a global sign-in success
+  const handleSignInSuccessForUpload = () => { 
     setAuthModalStep('upload');
   };
 
@@ -374,7 +376,7 @@ export default function HomePage() {
   };
 
   const handleEditRequest = (item: AccordionItemData) => {
-    if (!currentUser) return; // Guard against non-logged-in users
+    if (!currentUser) return; 
     setEditingItem(item);
     setIsEditModalOpen(true);
   };
@@ -445,7 +447,7 @@ export default function HomePage() {
   };
 
   const handleDeleteRequest = (item: AccordionItemData) => {
-    if (!currentUser) return; // Guard
+    if (!currentUser) return; 
     setDeletingItem(item);
     setIsDeleteConfirmModalOpen(true);
   };
@@ -506,13 +508,13 @@ export default function HomePage() {
     setIsStateSummaryModalOpen(false);
   };
 
-  if (isLoading && !currentUser && typeof window !== 'undefined' && !localStorage.getItem(LOCAL_STORAGE_CURRENT_USER_KEY)) {
-    // Show loader only if initial data and user status are both loading
-    // Avoids flash of loader if user is already determined from localStorage
+  if (isLoading || isAuthenticating) {
     return (
       <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <p className="text-xl text-muted-foreground">Loading collections...</p>
+        <p className="text-xl text-muted-foreground">
+          {isAuthenticating ? 'Checking authentication...' : 'Loading collections...'}
+        </p>
       </div>
     );
   }
@@ -660,3 +662,5 @@ export default function HomePage() {
     </>
   );
 }
+
+    
