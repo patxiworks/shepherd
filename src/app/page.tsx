@@ -10,43 +10,39 @@ import { EditCollectionModal } from '@/components/grid-accordion/edit-collection
 import { DeleteConfirmModal } from '@/components/grid-accordion/delete-confirm-modal';
 import { DioceseSummaryModal } from '@/components/grid-accordion/diocese-summary-modal';
 import { StateSummaryModal } from '@/components/grid-accordion/state-summary-modal';
-import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData, PhotoUploadFormData, SummaryItem } from '@/types';
+import { LoginModal } from '@/components/auth/login-modal'; // New Login Modal
+import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData, PhotoUploadFormData, SummaryItem, LoginFormData } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { PlusCircle, Loader2, LogIn, LogOut } from 'lucide-react';
 import { format as formatDateFns } from 'date-fns';
 import { nigerianDioceses } from '@/lib/nigerian-dioceses';
 import { nigerianStates } from '@/lib/nigerian-states';
 
-// Helper function to sort collections by date and then by time
+const LOCAL_STORAGE_CURRENT_USER_KEY = 'currentUser';
+
 const sortCollections = (a: AccordionItemData, b: AccordionItemData): number => {
   const currentYear = new Date().getFullYear();
-  
   let dateA = new Date(`${a.date} ${currentYear}`);
   let dateB = new Date(`${b.date} ${currentYear}`);
-
   if (isNaN(dateA.getTime())) dateA = new Date(0);
   if (isNaN(dateB.getTime())) dateB = new Date(0);
-
-
   if (dateA.getTime() !== dateB.getTime()) {
     return dateA.getTime() - dateB.getTime();
   }
-
   const [hoursA, minutesA] = a.time.split(':').map(Number);
   const [hoursB, minutesB] = b.time.split(':').map(Number);
-
   if (hoursA !== hoursB) {
     return hoursA - hoursB;
   }
   return minutesA - minutesB;
 };
 
-
 export default function HomePage() {
   const [accordionItems, setAccordionItems] = React.useState<AccordionItemData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
   const [authModalStep, setAuthModalStep] = React.useState<'signIn' | 'upload'>('signIn');
   const [activeItemIdForUpload, setActiveItemIdForUpload] = React.useState<string | null>(null);
@@ -66,6 +62,9 @@ export default function HomePage() {
 
   const [isDioceseSummaryModalOpen, setIsDioceseSummaryModalOpen] = React.useState(false);
   const [isStateSummaryModalOpen, setIsStateSummaryModalOpen] = React.useState(false);
+
+  const [currentUser, setCurrentUser] = React.useState<string | null>(null);
+  const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
 
   const { toast } = useToast();
 
@@ -93,22 +92,66 @@ export default function HomePage() {
     fetchCollections();
   }, [toast]);
 
+  React.useEffect(() => {
+    const storedUser = localStorage.getItem(LOCAL_STORAGE_CURRENT_USER_KEY);
+    if (storedUser) {
+      setCurrentUser(storedUser);
+    }
+  }, []);
+
+  const handleLogin = async (formData: LoginFormData) => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setCurrentUser(data.username);
+        localStorage.setItem(LOCAL_STORAGE_CURRENT_USER_KEY, data.username);
+        setIsLoginModalOpen(false);
+        toast({
+          title: "Login Successful",
+          description: `Welcome, ${data.username}!`,
+        });
+      } else {
+        throw new Error(data.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
+        title: "Login Failed",
+        description: (error as Error).message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+      throw error; // Re-throw to be caught by LoginModal for loading state
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem(LOCAL_STORAGE_CURRENT_USER_KEY);
+    toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out.",
+    });
+  };
+
+
   const dioceseSummary = React.useMemo(() => {
     if (!accordionItems.length) {
       return { count: 0, total: nigerianDioceses.length, breakdown: [] as SummaryItem[] };
     }
     const diocesesInAccordion = accordionItems.map(item => item.diocese);
     const uniqueDiocesesWithItems = new Set(diocesesInAccordion);
-    
     const breakdownMap = new Map<string, number>();
     diocesesInAccordion.forEach(diocese => {
       breakdownMap.set(diocese, (breakdownMap.get(diocese) || 0) + 1);
     });
-    
     const breakdown = Array.from(breakdownMap.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)); 
-      
     return {
       count: uniqueDiocesesWithItems.size,
       total: nigerianDioceses.length,
@@ -122,18 +165,15 @@ export default function HomePage() {
     }
     const statesInAccordion = accordionItems.map(item => item.state).filter(Boolean);
     const uniqueStatesWithItems = new Set(statesInAccordion);
-    
     const breakdownMap = new Map<string, number>();
     statesInAccordion.forEach(stateItem => {
       if (stateItem) { 
          breakdownMap.set(stateItem, (breakdownMap.get(stateItem) || 0) + 1);
       }
     });
-    
     const breakdown = Array.from(breakdownMap.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-      
     return {
       count: uniqueStatesWithItems.size,
       total: nigerianStates.length,
@@ -141,16 +181,15 @@ export default function HomePage() {
     };
   }, [accordionItems]);
 
-
   const handleUploadRequest = (item: AccordionItemData) => {
     setActiveItemIdForUpload(item.id);
     const displayTitle = `${item.parishLocation}${item.diocese ? ` - ${item.diocese}` : ''}`;
     setActiveItemTitleForUpload(displayTitle);
-    setAuthModalStep('signIn');
+    setAuthModalStep('signIn'); 
     setIsAuthModalOpen(true);
   };
 
-  const handleSignInSuccess = () => {
+  const handleSignInSuccessForUpload = () => { // Renamed to avoid conflict if we had a global sign-in success
     setAuthModalStep('upload');
   };
 
@@ -161,7 +200,7 @@ export default function HomePage() {
         description: "No photo was selected or item ID is missing.",
         variant: "destructive",
       });
-      throw new Error("No photo or item ID."); // Throw error to be caught by PhotoUploadForm
+      throw new Error("No photo or item ID.");
     }
     
     const file = data.photo[0];
@@ -172,8 +211,8 @@ export default function HomePage() {
       uploadFormData.append('description', data.description);
     }
 
-    // Store original collection for potential revert
     const originalCollection = accordionItems.find(item => item.id === activeItemIdForUpload);
+    let persistPayload; 
 
     try {
       const uploadResponse = await fetch('/api/image-upload', {
@@ -187,7 +226,6 @@ export default function HomePage() {
       }
 
       const uploadedImageResult: { imageUrl: string; altText: string; hint: string } = await uploadResponse.json();
-      
       const newImage: ImageData = {
         src: uploadedImageResult.imageUrl,
         alt: uploadedImageResult.altText,
@@ -196,7 +234,6 @@ export default function HomePage() {
 
       let collectionToUpdate = accordionItems.find(item => item.id === activeItemIdForUpload);
       if (!collectionToUpdate) {
-          // This should ideally not happen if activeItemIdForUpload is set
           throw new Error("Could not find the collection to add the image to.");
       }
 
@@ -206,17 +243,13 @@ export default function HomePage() {
         images: updatedImages,
       };
       
-      // Optimistically update UI
       setAccordionItems(prevItems =>
         prevItems.map(item =>
           item.id === activeItemIdForUpload ? updatedCollectionWithNewImage : item
         ).sort(sortCollections)
       );
-      // Modal is NOT closed here anymore. PhotoUploadForm will reset itself.
 
-      // Persist the updated collection (with the new image URL) to collections.json
-      const persistPayload = { ...updatedCollectionWithNewImage }; 
-
+      persistPayload = { ...updatedCollectionWithNewImage }; 
       const persistResponse = await fetch(`/api/collections/${activeItemIdForUpload}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -225,7 +258,6 @@ export default function HomePage() {
 
       if (!persistResponse.ok) {
         const errorData = await persistResponse.json().catch(() => ({ message: 'Failed to save updated collection with non-JSON response' }));
-        // Revert optimistic update if save fails
         if (originalCollection) {
           setAccordionItems(prevItems =>
             prevItems.map(item =>
@@ -253,18 +285,15 @@ export default function HomePage() {
         description: (error as Error).message || "Could not complete photo upload process.",
         variant: "destructive",
       });
-      // Revert to original if an error occurred during persistence and we had an original state
-      if (originalCollection && persistPayload) { // Check if persistPayload was attempted
+      if (originalCollection && persistPayload) { 
          setAccordionItems(prevItems =>
             prevItems.map(item =>
               item.id === activeItemIdForUpload ? originalCollection : item
             ).sort(sortCollections)
           );
       }
-      throw error; // Re-throw error so PhotoUploadForm can handle its state
+      throw error; 
     }
-    // No changes to modal state here; PhotoUploadForm manages its own state and reset.
-    // activeItemIdForUpload and activeItemTitleForUpload remain for next potential upload in same session.
   };
   
   const openAddCollectionModal = () => {
@@ -273,9 +302,7 @@ export default function HomePage() {
 
   const handleCreateNewCollection = async (formData: CollectionFormSubmitData) => {
     const newItemId = `item-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    
     const formattedDate = formatDateFns(formData.date, "MMMM d");
-
     const newItem: AccordionItemData = {
       id: newItemId,
       parishLocation: formData.parishLocation,
@@ -326,7 +353,6 @@ export default function HomePage() {
   const handleAuthModalOpenChange = (open: boolean) => {
     setIsAuthModalOpen(open);
     if (!open) {
-      // Reset relevant states when modal is closed by any means (e.g., Cancel button, ESC, overlay click)
       setAuthModalStep('signIn');
       setActiveItemIdForUpload(null);
       setActiveItemTitleForUpload(null);
@@ -348,18 +374,18 @@ export default function HomePage() {
   };
 
   const handleEditRequest = (item: AccordionItemData) => {
+    if (!currentUser) return; // Guard against non-logged-in users
     setEditingItem(item);
     setIsEditModalOpen(true);
   };
 
   const handleUpdateCollection = async (formData: CollectionFormSubmitData) => {
-    if (!editingItem) return;
+    if (!editingItem || !currentUser) return;
 
     const originalItem = accordionItems.find(item => item.id === editingItem.id);
     if (!originalItem) return; 
 
     const formattedDate = formatDateFns(formData.date, "MMMM d");
-
     const itemWithUpdates: AccordionItemData = {
       ...editingItem,
       parishLocation: formData.parishLocation,
@@ -410,19 +436,22 @@ export default function HomePage() {
         description: (error as Error).message || "Could not save updates to the server.",
         variant: "destructive",
       });
-      setAccordionItems(prevItems => prevItems.map(item => item.id === editingItem.id ? originalItem : item).sort(sortCollections));
+      if (originalItem) {
+        setAccordionItems(prevItems => prevItems.map(item => item.id === editingItem.id ? originalItem : item).sort(sortCollections));
+      }
     } finally {
       setEditingItem(null);
     }
   };
 
   const handleDeleteRequest = (item: AccordionItemData) => {
+    if (!currentUser) return; // Guard
     setDeletingItem(item);
     setIsDeleteConfirmModalOpen(true);
   };
 
   const handleConfirmDelete = async () => {
-    if (!deletingItem) return;
+    if (!deletingItem || !currentUser) return;
 
     const itemToDeleteId = deletingItem.id;
     const originalItems = [...accordionItems]; 
@@ -477,8 +506,9 @@ export default function HomePage() {
     setIsStateSummaryModalOpen(false);
   };
 
-
-  if (isLoading) {
+  if (isLoading && !currentUser && typeof window !== 'undefined' && !localStorage.getItem(LOCAL_STORAGE_CURRENT_USER_KEY)) {
+    // Show loader only if initial data and user status are both loading
+    // Avoids flash of loader if user is already determined from localStorage
     return (
       <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -489,7 +519,7 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="main-header border-b border-t-2 border-black">
+      <div className="static main-header border-b border-t-2 border-black">
         <header className="mx-auto container pt-20 pb-2 px-4 text-left">
           <div className="w-full h-[0px] bg-black"></div>
           <h1 className="w-[200px] sm:w-full leading-none text-lg sm:text-xl md:text-2xl font-headline font-bold mb-3">
@@ -506,106 +536,127 @@ export default function HomePage() {
           </div>
         </header>
       </div>
-    <div className="container mx-auto px-0 py-0 min-h-screen">
-      <div className="mb-2 mt-0 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <Input
-          type="text"
-          placeholder="Filter by parish, diocese, state, or date..."
-          value={filterQuery}
-          onChange={(e) => setFilterQuery(e.target.value)}
-          className="w-full sm:max-w-md h-10 py-6 text-base rounded-none border-x-0 border-b border-t-0 focus-visible:ring-2 focus-visible:ring-offset-0"
-        />
-      </div>
-      
-      <div className="mt-4 px-2 sm:px-4">
-        <Button 
-          onClick={openAddCollectionModal} 
-          variant="outline" 
-          className="text-primary border-primary text-white bg-primary hover:bg-primary/10 w-full sm:w-auto"
-        >
-          <PlusCircle className="mr-2 h-5 w-5" />
-          Add New Mass
-        </Button>
-        <div className="text-right text-sm text-muted-foreground mb-4">
-          {filterQuery
-            ? `${filteredAccordionItems.length} of ${accordionItems.length} collections found`
-            : `${accordionItems.length} collections`}
+      <div className="container mx-auto px-0 py-0 min-h-screen">
+        <div className="mb-2 mt-0 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <Input
+            type="text"
+            placeholder="Filter by parish, diocese, state, or date..."
+            value={filterQuery}
+            onChange={(e) => setFilterQuery(e.target.value)}
+            className="w-full sm:max-w-md h-10 py-6 text-base rounded-none border-x-0 border-b border-t-0 focus-visible:ring-2 focus-visible:ring-offset-0"
+          />
         </div>
+        <div className="mt-4 px-2 sm:px-4">
+          {currentUser && (
+            <Button 
+              onClick={openAddCollectionModal} 
+              variant="outline" 
+              className="text-primary border-primary text-white bg-primary hover:bg-primary/10 w-full sm:w-auto"
+            >
+              <PlusCircle className="mr-2 h-5 w-5" />
+              Add New Mass
+            </Button>
+          )}
+          <div className="text-right text-sm text-muted-foreground mb-4">
+            {filterQuery
+              ? `${filteredAccordionItems.length} of ${accordionItems.length} collections found`
+              : `${accordionItems.length} collections`}
+          </div>
 
-        <GridAccordion 
-          items={filteredAccordionItems} 
-          onUploadRequest={handleUploadRequest}
-          onImageClick={handleImageClick} 
-          onEditRequest={handleEditRequest}
-          onDeleteRequest={handleDeleteRequest}
+          <GridAccordion 
+            items={filteredAccordionItems} 
+            onUploadRequest={handleUploadRequest}
+            onImageClick={handleImageClick} 
+            onEditRequest={currentUser ? handleEditRequest : undefined}
+            onDeleteRequest={currentUser ? handleDeleteRequest : undefined}
+            isUserLoggedIn={!!currentUser}
+          />
+        </div>
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onOpenChange={handleAuthModalOpenChange}
+          currentStep={authModalStep}
+          onSignInSuccess={handleSignInSuccessForUpload}
+          onUploadSubmit={handlePhotoUpload}
+          itemName={activeItemTitleForUpload || undefined}
         />
+
+        {currentUser && (
+          <AddCollectionModal
+            isOpen={isAddCollectionModalOpen}
+            onOpenChange={setIsAddCollectionModalOpen}
+            onSubmit={handleCreateNewCollection}
+          />
+        )}
+
+        {currentUser && editingItem && (
+          <EditCollectionModal
+            isOpen={isEditModalOpen}
+            onOpenChange={(open) => {
+              setIsEditModalOpen(open);
+              if (!open) setEditingItem(null);
+            }}
+            onSubmit={handleUpdateCollection}
+            initialData={editingItem}
+          />
+        )}
+
+        {currentUser && deletingItem && (
+          <DeleteConfirmModal
+            isOpen={isDeleteConfirmModalOpen}
+            onOpenChange={(open) => {
+              setIsDeleteConfirmModalOpen(open);
+              if (!open) setDeletingItem(null);
+            }}
+            onConfirmDelete={handleConfirmDelete}
+            itemName={`${deletingItem.parishLocation}${deletingItem.diocese ? ` - ${deletingItem.diocese}` : ''}`}
+          />
+        )}
+        
+        <ImageDetailModal
+          isOpen={isImageDetailModalOpen}
+          onOpenChange={handleImageDetailModalOpenChange}
+          images={activeSlideshowImages}
+          initialIndex={activeSlideshowIndex}
+        />
+
+        <DioceseSummaryModal
+          isOpen={isDioceseSummaryModalOpen}
+          onOpenChange={setIsDioceseSummaryModalOpen}
+          summaryData={dioceseSummary.breakdown}
+          onApplyFilter={handleApplySummaryFilter}
+        />
+
+        <StateSummaryModal
+          isOpen={isStateSummaryModalOpen}
+          onOpenChange={setIsStateSummaryModalOpen}
+          summaryData={stateSummary.breakdown}
+          onApplyFilter={handleApplySummaryFilter}
+        />
+
+        <LoginModal
+          isOpen={isLoginModalOpen}
+          onOpenChange={setIsLoginModalOpen}
+          onLoginSubmit={handleLogin}
+        />
+        
+        <footer className="text-center mt-12 py-6 border-t border-border">
+          <div className="flex justify-center items-center space-x-4">
+            <p className="text-xs text-muted-foreground">
+              &copy; {new Date().getFullYear()} Masses of St Josemaria <br/> <a href="mailto:patxiworks@gmail.com" className="text-[10px]">by Telluris</a>.
+            </p>
+            {currentUser ? (
+              <Button variant="link" onClick={handleLogout} className="text-xs p-0 h-auto">
+                <LogOut className="mr-1 h-3 w-3" /> Logout ({currentUser})
+              </Button>
+            ) : (
+              <Button variant="link" onClick={() => setIsLoginModalOpen(true)} className="text-xs p-0 h-auto">
+                <LogIn className="mr-1 h-3 w-3" /> Admin Login
+              </Button>
+            )}
+          </div>
+        </footer>
       </div>
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onOpenChange={handleAuthModalOpenChange}
-        currentStep={authModalStep}
-        onSignInSuccess={handleSignInSuccess}
-        onUploadSubmit={handlePhotoUpload} // This is now async
-        itemName={activeItemTitleForUpload || undefined}
-      />
-
-      <AddCollectionModal
-        isOpen={isAddCollectionModalOpen}
-        onOpenChange={setIsAddCollectionModalOpen}
-        onSubmit={handleCreateNewCollection}
-      />
-
-      {editingItem && (
-        <EditCollectionModal
-          isOpen={isEditModalOpen}
-          onOpenChange={(open) => {
-            setIsEditModalOpen(open);
-            if (!open) setEditingItem(null);
-          }}
-          onSubmit={handleUpdateCollection}
-          initialData={editingItem}
-        />
-      )}
-
-      {deletingItem && (
-        <DeleteConfirmModal
-          isOpen={isDeleteConfirmModalOpen}
-          onOpenChange={(open) => {
-            setIsDeleteConfirmModalOpen(open);
-            if (!open) setDeletingItem(null);
-          }}
-          onConfirmDelete={handleConfirmDelete}
-          itemName={`${deletingItem.parishLocation}${deletingItem.diocese ? ` - ${deletingItem.diocese}` : ''}`}
-        />
-      )}
-      
-      <ImageDetailModal
-        isOpen={isImageDetailModalOpen}
-        onOpenChange={handleImageDetailModalOpenChange}
-        images={activeSlideshowImages}
-        initialIndex={activeSlideshowIndex}
-      />
-
-      <DioceseSummaryModal
-        isOpen={isDioceseSummaryModalOpen}
-        onOpenChange={setIsDioceseSummaryModalOpen}
-        summaryData={dioceseSummary.breakdown}
-        onApplyFilter={handleApplySummaryFilter}
-      />
-
-      <StateSummaryModal
-        isOpen={isStateSummaryModalOpen}
-        onOpenChange={setIsStateSummaryModalOpen}
-        summaryData={stateSummary.breakdown}
-        onApplyFilter={handleApplySummaryFilter}
-      />
-      
-      <footer className="text-center mt-12 py-6 border-t border-border">
-        <p className="text-xs text-muted-foreground">
-          &copy; 2025 {/*new Date().getFullYear()*/} Masses of St Josemaria <br/> <a href="mail:patxiworks@gmail.com" className="text-[10px]">by Telluris</a>.
-        </p>
-      </footer>
-    </div>
     </>
   );
 }

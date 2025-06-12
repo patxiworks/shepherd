@@ -30,9 +30,19 @@ export interface PhotoUploadFormData {
   photo?: FileList; // FileList can be undefined if no file is selected or after reset
 }
 
-export interface SignInFormData {
+export interface SignInFormData { // Used by AuthModal for photo upload sign-in
   email: string;
   password?: string; 
+}
+
+export interface UserCredentials {
+  username: string;
+  password?: string; // Password is required for login attempt, optional for user data type
+}
+
+export interface LoginFormData { // Used by the new global LoginModal
+  username: string;
+  password?: string;
 }
 
 export interface SummaryItem {

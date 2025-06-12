@@ -13,11 +13,19 @@ interface GridAccordionProps {
   items: AccordionItemData[];
   onUploadRequest: (item: AccordionItemData) => void;
   onImageClick: (image: ImageData, index: number, allImages: ImageData[]) => void;
-  onEditRequest: (item: AccordionItemData) => void;
-  onDeleteRequest: (item: AccordionItemData) => void;
+  onEditRequest?: (item: AccordionItemData) => void; // Optional
+  onDeleteRequest?: (item: AccordionItemData) => void; // Optional
+  isUserLoggedIn: boolean;
 }
 
-export function GridAccordion({ items, onUploadRequest, onImageClick, onEditRequest, onDeleteRequest }: GridAccordionProps) {
+export function GridAccordion({ 
+  items, 
+  onUploadRequest, 
+  onImageClick, 
+  onEditRequest, 
+  onDeleteRequest,
+  isUserLoggedIn
+}: GridAccordionProps) {
   if (!items || items.length === 0) {
     return <p className="text-center text-muted-foreground py-10">No items to display in the accordion.</p>;
   }
@@ -30,12 +38,12 @@ export function GridAccordion({ items, onUploadRequest, onImageClick, onEditRequ
             <AccordionPrimitive.Trigger
               className={cn(
                 "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:none",
-                "px-4 group-hover:bg-secondary/50" // Applied custom styles here
+                "px-4 group-hover:bg-secondary/50"
               )}
             >
               <div className="flex flex-col items-start text-left flex-grow mr-2">
                 <span className="text-base font-semibold group-hover:none">
-                  {item.parishLocation}{/*item.diocese ? ` - ${item.diocese}` : ''*/}
+                  {item.parishLocation}
                 </span>
                 <span className="text-xs text-muted-foreground mt-1">
                   {item.date} - {item.time}
@@ -44,28 +52,30 @@ export function GridAccordion({ items, onUploadRequest, onImageClick, onEditRequ
               <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
             </AccordionPrimitive.Trigger>
             
-            <div className="flex items-center space-x-1 pr-4 pl-2" onClick={(e) => e.stopPropagation()}>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 hover:bg-muted/60" 
-                onClick={() => onEditRequest(item)}
-                title="Edit Collection"
-                aria-label="Edit collection details"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" 
-                onClick={() => onDeleteRequest(item)}
-                title="Delete Collection"
-                aria-label="Delete collection"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            {isUserLoggedIn && onEditRequest && onDeleteRequest && (
+              <div className="flex items-center space-x-1 pr-4 pl-2" onClick={(e) => e.stopPropagation()}>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 hover:bg-muted/60" 
+                  onClick={() => onEditRequest(item)}
+                  title="Edit Collection"
+                  aria-label="Edit collection details"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" 
+                  onClick={() => onDeleteRequest(item)}
+                  title="Delete Collection"
+                  aria-label="Delete collection"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </AccordionPrimitive.Header>
           <AccordionContent className="bg-background/50 border-t border-border">
             <GridAccordionItemContent 
