@@ -10,7 +10,7 @@ import { EditCollectionModal } from '@/components/grid-accordion/edit-collection
 import { DeleteConfirmModal } from '@/components/grid-accordion/delete-confirm-modal';
 import { DioceseSummaryModal } from '@/components/grid-accordion/diocese-summary-modal';
 import { StateSummaryModal } from '@/components/grid-accordion/state-summary-modal';
-import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData, SummaryItem } from '@/types';
+import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData, PhotoUploadFormData, SummaryItem } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -154,110 +154,117 @@ export default function HomePage() {
     setAuthModalStep('upload');
   };
 
-  const handlePhotoUpload = async (data: import('@/types').PhotoUploadFormData) => {
-    if (activeItemIdForUpload && data.photo && data.photo.length > 0) {
-      const file = data.photo[0];
-      const uploadFormData = new FormData();
-      uploadFormData.append('photo', file);
-      uploadFormData.append('title', data.title);
-      if (data.description) {
-        uploadFormData.append('description', data.description);
-      }
-
-      try {
-        const uploadResponse = await fetch('/api/image-upload', {
-          method: 'POST',
-          body: uploadFormData,
-        });
-
-        if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json().catch(() => ({ message: 'Image upload failed with non-JSON response' }));
-          throw new Error(errorData.message || 'Image upload failed');
-        }
-
-        const uploadedImageResult: { imageUrl: string; altText: string; hint: string } = await uploadResponse.json();
-        console.log(uploadResponse, uploadedImageResult)
-
-        const newImage: ImageData = {
-          src: uploadedImageResult.imageUrl,
-          alt: uploadedImageResult.altText,
-          hint: uploadedImageResult.hint,
-        };
-
-        let collectionToUpdate = accordionItems.find(item => item.id === activeItemIdForUpload);
-        if (!collectionToUpdate) {
-            throw new Error("Could not find the collection to add the image to.");
-        }
-
-        const updatedImages = [...collectionToUpdate.images, newImage];
-        const updatedCollectionWithNewImage: AccordionItemData = {
-          ...collectionToUpdate,
-          images: updatedImages,
-        };
-        
-        // Optimistically update UI
-        setAccordionItems(prevItems =>
-          prevItems.map(item =>
-            item.id === activeItemIdForUpload ? updatedCollectionWithNewImage : item
-          ).sort(sortCollections)
-        );
-        setIsAuthModalOpen(false); // Close modal after optimistic update
-
-        // Persist the updated collection (with the new image URL) to collections.json
-        const persistPayload = { ...updatedCollectionWithNewImage }; // API expects the full item
-
-        const persistResponse = await fetch(`/api/collections/${activeItemIdForUpload}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(persistPayload),
-        });
-
-        if (!persistResponse.ok) {
-          const errorData = await persistResponse.json().catch(() => ({ message: 'Failed to save updated collection with non-JSON response' }));
-          // Revert optimistic update if save fails
-          setAccordionItems(prevItems =>
-            prevItems.map(item =>
-              item.id === activeItemIdForUpload ? collectionToUpdate : item // Revert to collectionToUpdate state
-            ).sort(sortCollections)
-          );
-          throw new Error(errorData.message || 'Failed to save updated collection with new image');
-        }
-        
-        const savedItem = await persistResponse.json();
-         // Update with server response if it differs
-        setAccordionItems(prevItems => 
-          prevItems.map(item => item.id === activeItemIdForUpload ? { ...item, ...savedItem } : item).sort(sortCollections)
-        );
-
-        toast({
-          title: "Photo Uploaded & Saved!",
-          description: `"${newImage.alt}" has been added to ${activeItemTitleForUpload || 'the gallery'} and persisted.`,
-        });
-
-      } catch (error) {
-        console.error("Error uploading photo or saving collection:", error);
-        toast({
-          title: "Upload or Save Error",
-          description: (error as Error).message || "Could not complete photo upload process.",
-          variant: "destructive",
-        });
-      }
-    } else {
-       toast({
+  const handlePhotoUpload = async (data: PhotoUploadFormData): Promise<void> => {
+    if (!activeItemIdForUpload || !data.photo || data.photo.length === 0) {
+      toast({
         title: "Upload Failed",
         description: "No photo was selected or item ID is missing.",
         variant: "destructive",
       });
+      throw new Error("No photo or item ID."); // Throw error to be caught by PhotoUploadForm
     }
-    // Reset auth modal step, but keep it open on failure if it was already at upload step.
-    // If it successfully closed, this won't reopen it.
-    if (isAuthModalOpen && authModalStep === 'upload' && !(data.photo && data.photo.length > 0) ) {
-        // Don't close if the form submission itself was invalid, let user correct
-    } else if (!isAuthModalOpen) { // if it got closed due to success
-        setAuthModalStep('signIn');
-        setActiveItemIdForUpload(null);
-        setActiveItemTitleForUpload(null);
+    
+    const file = data.photo[0];
+    const uploadFormData = new FormData();
+    uploadFormData.append('photo', file);
+    uploadFormData.append('title', data.title);
+    if (data.description) {
+      uploadFormData.append('description', data.description);
     }
+
+    // Store original collection for potential revert
+    const originalCollection = accordionItems.find(item => item.id === activeItemIdForUpload);
+
+    try {
+      const uploadResponse = await fetch('/api/image-upload', {
+        method: 'POST',
+        body: uploadFormData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json().catch(() => ({ message: 'Image upload failed with non-JSON response' }));
+        throw new Error(errorData.message || 'Image upload failed');
+      }
+
+      const uploadedImageResult: { imageUrl: string; altText: string; hint: string } = await uploadResponse.json();
+      
+      const newImage: ImageData = {
+        src: uploadedImageResult.imageUrl,
+        alt: uploadedImageResult.altText,
+        hint: uploadedImageResult.hint,
+      };
+
+      let collectionToUpdate = accordionItems.find(item => item.id === activeItemIdForUpload);
+      if (!collectionToUpdate) {
+          // This should ideally not happen if activeItemIdForUpload is set
+          throw new Error("Could not find the collection to add the image to.");
+      }
+
+      const updatedImages = [...collectionToUpdate.images, newImage];
+      const updatedCollectionWithNewImage: AccordionItemData = {
+        ...collectionToUpdate,
+        images: updatedImages,
+      };
+      
+      // Optimistically update UI
+      setAccordionItems(prevItems =>
+        prevItems.map(item =>
+          item.id === activeItemIdForUpload ? updatedCollectionWithNewImage : item
+        ).sort(sortCollections)
+      );
+      // Modal is NOT closed here anymore. PhotoUploadForm will reset itself.
+
+      // Persist the updated collection (with the new image URL) to collections.json
+      const persistPayload = { ...updatedCollectionWithNewImage }; 
+
+      const persistResponse = await fetch(`/api/collections/${activeItemIdForUpload}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(persistPayload),
+      });
+
+      if (!persistResponse.ok) {
+        const errorData = await persistResponse.json().catch(() => ({ message: 'Failed to save updated collection with non-JSON response' }));
+        // Revert optimistic update if save fails
+        if (originalCollection) {
+          setAccordionItems(prevItems =>
+            prevItems.map(item =>
+              item.id === activeItemIdForUpload ? originalCollection : item
+            ).sort(sortCollections)
+          );
+        }
+        throw new Error(errorData.message || 'Failed to save updated collection with new image');
+      }
+      
+      const savedItem = await persistResponse.json();
+      setAccordionItems(prevItems => 
+        prevItems.map(item => item.id === activeItemIdForUpload ? { ...item, ...savedItem } : item).sort(sortCollections)
+      );
+
+      toast({
+        title: "Photo Uploaded & Saved!",
+        description: `"${newImage.alt}" has been added to ${activeItemTitleForUpload || 'the gallery'} and persisted.`,
+      });
+
+    } catch (error) {
+      console.error("Error uploading photo or saving collection:", error);
+      toast({
+        title: "Upload or Save Error",
+        description: (error as Error).message || "Could not complete photo upload process.",
+        variant: "destructive",
+      });
+      // Revert to original if an error occurred during persistence and we had an original state
+      if (originalCollection && persistPayload) { // Check if persistPayload was attempted
+         setAccordionItems(prevItems =>
+            prevItems.map(item =>
+              item.id === activeItemIdForUpload ? originalCollection : item
+            ).sort(sortCollections)
+          );
+      }
+      throw error; // Re-throw error so PhotoUploadForm can handle its state
+    }
+    // No changes to modal state here; PhotoUploadForm manages its own state and reset.
+    // activeItemIdForUpload and activeItemTitleForUpload remain for next potential upload in same session.
   };
   
   const openAddCollectionModal = () => {
@@ -319,6 +326,7 @@ export default function HomePage() {
   const handleAuthModalOpenChange = (open: boolean) => {
     setIsAuthModalOpen(open);
     if (!open) {
+      // Reset relevant states when modal is closed by any means (e.g., Cancel button, ESC, overlay click)
       setAuthModalStep('signIn');
       setActiveItemIdForUpload(null);
       setActiveItemTitleForUpload(null);
@@ -359,7 +367,6 @@ export default function HomePage() {
       state: formData.state,
       date: formattedDate,
       time: formData.time,
-      // images are not part of this form, they are preserved from editingItem
     };
     
     setAccordionItems(prevItems =>
@@ -370,9 +377,6 @@ export default function HomePage() {
     setIsEditModalOpen(false);
 
     try {
-      // The PUT request payload should match what the API expects.
-      // It should include all fields of AccordionItemData.
-      // Images are already part of itemWithUpdates and should be filtered for blobs if any.
       const payloadToPersist = {
         ...itemWithUpdates,
         images: itemWithUpdates.images.filter(img => !img.src.startsWith('blob:'))
@@ -538,7 +542,7 @@ export default function HomePage() {
         onOpenChange={handleAuthModalOpenChange}
         currentStep={authModalStep}
         onSignInSuccess={handleSignInSuccess}
-        onUploadSubmit={handlePhotoUpload}
+        onUploadSubmit={handlePhotoUpload} // This is now async
         itemName={activeItemTitleForUpload || undefined}
       />
 

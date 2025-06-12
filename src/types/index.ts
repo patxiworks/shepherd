@@ -27,7 +27,7 @@ export interface NewCollectionFormData {
 export interface PhotoUploadFormData {
   title:string;
   description: string;
-  photo?: FileList;
+  photo?: FileList; // FileList can be undefined if no file is selected or after reset
 }
 
 export interface SignInFormData {

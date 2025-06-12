@@ -29,7 +29,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 // const GOOGLE_DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID; // ID of the folder to upload to
 
 // --- Bluehost PHP Intermediary Configuration (Placeholder) ---
-const BLUEHOST_PHP_UPLOAD_SCRIPT_URL = process.env.BLUEHOST_PHP_UPLOAD_SCRIPT_URL; // e.g., https://yourdomain.com/api/upload-image.php
+const BLUEHOST_PHP_UPLOAD_SCRIPT_URL = process.env.UPLOAD_SCRIPT_URL; // e.g., https://yourdomain.com/api/upload-image.php
 const BLUEHOST_UPLOAD_SECRET_KEY = process.env.SECRET_KEY; // A secret key to authenticate your Next.js backend to the PHP script
 
 
