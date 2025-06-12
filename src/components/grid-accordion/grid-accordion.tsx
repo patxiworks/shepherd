@@ -25,7 +25,7 @@ export function GridAccordion({ items, onUploadRequest, onImageClick, onEditRequ
   return (
     <Accordion type="single" collapsible className="w-full max-w-4xl mx-auto space-y-2">
       {items.map((item) => (
-        <AccordionItem value={item.id} key={item.id} className="border border-border rounded-lg shadow-sm bg-card overflow-hidden">
+        <AccordionItem value={item.id} key={item.id} className="border border-border border-secondary rounded-lg bg-secondary/50 shadow-sm overflow-hidden">
           <AccordionPrimitive.Header className="flex items-center group">
             <AccordionPrimitive.Trigger
               className={cn(
@@ -44,7 +44,7 @@ export function GridAccordion({ items, onUploadRequest, onImageClick, onEditRequ
               <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
             </AccordionPrimitive.Trigger>
             
-            <div className="flex items-center space-x-1 pr-4 pl-2 group-hover:bg-secondary/50" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center space-x-1 pr-4 pl-2" onClick={(e) => e.stopPropagation()}>
               <Button 
                 variant="ghost" 
                 size="icon" 

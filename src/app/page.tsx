@@ -490,7 +490,7 @@ export default function HomePage() {
   return (
     <>
       <div className="main-header border-b border-t-2 border-black">
-        <header className="mx-auto container pt-20 px-4 text-left">
+        <header className="mx-auto container pt-20 pb-2 px-4 text-left">
           <div className="w-full h-[0px] bg-black"></div>
           <h1 className="w-[200px] sm:w-full leading-none text-lg sm:text-xl md:text-2xl font-headline font-bold mb-3">
             Masses in honour of St. Josemaria, 2025
@@ -506,37 +506,40 @@ export default function HomePage() {
           </div>
         </header>
       </div>
-    <div className="container mx-auto px-4 py-0 min-h-screen">
-      
-
-      <div className="mb-2 mt-10 flex flex-col sm:flex-row justify-between items-center gap-4">
+    <div className="container mx-auto px-0 py-0 min-h-screen">
+      <div className="mb-2 mt-0 flex flex-col sm:flex-row justify-between items-center gap-4">
         <Input
           type="text"
-          placeholder="Filter collections..."
+          placeholder="Filter by parish, diocese, state, or date..."
           value={filterQuery}
           onChange={(e) => setFilterQuery(e.target.value)}
-          className="w-full sm:max-w-md h-10 text-base"
+          className="w-full sm:max-w-md h-10 py-6 text-base rounded-none border-x-0 border-b border-t-0 focus-visible:ring-2 focus-visible:ring-offset-0"
         />
-        <Button onClick={openAddCollectionModal} variant="outline" className="text-primary border-primary hover:bg-primary/10 w-full sm:w-auto">
-          <PlusCircle className="mr-2 h-5 w-5" />
-          Add New Collection
-        </Button>
       </div>
       
-      <div className="text-right text-sm text-muted-foreground mb-4">
-        {filterQuery
-          ? `${filteredAccordionItems.length} of ${accordionItems.length} collections found`
-          : `${accordionItems.length} collections`}
+      <div className="mt-4 px-2 sm:px-4">
+        <Button 
+          onClick={openAddCollectionModal} 
+          variant="outline" 
+          className="text-primary border-primary text-white bg-primary hover:bg-primary/10 w-full sm:w-auto"
+        >
+          <PlusCircle className="mr-2 h-5 w-5" />
+          Add New Mass
+        </Button>
+        <div className="text-right text-sm text-muted-foreground mb-4">
+          {filterQuery
+            ? `${filteredAccordionItems.length} of ${accordionItems.length} collections found`
+            : `${accordionItems.length} collections`}
+        </div>
+
+        <GridAccordion 
+          items={filteredAccordionItems} 
+          onUploadRequest={handleUploadRequest}
+          onImageClick={handleImageClick} 
+          onEditRequest={handleEditRequest}
+          onDeleteRequest={handleDeleteRequest}
+        />
       </div>
-
-      <GridAccordion 
-        items={filteredAccordionItems} 
-        onUploadRequest={handleUploadRequest}
-        onImageClick={handleImageClick} 
-        onEditRequest={handleEditRequest}
-        onDeleteRequest={handleDeleteRequest}
-      />
-
       <AuthModal
         isOpen={isAuthModalOpen}
         onOpenChange={handleAuthModalOpenChange}

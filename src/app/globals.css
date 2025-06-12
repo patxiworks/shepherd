@@ -7,7 +7,7 @@ header {
   /* font-family is now primarily handled by the font-body class in layout.tsx */
   background-image: url('/st-josemaria.jpeg'); /* URL of the image you provided */
   background-size: contain;
-  background-position: right -15px top;
+  background-position: right -30px top;
   background-repeat: no-repeat;
   /*background-attachment: fixed;*/
 }
