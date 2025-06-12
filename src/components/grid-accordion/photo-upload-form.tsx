@@ -15,7 +15,7 @@ import { UploadCloud, Loader2 } from 'lucide-react';
 const photoFieldSchema = typeof window !== 'undefined'
   ? z.instanceof(FileList)
     .refine(files => files?.length > 0, "A photo is required.")
-    .refine(files => files?.[0]?.size <= 5 * 1024 * 1024, "Max file size is 5MB.") 
+    .refine(files => files?.[0]?.size <= 10 * 1024 * 1024, "Max file size is 10MB.") 
     .refine(
       files => files?.[0] && ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(files[0].type),
       "Only .jpg, .png, .webp, .gif formats are supported."

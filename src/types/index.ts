@@ -3,6 +3,7 @@ export interface ImageData {
   src: string;
   alt: string;
   hint?: string; // For data-ai-hint
+  uploadedBy?: string; // To store the phone number of the uploader
 }
 
 export interface AccordionItemData {
@@ -30,9 +31,9 @@ export interface PhotoUploadFormData {
   photo?: FileList; // FileList can be undefined if no file is selected or after reset
 }
 
-export interface SignInFormData { // Used by AuthModal for photo upload sign-in
-  email: string;
-  password?: string; 
+// This will now be used for the phone number sign-in in AuthModal
+export interface SignInFormData { 
+  phoneNumber: string;
 }
 
 export interface UserCredentials {
@@ -40,7 +41,8 @@ export interface UserCredentials {
   password?: string; // Password is required for login attempt, optional for user data type
 }
 
-export interface LoginFormData { // Used by the new global LoginModal
+// This is used by the global LoginModal for admin username/password login
+export interface LoginFormData { 
   username: string;
   password?: string;
 }
@@ -63,8 +65,3 @@ export interface StateSummaryModalProps {
   summaryData: SummaryItem[];
   onApplyFilter: (filterTerm: string) => void;
 }
-
-// Props for ImageDetailModal are implicitly part of DialogProps,
-// but explicitly defining custom ones is good practice.
-// We can add onDeleteImage and isUserLoggedIn here if we create a more specific type.
-// For now, they will be added directly in the component.

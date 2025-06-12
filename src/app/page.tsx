@@ -11,7 +11,7 @@ import { DeleteConfirmModal } from '@/components/grid-accordion/delete-confirm-m
 import { DioceseSummaryModal } from '@/components/grid-accordion/diocese-summary-modal';
 import { StateSummaryModal } from '@/components/grid-accordion/state-summary-modal';
 import { LoginModal } from '@/components/auth/login-modal';
-import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData, PhotoUploadFormData, SummaryItem, LoginFormData } from '@/types';
+import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData, PhotoUploadFormData, SummaryItem, LoginFormData as AdminLoginFormData } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,12 +42,13 @@ const sortCollections = (a: AccordionItemData, b: AccordionItemData): number => 
 export default function HomePage() {
   const [accordionItems, setAccordionItems] = React.useState<AccordionItemData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [isAuthenticating, setIsAuthenticating] = React.useState(true);
+  const [isAuthenticating, setIsAuthenticating] = React.useState(true); // For admin login
   
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
   const [authModalStep, setAuthModalStep] = React.useState<'signIn' | 'upload'>('signIn');
   const [activeItemIdForUpload, setActiveItemIdForUpload] = React.useState<string | null>(null);
   const [activeItemTitleForUpload, setActiveItemTitleForUpload] = React.useState<string | null>(null);
+  const [activeUserPhoneNumber, setActiveUserPhoneNumber] = React.useState<string | null>(null); // For phone number from AuthModal
   
   const [activeSlideshowImages, setActiveSlideshowImages] = React.useState<ImageData[] | null>(null);
   const [activeSlideshowIndex, setActiveSlideshowIndex] = React.useState<number | null>(null);
@@ -66,8 +67,8 @@ export default function HomePage() {
   const [isDioceseSummaryModalOpen, setIsDioceseSummaryModalOpen] = React.useState(false);
   const [isStateSummaryModalOpen, setIsStateSummaryModalOpen] = React.useState(false);
 
-  const [currentUser, setCurrentUser] = React.useState<string | null>(null);
-  const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
+  const [currentUser, setCurrentUser] = React.useState<string | null>(null); // For admin login
+  const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false); // For admin login modal
 
   const { toast } = useToast();
 
@@ -103,7 +104,7 @@ export default function HomePage() {
     setIsAuthenticating(false);
   }, []);
 
-  const handleLogin = async (formData: LoginFormData) => {
+  const handleLogin = async (formData: AdminLoginFormData) => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -193,7 +194,8 @@ export default function HomePage() {
     setIsAuthModalOpen(true);
   };
 
-  const handleSignInSuccessForUpload = () => { 
+  const handleSignInSuccessForUpload = (phoneNumber: string) => { 
+    setActiveUserPhoneNumber(phoneNumber); // Store the phone number
     setAuthModalStep('upload');
   };
 
@@ -235,6 +237,10 @@ export default function HomePage() {
         alt: uploadedImageResult.altText,
         hint: uploadedImageResult.hint,
       };
+      if (activeUserPhoneNumber) {
+        newImage.uploadedBy = activeUserPhoneNumber; // Add phone number if available
+      }
+
 
       let collectionToUpdate = accordionItems.find(item => item.id === activeItemIdForUpload);
       if (!collectionToUpdate) {
@@ -297,7 +303,7 @@ export default function HomePage() {
             ).sort(sortCollections)
           );
       }
-      throw error; 
+      throw error; // Rethrow to be caught by PhotoUploadForm for loading state
     }
   };
   
@@ -358,9 +364,10 @@ export default function HomePage() {
   const handleAuthModalOpenChange = (open: boolean) => {
     setIsAuthModalOpen(open);
     if (!open) {
-      setAuthModalStep('signIn');
+      setAuthModalStep('signIn'); // Reset step
       setActiveItemIdForUpload(null);
       setActiveItemTitleForUpload(null);
+      setActiveUserPhoneNumber(null); // Reset phone number
     }
   };
 
@@ -510,14 +517,10 @@ export default function HomePage() {
       images: newCollectionImages,
     };
 
-    // Optimistic UI for accordion items
     setAccordionItems(prevItems =>
       prevItems.map(item => (item.id === activeCollectionIdForModal ? updatedCollectionData : item)).sort(sortCollections)
     );
     
-    // For modal: We'll update after API success to avoid complex rollback in modal state
-    // setActiveSlideshowImages(newCollectionImages); // Optimistic for modal - maybe later if too slow
-
     try {
       const response = await fetch(`/api/collections/${activeCollectionIdForModal}`, {
         method: 'PUT',
@@ -531,27 +534,20 @@ export default function HomePage() {
       }
 
       const savedItem = await response.json();
-      // Ensure accordionItems has the latest from server (though updatedCollectionData should be it)
       setAccordionItems(prevItems => 
         prevItems.map(item => item.id === activeCollectionIdForModal ? { ...item, ...savedItem } : item).sort(sortCollections)
       );
 
-      // Now update modal state
       setActiveSlideshowImages(newCollectionImages);
       if (newCollectionImages.length === 0) {
-        handleImageDetailModalOpenChange(false); // Close modal if no images left
+        handleImageDetailModalOpenChange(false); 
       } else {
-        // Adjust index if current index was deleted
-        // If the deleted image was the last one, new index should be length - 1
-        // If deleted from middle, index might be okay or shift. Let current logic in modal handle adjustment.
         const currentImageStillExists = newCollectionImages.some(img => img.src === (activeSlideshowImages.find((_,idx) => idx === activeSlideshowIndex)?.src));
         if (!currentImageStillExists && activeSlideshowIndex !== null) {
            setActiveSlideshowIndex(Math.max(0, activeSlideshowIndex -1));
         } else if (activeSlideshowIndex !== null && activeSlideshowIndex >= newCollectionImages.length) {
            setActiveSlideshowIndex(newCollectionImages.length - 1);
         }
-        // If current index is still valid within newCollectionImages, no change needed here for index.
-        // The ImageDetailModal's own useEffect will handle further adjustments.
       }
 
       toast({
@@ -566,11 +562,9 @@ export default function HomePage() {
         description: (error as Error).message || "Could not delete image from the collection.",
         variant: "destructive",
       });
-      // Revert optimistic UI for accordion items
       setAccordionItems(prevItems =>
         prevItems.map(item => (item.id === activeCollectionIdForModal ? { ...item, images: originalImages } : item)).sort(sortCollections)
       );
-      // Modal images were not changed optimistically, so no revert needed for modal images here.
     }
   };
 
@@ -626,16 +620,17 @@ export default function HomePage() {
         </header>
       </div>
       <div className="container mx-auto px-0 py-0 min-h-screen">
-        <div className="mb-2 mt-0 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="mb-2 mt-0 flex flex-col sm:flex-row justify-center items-center gap-4">
           <Input
             type="text"
             placeholder="Filter by parish, diocese, state, or date..."
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
-            className="w-full sm:max-w-md h-10 py-6 text-base rounded-none border-x-0 border-b border-t-0 focus-visible:ring-2 focus-visible:ring-offset-0"
+            className="w-full sm:max-w-md h-10 py-6 text-base rounded-none border-x-0 border-b border-t-0 focus-visible:ring-2 focus-visible:ring-offset-0 sm:border"
           />
         </div>
         <div className="mt-4 px-2 sm:px-4">
+          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row sm:justify-between sm:mb-4 items-end ">
           {currentUser && (
             <Button 
               onClick={openAddCollectionModal} 
@@ -646,10 +641,11 @@ export default function HomePage() {
               Add New Mass
             </Button>
           )}
-          <div className="text-right text-sm text-primary font-bold mb-4">
+          <div className="text-right text-sm text-black font-bold mb-4">
             {filterQuery
               ? `${filteredAccordionItems.length} of ${accordionItems.length} Masses found`
               : `${accordionItems.length} Masses`}
+          </div>
           </div>
 
           <GridAccordion 

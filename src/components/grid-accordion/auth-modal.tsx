@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -9,8 +10,8 @@ interface AuthModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   currentStep: 'signIn' | 'upload';
-  onSignInSuccess: () => void;
-  onUploadSubmit: (data: PhotoUploadFormData) => void;
+  onSignInSuccess: (phoneNumber: string) => void; // Now expects phone number
+  onUploadSubmit: (data: PhotoUploadFormData) => Promise<void>; // Ensured this can be async
   itemName?: string;
 }
 
@@ -24,12 +25,8 @@ export function AuthModal({
 }: AuthModalProps) {
   
   const handleModalClose = (open: boolean) => {
-    if (!open) {
-       // Reset to signIn step if modal is closed by user action (e.g. Escape key or overlay click)
-      onOpenChange(false);
-    } else {
-      onOpenChange(true);
-    }
+    // Parent (HomePage) will handle resetting step and activeUserPhoneNumber
+    onOpenChange(open); 
   };
 
   return (
@@ -37,11 +34,11 @@ export function AuthModal({
       <DialogContent className="sm:max-w-[480px] p-6 rounded-lg shadow-xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-headline text-center mb-2">
-            {currentStep === 'signIn' ? 'Sign In to Upload' : `Upload to ${itemName || 'Gallery'}`}
+            {currentStep === 'signIn' ? 'Verify Phone to Upload' : `Upload to ${itemName || 'Gallery'}`}
           </DialogTitle>
           <DialogDescription className="text-center text-muted-foreground mb-6">
             {currentStep === 'signIn'
-              ? 'Please sign in to continue uploading your photos.'
+              ? 'Please enter an authorized phone number to upload photos.'
               : `Add a new photo to the "${itemName || 'selected'}" collection.`}
           </DialogDescription>
         </DialogHeader>
