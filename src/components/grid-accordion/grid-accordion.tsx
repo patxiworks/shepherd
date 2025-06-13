@@ -38,14 +38,14 @@ export function GridAccordion({
             <AccordionPrimitive.Trigger
               className={cn(
                 "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:none",
-                "px-4 group-hover:bg-secondary/50"
+                "px-4 group-hover:bg-primary/80 group-hover:text-white"
               )}
             >
               <div className="flex flex-col items-start text-left flex-grow mr-2">
                 <span className="text-base font-semibold group-hover:none">
                   {item.parishLocation}
                 </span>
-                <span className="text-xs text-muted-foreground mt-1">
+                <span className="text-xs text-muted-foreground mt-1 group-hover:text-white">
                   {item.date} - {item.time}
                 </span>
               </div>

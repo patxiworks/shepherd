@@ -18,9 +18,9 @@ export function GridAccordionItemContent({ item, onUploadClick, onImageClick }: 
         onImageClick={(image, index) => onImageClick(image, index, item.images, item.id)} 
       />
       <div className="mt-4 flex justify-center md:justify-end">
-        <Button onClick={onUploadClick} className="bg-primary hover:bg-primary/90 text-accent-foreground rounded-full shadow-lg px-6 py-3 text-base">
+        <Button onClick={onUploadClick} className="bg-primary/50 hover:bg-primary/90 text-accent-foreground rounded-full shadow-lg px-6 py-3 text-base">
           <Camera className="mr-2 h-5 w-5" />
-          Upload New Photo
+          Upload a photo
         </Button>
       </div>
     </div>

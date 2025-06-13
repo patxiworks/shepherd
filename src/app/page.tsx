@@ -594,7 +594,7 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
         <p className="text-xl text-muted-foreground">
-          {isAuthenticating ? 'Checking authentication...' : 'Loading collections...'}
+          {isAuthenticating ? 'Checking authentication...' : 'Loading Masses...'}
         </p>
       </div>
     );
@@ -602,9 +602,9 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="sticky top-0 z-50 bg-background shadow-md">
-        <div className="static main-header border-b">
-          <header className="mx-auto container pt-6 pb-2 px-4 text-left">
+      <div className="sticky top-0 z-50">
+        <div className="main-header border-b border-t-2 border-black">
+          <header className="mx-auto container pt-20 pb-2 px-4 text-left">
             <div className="w-full h-[0px] bg-black"></div>
             <h1 className="w-[200px] sm:w-full leading-none text-lg sm:text-xl md:text-2xl font-headline font-bold mb-3">
               Masses in honour of St. Josemaria, 2025
@@ -620,14 +620,14 @@ export default function HomePage() {
             </div>
           </header>
         </div>
-        <div className="container mx-auto px-4 py-3">
+        <div className="container mx-auto">
           <div className="flex justify-center items-center">
             <Input
               type="text"
               placeholder="Filter by parish, diocese, state, or date..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
-              className="w-full sm:max-w-md h-10 text-base"
+              className="w-full h-10 px-4 sm:py-4 text-base rounded-none border-t-0"
             />
           </div>
         </div>
