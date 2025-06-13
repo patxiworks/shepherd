@@ -127,7 +127,7 @@ export function ImageDetailModal({
             </Button>
           </DialogHeader>
 
-          <div className="flex-grow relative mt-2 min-h-[300px] sm:min-h-[400px] md:min-h-[500px] lg:min-h-[600px] flex items-center justify-center p-1 sm:p-2">
+          <div className="flex-grow relative mt-2 min-h-[500px] sm:min-h-[500px] md:min-h-[500px] lg:min-h-[600px] flex items-center justify-center p-1 sm:p-2">
             <Image
               key={currentImage.src}
               src={currentImage.src}

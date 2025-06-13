@@ -20,7 +20,7 @@ import { CalendarIcon, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const newCollectionSchema = z.object({
-  parishLocation: z.string().min(1, { message: "Parish/Catholic Church - Location is required." }),
+  parishLocation: z.string().min(1, { message: "Parish name is required." }),
   diocese: z.string().min(1, { message: "Diocese is required." }),
   state: z.string().min(1, { message: "State is required." }), // Add state validation
   date: z.date({
@@ -79,10 +79,10 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
       <DialogContent className="sm:max-w-[520px] p-6 rounded-lg shadow-xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-headline text-center mb-2">
-            Add New Collection
+            Add a Mass
           </DialogTitle>
           <DialogDescription className="text-center text-muted-foreground mb-6">
-            Enter the details for the new photo collection.
+            Enter the details below.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -92,7 +92,7 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
               name="parishLocation"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Parish/Catholic Church - Location</FormLabel>
+                  <FormLabel>Parish name</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., St. Matthew Chaplaincy, Regina Pacis College" {...field} />
                   </FormControl>

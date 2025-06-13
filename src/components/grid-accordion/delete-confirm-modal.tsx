@@ -27,7 +27,7 @@ export function DeleteConfirmModal({ isOpen, onOpenChange, onConfirmDelete, item
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the collection titled 
+            This action cannot be undone. This will permanently delete the item titled 
             <strong className="mx-1">{`"${itemName}"`}</strong>
             and all its associated images.
           </AlertDialogDescription>

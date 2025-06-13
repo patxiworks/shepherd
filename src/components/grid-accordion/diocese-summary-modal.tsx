@@ -11,9 +11,9 @@ export function DioceseSummaryModal({ isOpen, onOpenChange, summaryData, onApply
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Diocese Summary</DialogTitle>
+          <DialogTitle>Diocese Breakdown</DialogTitle>
           <DialogDescription>
-            Breakdown of collections by diocese. Click a count to filter.
+            Breakdown of Masses by diocese.<br/>Click a number to filter.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[300px] w-full rounded-md border p-4 mt-4">

@@ -59,25 +59,25 @@ export function GridAccordion({
                   size="icon" 
                   className="h-8 w-8 hover:bg-muted/60" 
                   onClick={() => onEditRequest(item)}
-                  title="Edit Collection"
-                  aria-label="Edit collection details"
+                  title="Edit MAss"
+                  aria-label="Edit Mass details"
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
                 <Button 
                   variant="ghost" 
-                  size="icon" 
+                  size="icon"
                   className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" 
                   onClick={() => onDeleteRequest(item)}
-                  title="Delete Collection"
-                  aria-label="Delete collection"
+                  title="Delete Mass"
+                  aria-label="Delete Mass"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             )}
           </AccordionPrimitive.Header>
-          <AccordionContent className="bg-background/50 border-t border-border">
+          <AccordionContent className="bg-background/100 border-t border-border">
             <GridAccordionItemContent 
               item={item} 
               onUploadClick={() => onUploadRequest(item)} 

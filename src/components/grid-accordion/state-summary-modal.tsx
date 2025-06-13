@@ -11,9 +11,9 @@ export function StateSummaryModal({ isOpen, onOpenChange, summaryData, onApplyFi
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>State Summary</DialogTitle>
+          <DialogTitle>State Breakdown</DialogTitle>
           <DialogDescription>
-            Breakdown of collections by state. Click a count to filter.
+            Breakdown of Masses by state.<br />Click a number to filter.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[300px] w-full rounded-md border p-4 mt-4">
