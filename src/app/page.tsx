@@ -602,33 +602,38 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="static main-header border-b border-t-2 border-black">
-        <header className="mx-auto container pt-20 pb-2 px-4 text-left">
-          <div className="w-full h-[0px] bg-black"></div>
-          <h1 className="w-[200px] sm:w-full leading-none text-lg sm:text-xl md:text-2xl font-headline font-bold mb-3">
-            Masses in honour of St. Josemaria, 2025
-          </h1>
-          <div className="text-xs sm:text-lg text-muted-foreground font-body flex justify-start items-center space-x-2">
-            <Button variant="link" onClick={() => setIsDioceseSummaryModalOpen(true)} className="p-0 h-auto text-md">
-              Dioceses ({dioceseSummary.count}/{dioceseSummary.total})
-            </Button>
-            <span>|</span>
-            <Button variant="link" onClick={() => setIsStateSummaryModalOpen(true)} className="p-0 h-auto text-md">
-              States ({stateSummary.count}/{stateSummary.total})
-            </Button>
-          </div>
-        </header>
-      </div>
-      <div className="container mx-auto px-0 py-0 min-h-screen">
-        <div className="mb-2 mt-0 flex flex-col sm:flex-row justify-center items-center gap-4">
-          <Input
-            type="text"
-            placeholder="Filter by parish, diocese, state, or date..."
-            value={filterQuery}
-            onChange={(e) => setFilterQuery(e.target.value)}
-            className="w-full sm:max-w-md h-10 py-6 text-base rounded-none border-x-0 border-b border-t-0 focus-visible:ring-2 focus-visible:ring-offset-0 sm:border"
-          />
+      <div className="sticky top-0 z-50 bg-background shadow-md">
+        <div className="static main-header border-b">
+          <header className="mx-auto container pt-6 pb-2 px-4 text-left">
+            <div className="w-full h-[0px] bg-black"></div>
+            <h1 className="w-[200px] sm:w-full leading-none text-lg sm:text-xl md:text-2xl font-headline font-bold mb-3">
+              Masses in honour of St. Josemaria, 2025
+            </h1>
+            <div className="text-xs sm:text-lg text-muted-foreground font-body flex justify-start items-center space-x-2">
+              <Button variant="link" onClick={() => setIsDioceseSummaryModalOpen(true)} className="p-0 h-auto text-md">
+                Dioceses ({dioceseSummary.count}/{dioceseSummary.total})
+              </Button>
+              <span>|</span>
+              <Button variant="link" onClick={() => setIsStateSummaryModalOpen(true)} className="p-0 h-auto text-md">
+                States ({stateSummary.count}/{stateSummary.total})
+              </Button>
+            </div>
+          </header>
         </div>
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex justify-center items-center">
+            <Input
+              type="text"
+              placeholder="Filter by parish, diocese, state, or date..."
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+              className="w-full sm:max-w-md h-10 text-base"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-0 py-0 min-h-screen">
         <div className="mt-4 px-2 sm:px-4">
           <div className="max-w-4xl mx-auto flex flex-col sm:flex-row sm:justify-between sm:mb-4 items-end ">
           {currentUser && (
@@ -747,3 +752,5 @@ export default function HomePage() {
     </>
   );
 }
+
+    
