@@ -15,7 +15,7 @@ import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionF
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Loader2, LogIn, LogOut } from 'lucide-react';
+import { PlusCircle, Loader2, LogIn, LogOut, XIcon } from 'lucide-react';
 import { format as formatDateFns } from 'date-fns';
 import { nigerianDioceses } from '@/lib/nigerian-dioceses';
 import { nigerianStates } from '@/lib/nigerian-states';
@@ -602,9 +602,9 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="sticky top-0 z-50">
+      <div className="sticky top-0 z-50 bg-background shadow-md">
         <div className="main-header border-b border-t-2 border-black">
-          <header className="mx-auto container pt-20 pb-2 px-4 text-left">
+          <header className="mx-auto container pt-10 pb-2 px-4 text-left">
             <div className="w-full h-[0px] bg-black"></div>
             <h1 className="w-[200px] sm:w-full leading-none text-lg sm:text-xl md:text-2xl font-headline font-bold mb-3">
               Masses in honour of St. Josemaria, 2025
@@ -620,15 +620,26 @@ export default function HomePage() {
             </div>
           </header>
         </div>
-        <div className="container mx-auto">
-          <div className="flex justify-center items-center">
+        <div className="container mx-auto px-2 py-2 sm:px-4 sm:py-3">
+          <div className="relative flex justify-center items-center">
             <Input
               type="text"
               placeholder="Filter by parish, diocese, state, or date..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
-              className="w-full h-10 px-4 py-4 text-base rounded-none border-x-0 border-t-0 shadow-sm"
+              className="w-full h-10 px-4 py-4 text-base rounded-none border-x-0 border-t-0 shadow-sm pr-10"
             />
+            {filterQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setFilterQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                aria-label="Clear filter"
+              >
+                <XIcon className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
