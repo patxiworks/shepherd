@@ -602,9 +602,9 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="sticky top-0 z-50 bg-background shadow-md">
+      <div className="sticky top-0 z-50 bg-background shadow-sm">
         <div className="main-header border-b border-t-2 border-black">
-          <header className="mx-auto container pt-10 pb-2 px-4 text-left">
+          <header className="mx-auto container pt-20 pb-2 px-4 text-left">
             <div className="w-full h-[0px] bg-black"></div>
             <h1 className="w-[200px] sm:w-full leading-none text-lg sm:text-xl md:text-2xl font-headline font-bold mb-3">
               Masses in honour of St. Josemaria, 2025
@@ -620,7 +620,7 @@ export default function HomePage() {
             </div>
           </header>
         </div>
-        <div className="container mx-auto px-2 py-2 sm:px-4 sm:py-3">
+        <div className="container mx-auto sm:px-4 sm:py-3">
           <div className="relative flex justify-center items-center">
             <Input
               type="text"
