@@ -627,7 +627,7 @@ export default function HomePage() {
               placeholder="Filter by parish, diocese, state, or date..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
-              className="w-full h-10 px-4 sm:py-4 text-base rounded-none border-t-0"
+              className="w-full h-10 px-4 py-4 text-base rounded-none border-x-0 border-t-0 shadow-sm"
             />
           </div>
         </div>
