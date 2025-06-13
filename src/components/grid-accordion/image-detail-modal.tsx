@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { DeleteImageConfirmModal } from './delete-image-confirm-modal'; // Import the new modal
 
 interface ImageDetailModalProps extends DialogProps {
+  isOpen: boolean;
   images: ImageData[] | null;
   initialIndex: number | null;
   onOpenChange: (open: boolean) => void;

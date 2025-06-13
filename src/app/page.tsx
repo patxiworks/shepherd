@@ -336,7 +336,7 @@ export default function HomePage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save new collection');
+        throw new Error(errorData.message || 'Failed to save new Mass info');
       }
       
       const savedItem = await response.json();
@@ -344,17 +344,17 @@ export default function HomePage() {
         prevItems.map(item => item.id === newItemId ? savedItem : item).sort(sortCollections)
       );
 
-      const displayTitle = `${formData.parishLocation}${formData.diocese ? ` - ${formData.diocese}` : ''}`;
+      const displayTitle = `${formData.parishLocation}${formData.diocese ? ` (${formData.diocese})` : ''}`;
       toast({
-        title: "New Collection Added!",
+        title: "New Mass Added!",
         description: `"${displayTitle}" has been saved.`,
       });
 
     } catch (error) {
-      console.error("Error creating collection:", error);
+      console.error("Error creating Mass info:", error);
       toast({
         title: "Save Error",
-        description: (error as Error).message || "Could not save new collection to the server.",
+        description: (error as Error).message || "Could not save new Mass info to the server.",
         variant: "destructive",
       });
       setAccordionItems(prevItems => prevItems.filter(item => item.id !== newItemId).sort(sortCollections));
@@ -430,7 +430,7 @@ export default function HomePage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update collection');
+        throw new Error(errorData.message || 'Failed to update Mass details');
       }
       
       const savedItem = await response.json();
@@ -440,11 +440,11 @@ export default function HomePage() {
 
       const displayTitle = `${formData.parishLocation}${formData.diocese ? ` - ${formData.diocese}` : ''}`;
       toast({
-        title: "Collection Updated!",
+        title: "Mass details updated!",
         description: `"${displayTitle}" has been saved.`,
       });
     } catch (error) {
-      console.error("Error updating collection:", error);
+      console.error("Error updating Mass details:", error);
       toast({
         title: "Update Error",
         description: (error as Error).message || "Could not save updates to the server.",

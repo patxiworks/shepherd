@@ -195,7 +195,7 @@ export function EditCollectionModal({ isOpen, onOpenChange, onSubmit, initialDat
                         selected={field.value}
                         onSelect={field.onChange}
                         disabled={(date) =>
-                          date > new Date() || date < new Date("1900-01-01")
+                          date <= new Date()
                         }
                         initialFocus
                       />
@@ -234,7 +234,7 @@ export function EditCollectionModal({ isOpen, onOpenChange, onSubmit, initialDat
                 name="time"
                 control={form.control}
                 render={({ fieldState }) => (
-                  fieldState.error ? <FormMessage>{fieldState.error.message}</FormMessage> : null
+                  fieldState.error ? <FormMessage>{fieldState.error.message}</FormMessage> : <></>
                 )}
               />
             </FormItem>

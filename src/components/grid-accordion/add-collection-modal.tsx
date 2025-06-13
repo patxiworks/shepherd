@@ -218,7 +218,7 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
                 name="time"
                 control={form.control}
                 render={({ fieldState }) => (
-                  fieldState.error ? <FormMessage>{fieldState.error.message}</FormMessage> : null
+                  fieldState.error ? <FormMessage>{fieldState.error.message}</FormMessage> : <></>
                 )}
               />
             </FormItem>
@@ -234,7 +234,7 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
               </Button>
               <Button type="submit">
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Add Collection
+                Add Mass
               </Button>
             </div>
           </form>
