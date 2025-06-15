@@ -42,19 +42,18 @@ const sortCollections = (a: AccordionItemData, b: AccordionItemData): number => 
 export default function HomePage() {
   const [accordionItems, setAccordionItems] = React.useState<AccordionItemData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [isAuthenticating, setIsAuthenticating] = React.useState(true); // For admin login
+  const [isAuthenticating, setIsAuthenticating] = React.useState(true);
   
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
   const [authModalStep, setAuthModalStep] = React.useState<'signIn' | 'upload'>('signIn');
   const [activeItemIdForUpload, setActiveItemIdForUpload] = React.useState<string | null>(null);
   const [activeItemTitleForUpload, setActiveItemTitleForUpload] = React.useState<string | null>(null);
-  const [activeUserPhoneNumber, setActiveUserPhoneNumber] = React.useState<string | null>(null); // For phone number from AuthModal
+  const [activeUserPhoneNumber, setActiveUserPhoneNumber] = React.useState<string | null>(null);
   
   const [activeSlideshowImages, setActiveSlideshowImages] = React.useState<ImageData[] | null>(null);
   const [activeSlideshowIndex, setActiveSlideshowIndex] = React.useState<number | null>(null);
   const [isImageDetailModalOpen, setIsImageDetailModalOpen] = React.useState(false);
   const [activeCollectionIdForModal, setActiveCollectionIdForModal] = React.useState<string | null>(null);
-
 
   const [isAddCollectionModalOpen, setIsAddCollectionModalOpen] = React.useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
@@ -67,8 +66,10 @@ export default function HomePage() {
   const [isDioceseSummaryModalOpen, setIsDioceseSummaryModalOpen] = React.useState(false);
   const [isStateSummaryModalOpen, setIsStateSummaryModalOpen] = React.useState(false);
 
-  const [currentUser, setCurrentUser] = React.useState<string | null>(null); // For admin login
-  const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false); // For admin login modal
+  const [currentUser, setCurrentUser] = React.useState<string | null>(null);
+  const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
+
+  const [defaultOpenAccordionItem, setDefaultOpenAccordionItem] = React.useState<string | undefined>(undefined);
 
   const { toast } = useToast();
 
@@ -103,6 +104,36 @@ export default function HomePage() {
     }
     setIsAuthenticating(false);
   }, []);
+
+  React.useEffect(() => {
+    if (!isLoading && accordionItems.length > 0 && typeof window !== 'undefined' && window.location.hash) {
+      const hashId = window.location.hash.substring(1); // Remove #
+      const itemExists = accordionItems.some(item => item.id === hashId);
+      if (itemExists) {
+        setDefaultOpenAccordionItem(hashId);
+        // Wait a brief moment for the accordion to potentially open and render
+        // and for the sticky header to settle.
+        setTimeout(() => {
+          const element = document.querySelector(`[data-radix-value="${hashId}"]`);
+          if (element) {
+            // Get the height of the sticky header
+            const stickyHeader = document.querySelector('.sticky.top-0.z-50') as HTMLElement;
+            const headerHeight = stickyHeader ? stickyHeader.offsetHeight : 0;
+            
+            const elementRect = element.getBoundingClientRect();
+            const elementTopRelativeToViewport = elementRect.top;
+            const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+            
+            // Calculate target scroll position, accounting for the sticky header
+            const targetScrollPosition = scrollPosition + elementTopRelativeToViewport - headerHeight - 10; // 10px buffer
+
+            window.scrollTo({ top: targetScrollPosition, behavior: 'smooth' });
+          }
+        }, 150); // Increased delay slightly
+      }
+    }
+  }, [isLoading, accordionItems]);
+
 
   const handleLogin = async (formData: AdminLoginFormData) => {
     try {
@@ -195,7 +226,7 @@ export default function HomePage() {
   };
 
   const handleSignInSuccessForUpload = (phoneNumber: string) => { 
-    setActiveUserPhoneNumber(phoneNumber); // Store the phone number
+    setActiveUserPhoneNumber(phoneNumber);
     setAuthModalStep('upload');
   };
 
@@ -238,7 +269,7 @@ export default function HomePage() {
         hint: uploadedImageResult.hint,
       };
       if (activeUserPhoneNumber) {
-        newImage.uploadedBy = activeUserPhoneNumber; // Add phone number if available
+        newImage.uploadedBy = activeUserPhoneNumber;
       }
 
 
@@ -287,7 +318,6 @@ export default function HomePage() {
         title: "Photo Uploaded & Saved!",
         description: `"${newImage.alt}" has been added to ${activeItemTitleForUpload || 'the gallery'} and persisted.`,
       });
-      // Modal is kept open by PhotoUploadForm, form is reset there.
 
     } catch (error) {
       console.error("Error uploading photo or saving collection:", error);
@@ -303,7 +333,7 @@ export default function HomePage() {
             ).sort(sortCollections)
           );
       }
-      throw error; // Rethrow to be caught by PhotoUploadForm for loading state
+      throw error; 
     }
   };
   
@@ -364,10 +394,10 @@ export default function HomePage() {
   const handleAuthModalOpenChange = (open: boolean) => {
     setIsAuthModalOpen(open);
     if (!open) {
-      setAuthModalStep('signIn'); // Reset step
+      setAuthModalStep('signIn'); 
       setActiveItemIdForUpload(null);
       setActiveItemTitleForUpload(null);
-      setActiveUserPhoneNumber(null); // Reset phone number
+      setActiveUserPhoneNumber(null); 
     }
   };
 
@@ -646,18 +676,18 @@ export default function HomePage() {
 
       <div className="container mx-auto px-0 py-0 min-h-screen">
         <div className="mt-4 px-2 sm:px-4">
-          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row sm:justify-between sm:mb-4 items-end ">
+          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row sm:justify-between sm:items-center sm:mb-4">
           {currentUser && (
             <Button 
               onClick={openAddCollectionModal} 
               variant="outline" 
-              className="text-primary border-primary text-white bg-primary hover:bg-primary/10 w-full sm:w-auto"
+              className="text-primary border-primary text-white bg-primary hover:bg-primary/10 w-full sm:w-auto mb-2 sm:mb-0"
             >
               <PlusCircle className="mr-2 h-5 w-5" />
               Add New Mass
             </Button>
           )}
-          <div className="text-right text-sm text-black font-bold mb-4">
+          <div className="text-right text-sm text-black font-bold mb-4 sm:mb-0 ml-auto">
             {filterQuery
               ? `${filteredAccordionItems.length} of ${accordionItems.length} Masses found`
               : `${accordionItems.length} Masses`}
@@ -671,6 +701,7 @@ export default function HomePage() {
             onEditRequest={currentUser ? handleEditRequest : undefined}
             onDeleteRequest={currentUser ? handleDeleteRequest : undefined}
             isUserLoggedIn={!!currentUser}
+            defaultValue={defaultOpenAccordionItem}
           />
         </div>
         <AuthModal
@@ -763,5 +794,3 @@ export default function HomePage() {
     </>
   );
 }
-
-    

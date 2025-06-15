@@ -16,6 +16,7 @@ interface GridAccordionProps {
   onEditRequest?: (item: AccordionItemData) => void; 
   onDeleteRequest?: (item: AccordionItemData) => void;
   isUserLoggedIn: boolean;
+  defaultValue?: string; // For pre-opening an item
 }
 
 export function GridAccordion({ 
@@ -24,14 +25,21 @@ export function GridAccordion({
   onImageClick, 
   onEditRequest, 
   onDeleteRequest,
-  isUserLoggedIn
+  isUserLoggedIn,
+  defaultValue
 }: GridAccordionProps) {
   if (!items || items.length === 0) {
     return <p className="text-center text-muted-foreground py-10">No items to display in the accordion.</p>;
   }
   
   return (
-    <Accordion type="single" collapsible className="w-full max-w-4xl mx-auto space-y-2">
+    <Accordion 
+        type="single" 
+        collapsible 
+        className="w-full max-w-4xl mx-auto space-y-2"
+        defaultValue={defaultValue}
+        key={defaultValue} // Add key to force re-render if defaultValue changes significantly
+    >
       {items.map((item) => (
         <AccordionItem value={item.id} key={item.id} className="border border-border border-secondary rounded-lg bg-secondary/50 shadow-sm overflow-hidden">
           <AccordionPrimitive.Header className="flex items-center group">
