@@ -106,32 +106,30 @@ export default function HomePage() {
   }, []);
 
   React.useEffect(() => {
-    // Only run on client and if not loading and items are present
     if (typeof window !== 'undefined' && !isLoading && accordionItems.length > 0 && window.location.hash) {
       const hashId = window.location.hash.substring(1);
       const itemExists = accordionItems.some(item => item.id === hashId);
-
+      
       if (itemExists) {
-        setDefaultOpenAccordionItem(hashId); // Trigger re-render to open item
+        setDefaultOpenAccordionItem(hashId);
 
-        // Wait for UI to update and accordion to open
         setTimeout(() => {
-          const element = document.querySelector(`[data-radix-value="${hashId}"]`);
+          const element = document.querySelector(`[data-radix-accordion-item="${hashId}"]`);
           const stickyHeader = document.querySelector('.sticky.top-0.z-50') as HTMLElement;
-
+          
           if (element && stickyHeader) {
             const headerHeight = stickyHeader.offsetHeight;
             const elementRect = element.getBoundingClientRect();
             
             const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
-            const targetScrollPosition = currentScrollY + elementRect.top - headerHeight - 10; // 10px buffer
+            const targetScrollPosition = currentScrollY + elementRect.top - headerHeight - 10; 
 
             window.scrollTo({
               top: targetScrollPosition,
               behavior: 'smooth',
             });
           }
-        }, 300); // Increased timeout for accordion animation and layout
+        }, 300); 
       }
     }
   }, [isLoading, accordionItems]);
@@ -637,9 +635,9 @@ export default function HomePage() {
       <div className="sticky top-0 z-50 bg-background shadow-sm">
         <div className="main-header border-b border-t-2 border-black">
           <header className="mx-auto container pt-20 pb-2 px-4 text-left">
-            <div className="w-full h-[0px] bg-black"></div>
-            <h1 className="w-[200px] sm:w-full leading-none text-lg sm:text-xl md:text-2xl font-headline font-bold mb-3">
-              Masses in honour of St. Josemaria, 2025
+            <div className="w-full text-xs text-muted-foreground">Masses on the</div>
+            <h1 className="w-[220px] sm:w-full leading-none text-lg sm:text-xl md:text-2xl font-headline font-bold mb-3">
+              50th anniversary of <br/>St. Josemaria in heaven!
             </h1>
             <div className="text-xs sm:text-lg text-muted-foreground font-body flex justify-start items-center space-x-2">
               <Button variant="link" onClick={() => setIsDioceseSummaryModalOpen(true)} className="p-0 h-auto text-md">
@@ -796,5 +794,6 @@ export default function HomePage() {
     </>
   );
 }
+    
 
     

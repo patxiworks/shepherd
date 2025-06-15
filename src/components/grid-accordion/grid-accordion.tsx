@@ -42,7 +42,7 @@ export function GridAccordion({
     >
       {items.map((item) => (
         <AccordionItem value={item.id} key={item.id} className="border border-border border-secondary rounded-lg bg-secondary/50 shadow-sm overflow-hidden">
-          <AccordionPrimitive.Header className="flex items-center group">
+          <AccordionPrimitive.Header className="flex items-center group data-[state=open]:bg-primary/80 data-[state=open]:text-white">
             <AccordionPrimitive.Trigger
               className={cn(
                 "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:none",
@@ -53,7 +53,7 @@ export function GridAccordion({
                 <span className="text-base font-semibold group-hover:none">
                   {item.parishLocation}
                 </span>
-                <span className="text-xs text-muted-foreground mt-1 group-hover:text-white">
+                <span className="text-xs mt-1 group-hover:text-white">
                   {item.date} - {item.time}
                 </span>
               </div>
@@ -67,7 +67,7 @@ export function GridAccordion({
                   size="icon" 
                   className="h-8 w-8 hover:bg-muted/60" 
                   onClick={() => onEditRequest(item)}
-                  title="Edit MAss"
+                  title="Edit Mass"
                   aria-label="Edit Mass details"
                 >
                   <Pencil className="h-4 w-4" />
