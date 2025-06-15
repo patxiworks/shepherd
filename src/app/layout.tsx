@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Masses in honour of St. Josemaría in Nigeria',
-  description: 'Masses in honour of St. Josemaría in Nigeria, 2025',
+  title: '50th Anniversary of St. Josemaría in heaven',
+  description: "Celebrating the 50th anniversary of St. Josemaría's departure to heaven",
 };
 
 export default function RootLayout({

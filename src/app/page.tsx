@@ -114,7 +114,8 @@ export default function HomePage() {
         setDefaultOpenAccordionItem(hashId);
 
         setTimeout(() => {
-          const element = document.querySelector(`[data-radix-accordion-item="${hashId}"]`);
+          //const element = document.querySelector(`[data-radix-accordion-item="${hashId}"]`);
+          const element = document.querySelector(`[data-state="open"]`);
           const stickyHeader = document.querySelector('.sticky.top-0.z-50') as HTMLElement;
           
           if (element && stickyHeader) {
@@ -637,7 +638,7 @@ export default function HomePage() {
           <header className="mx-auto container pt-20 pb-2 px-4 text-left">
             <div className="w-full text-xs text-muted-foreground">Masses on the</div>
             <h1 className="w-[220px] sm:w-full leading-none text-lg sm:text-xl md:text-2xl font-headline font-bold mb-3">
-              50th anniversary of <br/>St. Josemaria in heaven!
+              50th anniversary of <br/>St. Josemaría in heaven!
             </h1>
             <div className="text-xs sm:text-lg text-muted-foreground font-body flex justify-start items-center space-x-2">
               <Button variant="link" onClick={() => setIsDioceseSummaryModalOpen(true)} className="p-0 h-auto text-md">
