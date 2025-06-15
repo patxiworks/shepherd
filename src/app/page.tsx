@@ -106,30 +106,32 @@ export default function HomePage() {
   }, []);
 
   React.useEffect(() => {
-    if (!isLoading && accordionItems.length > 0 && typeof window !== 'undefined' && window.location.hash) {
-      const hashId = window.location.hash.substring(1); // Remove #
+    // Only run on client and if not loading and items are present
+    if (typeof window !== 'undefined' && !isLoading && accordionItems.length > 0 && window.location.hash) {
+      const hashId = window.location.hash.substring(1);
       const itemExists = accordionItems.some(item => item.id === hashId);
+
       if (itemExists) {
-        setDefaultOpenAccordionItem(hashId);
-        // Wait a brief moment for the accordion to potentially open and render
-        // and for the sticky header to settle.
+        setDefaultOpenAccordionItem(hashId); // Trigger re-render to open item
+
+        // Wait for UI to update and accordion to open
         setTimeout(() => {
           const element = document.querySelector(`[data-radix-value="${hashId}"]`);
-          if (element) {
-            // Get the height of the sticky header
-            const stickyHeader = document.querySelector('.sticky.top-0.z-50') as HTMLElement;
-            const headerHeight = stickyHeader ? stickyHeader.offsetHeight : 0;
-            
-            const elementRect = element.getBoundingClientRect();
-            const elementTopRelativeToViewport = elementRect.top;
-            const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-            
-            // Calculate target scroll position, accounting for the sticky header
-            const targetScrollPosition = scrollPosition + elementTopRelativeToViewport - headerHeight - 10; // 10px buffer
+          const stickyHeader = document.querySelector('.sticky.top-0.z-50') as HTMLElement;
 
-            window.scrollTo({ top: targetScrollPosition, behavior: 'smooth' });
+          if (element && stickyHeader) {
+            const headerHeight = stickyHeader.offsetHeight;
+            const elementRect = element.getBoundingClientRect();
+            
+            const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
+            const targetScrollPosition = currentScrollY + elementRect.top - headerHeight - 10; // 10px buffer
+
+            window.scrollTo({
+              top: targetScrollPosition,
+              behavior: 'smooth',
+            });
           }
-        }, 150); // Increased delay slightly
+        }, 300); // Increased timeout for accordion animation and layout
       }
     }
   }, [isLoading, accordionItems]);
@@ -794,3 +796,5 @@ export default function HomePage() {
     </>
   );
 }
+
+    
