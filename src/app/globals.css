@@ -13,11 +13,16 @@ header {
 }
 .main-header {
   background-image: url('/sj-bg.png');
+  font-family: Ubuntu;
+}
+.mass-count {
+  font-family: Ubuntu;
 }
 body {
   /*background-image: url('/sj-bg.png'); /* URL of the image you provided */
   background-repeat: repeat;
   min-height: 100vh; /* Ensure body covers viewport height */
+  font-family: Ubuntu;
 }
 
 @layer base {

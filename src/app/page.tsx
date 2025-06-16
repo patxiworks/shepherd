@@ -658,7 +658,7 @@ export default function HomePage() {
               placeholder="Filter by parish, diocese, state, or date..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
-              className="w-full h-10 px-4 py-4 text-base rounded-none border-x-0 border-t-0 shadow-sm pr-10"
+              className="w-full h-10 px-4 py-4 text-base rounded-none border-x-0 border-t-0 shadow-sm pr-10 placeholder:text-[#aaa]"
             />
             {filterQuery && (
               <Button
@@ -688,7 +688,7 @@ export default function HomePage() {
               Add New Mass
             </Button>
           )}
-          <div className="text-right text-sm text-black font-bold mb-4 sm:mb-0 ml-auto">
+          <div className="mass-count text-right text-sm text-muted-foreground mb-4 sm:mb-0 ml-auto">
             {filterQuery
               ? `${filteredAccordionItems.length} of ${accordionItems.length} Masses found`
               : `${accordionItems.length} Masses`}
