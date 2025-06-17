@@ -5,13 +5,13 @@ import * as React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { NigerianMapModalProps, MapStateDataItem } from '@/types';
-import { nigerianMap } from '@/lib/nigerian-map'; // Assuming this is the correct path to your map data
+import { nigerianMap } from '@/lib/nigerian-map'; 
 import { cn } from '@/lib/utils';
 
 const getPrimaryHslValues = () => {
   if (typeof window === 'undefined') return { h: 262, s: 52, l: 47 }; // Default for SSR
   const style = getComputedStyle(document.documentElement);
-  const primaryColor = style.getPropertyValue('--primary').trim(); // "262 52% 47%"
+  const primaryColor = style.getPropertyValue('--primary').trim(); 
   const [h, s, l] = primaryColor.split(' ').map(v => parseFloat(v.replace('%', '')));
   return { h, s, l };
 };
@@ -21,8 +21,10 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
   const [primaryHsl, setPrimaryHsl] = React.useState({ h: 262, s: 52, l: 47 });
 
   React.useEffect(() => {
-    setPrimaryHsl(getPrimaryHslValues());
-  }, []);
+    if (isOpen) { // Only get/set HSL values when modal is open to ensure CSS is available
+      setPrimaryHsl(getPrimaryHslValues());
+    }
+  }, [isOpen]);
 
 
   const mapDataWithMasses: MapStateDataItem[] = React.useMemo(() => {
@@ -34,15 +36,23 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
   }, [massesPerState]);
 
   const maxMasses = React.useMemo(() => {
-    return Math.max(1, ...mapDataWithMasses.map(s => s.massCount)); // Ensure maxMasses is at least 1 to avoid division by zero
+    const counts = mapDataWithMasses.map(s => s.massCount);
+    return Math.max(1, ...counts); // Ensure maxMasses is at least 1 to avoid division by zero or negative opacity issues
   }, [mapDataWithMasses]);
 
   const getFillColor = (massCount: number) => {
+    const baseOpacity = 0.2; // Base opacity for zero masses (20%)
+    const maxOpacity = 1.0;   // Max opacity for maxMasses (100%)
+    
+    let opacity;
     if (massCount === 0) {
-      return 'hsl(var(--muted) / 0.3)'; // Muted color for states with no masses
+      opacity = baseOpacity;
+    } else {
+      // Scale opacity from baseOpacity to maxOpacity
+      opacity = baseOpacity + (maxOpacity - baseOpacity) * (massCount / maxMasses);
     }
-    // Calculate opacity: start at 0.2, go up to 1.0 for maxMasses
-    const opacity = 0.2 + 0.8 * (massCount / maxMasses);
+    opacity = Math.min(Math.max(opacity, baseOpacity), maxOpacity); // Clamp opacity
+
     return `hsla(${primaryHsl.h}, ${primaryHsl.s}%, ${primaryHsl.l}%, ${opacity})`;
   };
 
@@ -59,7 +69,7 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
           <TooltipProvider delayDuration={100}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 750 650" // Adjust viewBox if needed based on your map data coordinates
+              viewBox="0 0 750 650" 
               className="w-full h-full"
               aria-label="Map of Nigeria showing mass distribution"
             >
@@ -70,11 +80,11 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
                       <path
                         d={state.path}
                         fill={getFillColor(state.massCount)}
-                        stroke="hsl(var(--border))" // Or a contrasting color like 'hsl(var(--foreground) / 0.5)'
+                        stroke="hsl(var(--border))" 
                         strokeWidth="0.5"
                         className="transition-opacity duration-150 hover:opacity-80 focus:outline-none focus:opacity-70"
-                        aria-label={state.name}
-                        tabIndex={0} // Make it focusable
+                        aria-label={`${state.name}: ${state.massCount} ${state.massCount === 1 ? 'Mass' : 'Masses'}`}
+                        tabIndex={0} 
                       />
                     </TooltipTrigger>
                     <TooltipContent>
@@ -91,3 +101,4 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
     </Dialog>
   );
 }
+
