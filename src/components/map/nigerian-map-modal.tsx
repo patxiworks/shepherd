@@ -41,8 +41,8 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
   }, [mapDataWithMasses]);
 
   const getFillColor = (massCount: number) => {
-    const baseOpacity = 0.2; // Base opacity for zero masses (20%)
-    const maxOpacity = 1.0;   // Max opacity for maxMasses (100%)
+    const baseOpacity = 0.2; 
+    const maxOpacity = 1.0;   
     
     let opacity;
     if (massCount === 0) {
@@ -50,7 +50,7 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
     } else {
       opacity = baseOpacity + (maxOpacity - baseOpacity) * (massCount / maxMasses);
     }
-    opacity = Math.min(Math.max(opacity, baseOpacity), maxOpacity); // Clamp opacity
+    opacity = Math.min(Math.max(opacity, baseOpacity), maxOpacity); 
 
     return `hsla(${primaryHsl.h}, ${primaryHsl.s}%, ${primaryHsl.l}%, ${opacity})`;
   };
@@ -65,7 +65,7 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4 w-full aspect-[4/3] overflow-hidden rounded-md border">
-          <TooltipProvider> {/* Removed delayDuration to use default */}
+          <TooltipProvider delayDuration={0}> {/* Set delayDuration to 0 for immediate tooltip appearance */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 750 650" 
@@ -76,13 +76,16 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
                 {mapDataWithMasses.map((state) => (
                   <Tooltip key={state.name}>
                     <TooltipTrigger asChild>
-                      <g tabIndex={0} className="focus:outline-none"> {/* Make 'g' the trigger and focusable */}
+                      <g 
+                        tabIndex={0} 
+                        className="focus:outline-none group cursor-pointer" // Added cursor-pointer for visual feedback
+                      >
                         <path
                           d={state.path}
                           fill={getFillColor(state.massCount)}
                           stroke="hsl(var(--border))" 
                           strokeWidth="1"
-                          className="transition-opacity duration-150 group-hover:opacity-70 group-focus:opacity-70" // Use group-hover/focus if g is trigger
+                          className="transition-opacity duration-150 group-hover:opacity-70 group-focus:opacity-70"
                           aria-label={`${state.name}: ${state.massCount} ${state.massCount === 1 ? 'Mass' : 'Masses'}`}
                         />
                       </g>
