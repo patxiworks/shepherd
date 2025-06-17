@@ -11,6 +11,7 @@ export interface AccordionItemData {
   parishLocation: string;
   diocese: string;
   state: string; 
+  country?: string; // Added country field
   date: string; // e.g., "July 1"
   time: string; // e.g., "18:00"
   images: ImageData[];
@@ -20,6 +21,7 @@ export interface NewCollectionFormData {
   parishLocation: string;
   diocese: string;
   state: string; 
+  country: string; // Added country field
   date: Date; // Date object from calendar
   time: string;
 }
@@ -67,8 +69,8 @@ export interface StateSummaryModalProps {
 }
 
 // For Nigerian Map Modal
-export interface MassesPerState {
-  [stateName: string]: number;
+export interface MassesPerState { // Can be reused for Ghana (MassesPerRegion)
+  [stateOrRegionName: string]: number;
 }
 
 export interface NigerianMapModalProps {
@@ -77,8 +79,22 @@ export interface NigerianMapModalProps {
   massesPerState: MassesPerState;
 }
 
-export interface MapStateDataItem {
+export interface GhanaMapModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  massesPerRegion: MassesPerState; // Using MassesPerState type, key is region name
+}
+
+export interface MapStateDataItem { // Can be reused for Ghana regions
   name: string;
   path: string;
   massCount: number;
+}
+
+// Type for Ghana map data items (if different structure is needed, but likely same as MapStateDataItem)
+export interface GhanaMapRegionDataItem {
+    name: string;
+    code: string; // Or any other Ghana-specific fields
+    path: string;
+    massCount?: number; // Optional, to be populated
 }

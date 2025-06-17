@@ -22,7 +22,8 @@ import { cn } from '@/lib/utils';
 const newCollectionSchema = z.object({
   parishLocation: z.string().min(1, { message: "Parish name is required." }),
   diocese: z.string().min(1, { message: "Diocese is required." }),
-  state: z.string().min(1, { message: "State is required." }), // Add state validation
+  state: z.string().min(1, { message: "State/Region is required." }), 
+  country: z.string().min(1, { message: "Country is required." }),
   date: z.date({
     required_error: "Date is required.",
     invalid_type_error: "That's not a valid date!",
@@ -47,7 +48,8 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
     defaultValues: {
       parishLocation: '',
       diocese: '',
-      state: '', // Default state
+      state: '', 
+      country: 'Nigeria', // Default country
       date: undefined,
       time: '12:00',
     },
@@ -66,6 +68,8 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
     setSelectedHour('12');
     setSelectedMinute('00');
   };
+  
+  const selectedCountry = form.watch("country");
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -102,6 +106,27 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
             />
             <FormField
               control={form.control}
+              name="country"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Country</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a country" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Nigeria">Nigeria</SelectItem>
+                      <SelectItem value="Ghana">Ghana</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="diocese"
               render={({ field }) => (
                 <FormItem>
@@ -113,6 +138,7 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      {/* TODO: Conditionally load dioceses based on selectedCountry */}
                       {nigerianDioceses.map((dioceseName) => (
                         <SelectItem key={dioceseName} value={dioceseName}>
                           {dioceseName}
@@ -129,14 +155,15 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
               name="state"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>State</FormLabel>
+                  <FormLabel>{selectedCountry === "Ghana" ? "Region" : "State"}</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a state" />
+                        <SelectValue placeholder={selectedCountry === "Ghana" ? "Select a region" : "Select a state"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                       {/* TODO: Conditionally load states/regions based on selectedCountry */}
                       {nigerianStates.map((stateName) => (
                         <SelectItem key={stateName} value={stateName}>
                           {stateName}
@@ -179,7 +206,7 @@ export function AddCollectionModal({ isOpen, onOpenChange, onSubmit }: AddCollec
                         selected={field.value}
                         onSelect={field.onChange}
                         disabled={(date) =>
-                          date <= new Date()
+                          date <= new Date() // Example: disable past dates
                         }
                         initialFocus
                       />

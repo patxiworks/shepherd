@@ -1,9 +1,11 @@
+
 [
   {
     "id": "item-1",
     "parishLocation": "St. Matthew Chaplaincy, Regina Pacis College",
     "diocese": "Abuja",
     "state": "FCT - Abuja",
+    "country": "Nigeria",
     "date": "July 1",
     "time": "18:00",
     "images": []
@@ -13,6 +15,7 @@
     "parishLocation": "St. Bernadette, Akinogun, Shagari Estate, Ipaja, Lagos",
     "diocese": "Lagos",
     "state": "Lagos",
+    "country": "Nigeria",
     "date": "July 1",
     "time": "18:30",
     "images": []
@@ -22,6 +25,7 @@
     "parishLocation": "St Agnes, Maryland",
     "diocese": "Lagos",
     "state": "Lagos",
+    "country": "Nigeria",
     "date": "June 28",
     "time": "18:00",
     "images": []
@@ -31,6 +35,7 @@
     "parishLocation": "St Dominics Catholic Church",
     "diocese": "Lagos",
     "state": "Lagos",
+    "country": "Nigeria",
     "date": "June 10",
     "time": "12:00",
     "images": [

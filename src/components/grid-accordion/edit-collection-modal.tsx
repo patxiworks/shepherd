@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format } from 'date-fns';
+import { format, parse as parseDateFns } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,16 +13,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import type { AccordionItemData } from '@/types';
+import type { AccordionItemData, NewCollectionFormData as EditCollectionSubmitData } from '@/types';
 import { nigerianDioceses } from '@/lib/nigerian-dioceses';
-import { nigerianStates } from '@/lib/nigerian-states'; // Import states
+import { nigerianStates } from '@/lib/nigerian-states';
 import { CalendarIcon, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const editCollectionSchema = z.object({
   parishLocation: z.string().min(1, { message: "Parish name is required." }),
   diocese: z.string().min(1, { message: "Diocese is required." }),
-  state: z.string().min(1, { message: "State is required." }), // Add state validation
+  state: z.string().min(1, { message: "State/Region is required." }),
+  country: z.string().min(1, { message: "Country is required." }),
   date: z.date({
     required_error: "Date is required.",
     invalid_type_error: "That's not a valid date!",
@@ -35,7 +36,7 @@ type EditCollectionFormValues = z.infer<typeof editCollectionSchema>;
 interface EditCollectionModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: EditCollectionFormValues) => void;
+  onSubmit: (data: EditCollectionFormValues) => void; // Changed type to EditCollectionFormValues
   initialData: AccordionItemData;
 }
 
@@ -44,13 +45,18 @@ const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0
 
 const parseDateString = (dateStr: string): Date | undefined => {
   try {
-    const fullDateStr = `${dateStr} ${new Date().getFullYear()}`;
-    const parsedDate = new Date(fullDateStr);
+    // Try parsing "Month d" format first
+    let parsedDate = parseDateFns(dateStr, "MMMM d", new Date());
+    if (isNaN(parsedDate.getTime())) {
+      // Fallback to more general parsing if specific format fails
+      parsedDate = new Date(dateStr + " " + new Date().getFullYear());
+    }
     return isNaN(parsedDate.getTime()) ? undefined : parsedDate;
   } catch (error) {
     return undefined;
   }
 };
+
 
 export function EditCollectionModal({ isOpen, onOpenChange, onSubmit, initialData }: EditCollectionModalProps) {
   const [selectedHour, setSelectedHour] = React.useState<string>('12');
@@ -61,18 +67,22 @@ export function EditCollectionModal({ isOpen, onOpenChange, onSubmit, initialDat
     defaultValues: {
       parishLocation: initialData.parishLocation,
       diocese: initialData.diocese,
-      state: initialData.state || '', // Initialize state
+      state: initialData.state || '', 
+      country: initialData.country || 'Nigeria', // Default to Nigeria if not present
       date: parseDateString(initialData.date) || new Date(),
       time: initialData.time,
     },
   });
+  
+  const selectedCountry = form.watch("country");
 
   React.useEffect(() => {
     if (initialData) {
       form.reset({
         parishLocation: initialData.parishLocation,
         diocese: initialData.diocese,
-        state: initialData.state || '', // Reset state
+        state: initialData.state || '', 
+        country: initialData.country || 'Nigeria',
         date: parseDateString(initialData.date) || new Date(),
         time: initialData.time,
       });
@@ -80,7 +90,7 @@ export function EditCollectionModal({ isOpen, onOpenChange, onSubmit, initialDat
       setSelectedHour(hour || '12');
       setSelectedMinute(minute || '00');
     }
-  }, [initialData, form]);
+  }, [initialData, form, isOpen]); // Added isOpen to dependencies
 
   React.useEffect(() => {
     form.setValue('time', `${selectedHour}:${selectedMinute}`, { shouldValidate: true });
@@ -116,19 +126,41 @@ export function EditCollectionModal({ isOpen, onOpenChange, onSubmit, initialDat
                 </FormItem>
               )}
             />
+             <FormField
+              control={form.control}
+              name="country"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Country</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a country" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Nigeria">Nigeria</SelectItem>
+                      <SelectItem value="Ghana">Ghana</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="diocese"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Diocese</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a diocese" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                       {/* TODO: Conditionally load dioceses based on selectedCountry */}
                       {nigerianDioceses.map((dioceseName) => (
                         <SelectItem key={dioceseName} value={dioceseName}>
                           {dioceseName}
@@ -145,14 +177,15 @@ export function EditCollectionModal({ isOpen, onOpenChange, onSubmit, initialDat
               name="state"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>State</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel>{selectedCountry === "Ghana" ? "Region" : "State"}</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a state" />
+                         <SelectValue placeholder={selectedCountry === "Ghana" ? "Select a region" : "Select a state"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      {/* TODO: Conditionally load states/regions based on selectedCountry */}
                       {nigerianStates.map((stateName) => (
                         <SelectItem key={stateName} value={stateName}>
                           {stateName}
@@ -195,7 +228,7 @@ export function EditCollectionModal({ isOpen, onOpenChange, onSubmit, initialDat
                         selected={field.value}
                         onSelect={field.onChange}
                         disabled={(date) =>
-                          date <= new Date()
+                           date <= new Date(new Date().setDate(new Date().getDate() -1)) // Allow today
                         }
                         initialFocus
                       />

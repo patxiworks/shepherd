@@ -19,7 +19,10 @@ async function readRemoteCollections(): Promise<AccordionItemData[]> {
       throw new Error(`Failed to fetch remote collections: ${response.statusText}`);
     }
     const data = await response.json();
-    return data as AccordionItemData[];
+    return (data as AccordionItemData[]).map(item => ({
+      ...item,
+      country: item.country || "Nigeria" // Default to Nigeria if country is missing
+    }));
   } catch (error) {
     console.error('Error reading remote collections data:', error);
     return [];
@@ -49,7 +52,7 @@ async function writeRemoteCollections(data: AccordionItemData[]): Promise<void> 
       throw new Error(`Failed to write remote collections: ${response.statusText} - ${errorText}`);
     }
     const result = await response.json();
-    if (result.status !== 'success') { // Adjust based on your PHP script's actual response
+    if (result.status !== 'success') { 
         console.warn('Remote write operation reported an issue:', result);
     }
   } catch (error) {
@@ -92,6 +95,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     collections[collectionIndex] = { 
       ...collections[collectionIndex], 
       ...updatedCollectionData,
+      country: updatedCollectionData.country || collections[collectionIndex].country || "Nigeria", // Ensure country field is handled
       images: imagesToPersist 
     };
     

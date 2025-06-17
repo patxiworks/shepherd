@@ -3,12 +3,13 @@
 
 import * as React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import type { NigerianMapModalProps, MapStateDataItem } from '@/types';
-import { nigerianMap } from '@/lib/nigerian-map';
+import type { GhanaMapModalProps, MapStateDataItem as MapRegionDataItem, GhanaMapRegionDataItem } from '@/types'; // Reusing MapStateDataItem as MapRegionDataItem
+import { ghanaMap } from '@/lib/ghana-map'; // Using Ghana-specific map data
 import { cn } from '@/lib/utils';
 
+// Helper function to get HSL values for primary color from CSS variables
 const getPrimaryHslValues = () => {
-  if (typeof window === 'undefined') return { h: 262, s: 52, l: 47 }; // Default primary
+  if (typeof window === 'undefined') return { h: 262, s: 52, l: 47 }; // Default primary (Deep Purple)
   const style = getComputedStyle(document.documentElement);
   const primaryColor = style.getPropertyValue('--primary').trim();
   if (!primaryColor) return { h: 262, s: 52, l: 47 }; // Fallback
@@ -19,10 +20,11 @@ const getPrimaryHslValues = () => {
   return { h: 262, s: 52, l: 47 }; // Fallback if parsing fails
 };
 
+// Helper function to approximate center of an SVG path for text placement
 const getApproximateTextCoords = (path: string): { x: number; y: number } => {
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   let currentX = 0, currentY = 0;
-  let lastMoveX = 0, lastMoveY = 0; 
+  let lastMoveX = 0, lastMoveY = 0;
 
   const commands = path.match(/[a-df-z][^a-df-z]*/ig) || [];
 
@@ -93,11 +95,11 @@ const getApproximateTextCoords = (path: string): { x: number; y: number } => {
   if (minX !== Infinity && maxX !== -Infinity && minY !== Infinity && maxY !== -Infinity) {
     return { x: minX + (maxX - minX) / 2, y: minY + (maxY - minY) / 2 };
   }
-  return { x: lastMoveX || 0, y: lastMoveY || 0 };
+  return { x: lastMoveX || 0, y: lastMoveY || 0 }; // Fallback to last explicit move
 };
 
 
-export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: NigerianMapModalProps) {
+export function GhanaMapModal({ isOpen, onOpenChange, massesPerRegion }: GhanaMapModalProps) {
   const [primaryHsl, setPrimaryHsl] = React.useState({ h: 262, s: 52, l: 47 });
 
   React.useEffect(() => {
@@ -106,17 +108,17 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
     }
   }, [isOpen]);
 
-
-  const mapDataWithMasses: MapStateDataItem[] = React.useMemo(() => {
-    return nigerianMap.map(state => ({
-      name: state.name,
-      path: state.path,
-      massCount: massesPerState[state.name] || 0,
+  const mapDataWithMasses: MapRegionDataItem[] = React.useMemo(() => {
+    return ghanaMap.map(region => ({
+      name: region.name,
+      path: region.path,
+      code: region.code, // Keep ghana specific code if needed
+      massCount: massesPerRegion[region.name] || 0,
     }));
-  }, [massesPerState]);
+  }, [massesPerRegion]);
 
   const maxMasses = React.useMemo(() => {
-    const counts = mapDataWithMasses.map(s => s.massCount);
+    const counts = mapDataWithMasses.map(r => r.massCount);
     return Math.max(1, ...counts); 
   }, [mapDataWithMasses]);
 
@@ -128,6 +130,7 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
     if (massCount === 0) {
       opacity = baseOpacity;
     } else {
+      // Scale opacity from baseOpacity up to maxOpacity
       opacity = baseOpacity + (maxOpacity - baseOpacity) * (massCount / maxMasses);
     }
     opacity = Math.min(Math.max(opacity, baseOpacity), maxOpacity); 
@@ -137,50 +140,49 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
   
   const baseTextColor = primaryHsl.l > 60 ? 'hsl(var(--foreground))' : 'hsl(var(--primary-foreground))';
 
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl p-4 md:p-6">
         <DialogHeader>
-          <DialogTitle className="text-xl md:text-2xl font-headline text-center">Map of Masses in Nigeria</DialogTitle>
+          <DialogTitle className="text-xl md:text-2xl font-headline text-center">Map of Masses in Ghana</DialogTitle>
           <DialogDescription className="text-center text-muted-foreground">
-            Color intensity indicates the number of scheduled Masses. Hover or focus on a state to enlarge its text.
+            Color intensity indicates the number of scheduled Masses. Hover or focus on a region to enlarge its text.
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4 w-full aspect-[4/3] overflow-hidden rounded-md border">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 750 650" 
+              viewBox="0 0 800 900" // Adjusted for typical Ghana map coordinates
               className="w-full h-full"
             >
-              {mapDataWithMasses.map((state) => {
-                const { x, y } = getApproximateTextCoords(state.path);
-                const stateNameParts = state.name.split(' ');
-                const displayName = stateNameParts.length > 1 && state.name !== "FCT - Abuja" && state.name.length > 10 ? stateNameParts[0] : state.name;
+              {mapDataWithMasses.map((region) => {
+                const { x, y } = getApproximateTextCoords(region.path);
+                const regionNameParts = region.name.split(' ');
+                const displayName = regionNameParts.length > 1 && region.name.length > 10 && !region.name.includes("-") ? regionNameParts[0] : region.name;
                 
-                const pathLength = state.path.length; 
-                let baseFontSizeClass = 'text-[7px]';
-                let hoverFontSizeClass = 'group-hover:text-[14px] group-focus:text-[14px]';
+                const pathLength = region.path.length; 
+                let baseFontSizeClass = 'text-[6px]'; // Adjusted for potentially larger Ghana map
+                let hoverFontSizeClass = 'group-hover:text-[10px] group-focus:text-[10px]';
 
-                if (pathLength < 500 || state.name === "Lagos" || state.name === "FCT - Abuja" ) { // For very small states
+                if (pathLength < 500) { 
+                    baseFontSizeClass = 'text-[4px]';
+                    hoverFontSizeClass = 'group-hover:text-[7px] group-focus:text-[7px]';
+                } else if (pathLength < 1000) { 
                     baseFontSizeClass = 'text-[5px]';
-                    hoverFontSizeClass = 'group-hover:text-[12px] group-focus:text-[12px]';
-                } else if (pathLength < 1000) { // For small to medium states
-                    baseFontSizeClass = 'text-[6px]';
-                    hoverFontSizeClass = 'group-hover:text-[12px] group-focus:text-[12px]';
+                    hoverFontSizeClass = 'group-hover:text-[8px] group-focus:text-[8px]';
                 }
 
 
                 return (
                   <g 
-                    key={state.name} 
+                    key={region.name} 
                     className="group cursor-pointer outline-none" 
                     tabIndex={0} 
-                    aria-label={`${state.name}: ${state.massCount} ${state.massCount === 1 ? 'Mass' : 'Masses'}`}
+                    aria-label={`${region.name}: ${region.massCount} ${region.massCount === 1 ? 'Mass' : 'Masses'}`}
                   >
                     <path
-                      d={state.path}
-                      fill={getFillColor(state.massCount)}
+                      d={region.path}
+                      fill={getFillColor(region.massCount)}
                       stroke="hsl(var(--border))"
                       strokeWidth="0.5" 
                       className={cn(
@@ -194,14 +196,14 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
                       textAnchor="middle"
                       dominantBaseline="middle"
                       className={cn(
-                        "font-medium transition-all duration-150 ease-in-out fill-[--base-text-color] group-hover:fill-black group-focus:fill-black",
+                        "font-medium transition-all duration-150 ease-in-out group-hover:fill-black group-focus:fill-black",
                         baseFontSizeClass,
                         hoverFontSizeClass
                       )}
                       style={{ '--base-text-color': baseTextColor, pointerEvents: 'none', userSelect: 'none' } as React.CSSProperties}
                     >
-                       <tspan x={x} dy="-0.1em">{displayName}</tspan>
-                       <tspan x={x} dy="1.1em">({state.massCount} Masses)</tspan>
+                       <tspan x={x} dy="-0.2em">{displayName}</tspan>
+                       <tspan x={x} dy="1em">({region.massCount})</tspan>
                     </text>
                   </g>
                 );
@@ -212,4 +214,3 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
     </Dialog>
   );
 }
-

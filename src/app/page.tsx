@@ -12,6 +12,7 @@ import { DioceseSummaryModal } from '@/components/grid-accordion/diocese-summary
 import { StateSummaryModal } from '@/components/grid-accordion/state-summary-modal';
 import { LoginModal } from '@/components/auth/login-modal';
 import { NigerianMapModal } from '@/components/map/nigerian-map-modal';
+import { GhanaMapModal } from '@/components/map/ghana-map-modal'; // Added Ghana Map Modal
 import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData, PhotoUploadFormData, SummaryItem, LoginFormData as AdminLoginFormData, MassesPerState } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,7 @@ import { format as formatDateFns } from 'date-fns';
 import { nigerianDioceses } from '@/lib/nigerian-dioceses';
 import { nigerianStates } from '@/lib/nigerian-states';
 import { nigerianMap } from '@/lib/nigerian-map';
-
+import { ghanaMap } from '@/lib/ghana-map'; // Added Ghana map data
 
 const LOCAL_STORAGE_CURRENT_USER_KEY = 'currentUser';
 
@@ -69,7 +70,7 @@ export default function HomePage() {
   const [isDioceseSummaryModalOpen, setIsDioceseSummaryModalOpen] = React.useState(false);
   const [isStateSummaryModalOpen, setIsStateSummaryModalOpen] = React.useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = React.useState(false);
-
+  const [isGhanaMapModalOpen, setIsGhanaMapModalOpen] = React.useState(false); // State for Ghana map
 
   const [currentUser, setCurrentUser] = React.useState<string | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
@@ -87,7 +88,7 @@ export default function HomePage() {
           throw new Error('Failed to fetch collections');
         }
         const data: AccordionItemData[] = await response.json();
-        setAccordionItems(data.sort(sortCollections));
+        setAccordionItems(data.map(item => ({...item, country: item.country || "Nigeria"})).sort(sortCollections));
       } catch (error) {
         console.error("Error fetching collections:", error);
         toast({
@@ -179,12 +180,15 @@ export default function HomePage() {
     });
   };
 
+  const nigerianAccordionItems = React.useMemo(() => 
+    accordionItems.filter(item => item.country === "Nigeria" || !item.country) // Default to Nigeria if country is undefined
+  , [accordionItems]);
 
   const dioceseSummary = React.useMemo(() => {
-    if (!accordionItems.length) {
+    if (!nigerianAccordionItems.length) {
       return { count: 0, total: nigerianDioceses.length, breakdown: [] as SummaryItem[] };
     }
-    const diocesesInAccordion = accordionItems.map(item => item.diocese);
+    const diocesesInAccordion = nigerianAccordionItems.map(item => item.diocese);
     const uniqueDiocesesWithItems = new Set(diocesesInAccordion);
     const breakdownMap = new Map<string, number>();
     diocesesInAccordion.forEach(diocese => {
@@ -198,13 +202,13 @@ export default function HomePage() {
       total: nigerianDioceses.length,
       breakdown,
     };
-  }, [accordionItems]);
+  }, [nigerianAccordionItems]);
 
   const stateSummary = React.useMemo(() => {
-    if (!accordionItems.length) {
+    if (!nigerianAccordionItems.length) {
       return { count: 0, total: nigerianStates.length, breakdown: [] as SummaryItem[] };
     }
-    const statesInAccordion = accordionItems.map(item => item.state).filter(Boolean);
+    const statesInAccordion = nigerianAccordionItems.map(item => item.state).filter(Boolean);
     const uniqueStatesWithItems = new Set(statesInAccordion);
     const breakdownMap = new Map<string, number>();
     statesInAccordion.forEach(stateItem => {
@@ -220,19 +224,28 @@ export default function HomePage() {
       total: nigerianStates.length,
       breakdown,
     };
-  }, [accordionItems]);
+  }, [nigerianAccordionItems]);
 
   const massesPerStateForMap = React.useMemo(() => {
     const counts: MassesPerState = {};
-    nigerianMap.forEach(mapState => counts[mapState.name] = 0); // Initialize all map states with 0
+    nigerianMap.forEach(mapState => counts[mapState.name] = 0); 
 
-    accordionItems.forEach(item => {
-      // Ensure item.state exists and is a valid state name present in your nigerianMap data
+    nigerianAccordionItems.forEach(item => {
       if (item.state && counts.hasOwnProperty(item.state)) {
         counts[item.state]++;
-      } else if (item.state) {
-        // This can help identify if accordionItems have state names not in nigerianMap
-        // console.warn(`State "${item.state}" from accordion item not found in nigerianMap data.`);
+      }
+    });
+    return counts;
+  }, [nigerianAccordionItems]);
+
+  const massesPerGhanaRegion = React.useMemo(() => {
+    const counts: MassesPerState = {}; // Reusing MassesPerState type
+    ghanaMap.forEach(mapRegion => counts[mapRegion.name] = 0);
+
+    accordionItems.filter(item => item.country === "Ghana").forEach(item => {
+      // Assuming item.state will hold the region name for Ghana masses
+      if (item.state && counts.hasOwnProperty(item.state)) {
+        counts[item.state]++;
       }
     });
     return counts;
@@ -370,7 +383,8 @@ export default function HomePage() {
       id: newItemId,
       parishLocation: formData.parishLocation,
       diocese: formData.diocese,
-      state: formData.state,
+      state: formData.state, // This will be state or region
+      country: formData.country,
       date: formattedDate,
       time: formData.time,
       images: [], 
@@ -456,7 +470,8 @@ export default function HomePage() {
       ...editingItem,
       parishLocation: formData.parishLocation,
       diocese: formData.diocese,
-      state: formData.state,
+      state: formData.state, // This will be state or region
+      country: formData.country,
       date: formattedDate,
       time: formData.time,
     };
@@ -630,6 +645,7 @@ export default function HomePage() {
       item.parishLocation.toLowerCase().includes(lowercasedQuery) ||
       item.diocese.toLowerCase().includes(lowercasedQuery) ||
       (item.state && item.state.toLowerCase().includes(lowercasedQuery)) ||
+      (item.country && item.country.toLowerCase().includes(lowercasedQuery)) ||
       item.date.toLowerCase().includes(lowercasedQuery) ||
       item.time.toLowerCase().includes(lowercasedQuery)
     ); 
@@ -676,7 +692,7 @@ export default function HomePage() {
           <div className="relative flex justify-center items-center">
             <Input
               type="text"
-              placeholder="Filter by parish, diocese, state, or date..."
+              placeholder="Filter by parish, diocese, state, country or date..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
               className="w-full h-10 px-4 py-4 text-base rounded-none border-x-0 border-t-0 shadow-sm pr-10 placeholder:text-[#aaa]"
@@ -802,6 +818,12 @@ export default function HomePage() {
           massesPerState={massesPerStateForMap}
         />
         
+        <GhanaMapModal
+            isOpen={isGhanaMapModalOpen}
+            onOpenChange={setIsGhanaMapModalOpen}
+            massesPerRegion={massesPerGhanaRegion}
+        />
+        
         <footer className="text-center mt-12 py-6 border-t border-border">
           <div className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <p className="text-xs text-muted-foreground">
@@ -809,7 +831,10 @@ export default function HomePage() {
             </p>
             <div className="flex items-center space-x-3">
               <Button variant="link" onClick={() => setIsMapModalOpen(true)} className="text-xs p-0 h-auto">
-                <MapIcon className="mr-1 h-3 w-3" /> View Map
+                <MapIcon className="mr-1 h-3 w-3" /> View Nigeria Map
+              </Button>
+              <Button variant="link" onClick={() => setIsGhanaMapModalOpen(true)} className="text-xs p-0 h-auto">
+                <MapIcon className="mr-1 h-3 w-3" /> View Ghana Map
               </Button>
               {currentUser ? (
                 <Button variant="link" onClick={handleLogout} className="text-xs p-0 h-auto">
