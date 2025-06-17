@@ -5,13 +5,13 @@ import * as React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { NigerianMapModalProps, MapStateDataItem } from '@/types';
-import { nigerianMap } from '@/lib/nigerian-map'; 
+import { nigerianMap } from '@/lib/nigerian-map';
 import { cn } from '@/lib/utils';
 
 const getPrimaryHslValues = () => {
-  if (typeof window === 'undefined') return { h: 262, s: 52, l: 47 }; // Default for SSR
+  if (typeof window === 'undefined') return { h: 262, s: 52, l: 47 };
   const style = getComputedStyle(document.documentElement);
-  const primaryColor = style.getPropertyValue('--primary').trim(); 
+  const primaryColor = style.getPropertyValue('--primary').trim();
   const [h, s, l] = primaryColor.split(' ').map(v => parseFloat(v.replace('%', '')));
   return { h, s, l };
 };
@@ -21,7 +21,7 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
   const [primaryHsl, setPrimaryHsl] = React.useState({ h: 262, s: 52, l: 47 });
 
   React.useEffect(() => {
-    if (isOpen && typeof window !== 'undefined') { 
+    if (isOpen && typeof window !== 'undefined') {
       setPrimaryHsl(getPrimaryHslValues());
     }
   }, [isOpen]);
@@ -37,20 +37,20 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
 
   const maxMasses = React.useMemo(() => {
     const counts = mapDataWithMasses.map(s => s.massCount);
-    return Math.max(1, ...counts); 
+    return Math.max(1, ...counts);
   }, [mapDataWithMasses]);
 
   const getFillColor = (massCount: number) => {
-    const baseOpacity = 0.2; 
-    const maxOpacity = 1.0;   
-    
+    const baseOpacity = 0.2;
+    const maxOpacity = 1.0;
+
     let opacity;
     if (massCount === 0) {
       opacity = baseOpacity;
     } else {
       opacity = baseOpacity + (maxOpacity - baseOpacity) * (massCount / maxMasses);
     }
-    opacity = Math.min(Math.max(opacity, baseOpacity), maxOpacity); 
+    opacity = Math.min(Math.max(opacity, baseOpacity), maxOpacity);
 
     return `hsla(${primaryHsl.h}, ${primaryHsl.s}%, ${primaryHsl.l}%, ${opacity})`;
   };
@@ -64,39 +64,36 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
             Hover over a state to see details. Color intensity indicates the number of scheduled Masses.
           </DialogDescription>
         </DialogHeader>
-        <div className="mt-4 w-full aspect-[4/3] overflow-hidden rounded-md border">
-          <TooltipProvider delayDuration={0}> {/* Set delayDuration to 0 for immediate tooltip appearance */}
+        <div className="mt-4 w-full aspect-[4/3] overflow-visible rounded-md border">
+          <TooltipProvider delayDuration={0}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 750 650" 
+              viewBox="0 0 750 650"
               className="w-full h-full"
-              aria-label="Map of Nigeria showing mass distribution"
             >
-              <g>
-                {mapDataWithMasses.map((state) => (
-                  <Tooltip key={state.name}>
-                    <TooltipTrigger asChild>
-                      <g 
-                        tabIndex={0} 
-                        className="focus:outline-none group cursor-pointer" // Added cursor-pointer for visual feedback
-                      >
-                        <path
-                          d={state.path}
-                          fill={getFillColor(state.massCount)}
-                          stroke="hsl(var(--border))" 
-                          strokeWidth="1"
-                          className="transition-opacity duration-150 group-hover:opacity-70 group-focus:opacity-70"
-                          aria-label={`${state.name}: ${state.massCount} ${state.massCount === 1 ? 'Mass' : 'Masses'}`}
-                        />
-                      </g>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="font-semibold">{state.name}</p>
-                      <p>{state.massCount} {state.massCount === 1 ? 'Mass' : 'Masses'} scheduled</p>
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
-              </g>
+              {mapDataWithMasses.map((state) => (
+                <Tooltip key={state.name}>
+                  <TooltipTrigger asChild>
+                    <g
+                      className="cursor-pointer group"
+                      tabIndex={0}
+                      style={{ pointerEvents: 'all' }} // Explicitly make <g> the event target
+                    >
+                      <path
+                        d={state.path}
+                        fill={getFillColor(state.massCount)}
+                        stroke="hsl(var(--border))"
+                        strokeWidth="1"
+                        className="transition-opacity duration-150 group-hover:opacity-70 group-focus:opacity-70"
+                      />
+                    </g>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" avoidCollisions>
+                    <p className="font-semibold">{state.name}</p>
+                    <p>{state.massCount} {state.massCount === 1 ? 'Mass' : 'Masses'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
             </svg>
           </TooltipProvider>
         </div>
@@ -104,4 +101,3 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
     </Dialog>
   );
 }
-
