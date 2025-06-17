@@ -11,42 +11,40 @@ const getPrimaryHslValues = () => {
   if (typeof window === 'undefined') return { h: 262, s: 52, l: 47 }; // Default primary
   const style = getComputedStyle(document.documentElement);
   const primaryColor = style.getPropertyValue('--primary').trim();
-  const [h, s, l] = primaryColor.split(' ').map(v => parseFloat(v.replace('%', '')));
-  return { h, s, l };
+  if (!primaryColor) return { h: 262, s: 52, l: 47 }; // Fallback
+  const parts = primaryColor.split(' ').map(v => parseFloat(v.replace('%', '')));
+  if (parts.length === 3 && !parts.some(isNaN)) {
+    return { h: parts[0], s: parts[1], l: parts[2] };
+  }
+  return { h: 262, s: 52, l: 47 }; // Fallback if parsing fails
 };
 
-// Helper function to get approximate center for text.
-// This is a simplified bounding box calculation and might not be perfect for all complex paths.
 const getApproximateTextCoords = (path: string): { x: number; y: number } => {
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   let currentX = 0, currentY = 0;
-  let lastMoveX = 0, lastMoveY = 0; // Store the coords of the last M/m command
+  let lastMoveX = 0, lastMoveY = 0; 
 
-  // Simplified parsing of path commands and their coordinates
   const commands = path.match(/[a-df-z][^a-df-z]*/ig) || [];
 
   commands.forEach(commandStr => {
     const command = commandStr[0];
     const values = commandStr.substring(1).trim().split(/[ ,]+/).map(parseFloat).filter(v => !isNaN(v));
 
-    // let tempX = currentX;
-    // let tempY = currentY;
-
     if ((command === 'M' || command === 'm') && values.length >= 2) {
-        if (command === 'M') { // Absolute moveto
+        if (command === 'M') { 
             currentX = values[0];
             currentY = values[1];
-        } else { // Relative moveto
+        } else { 
             currentX += values[0];
             currentY += values[1];
         }
-        lastMoveX = currentX; // Store the first M/m as a fallback
+        lastMoveX = currentX; 
         lastMoveY = currentY;
         minX = Math.min(minX, currentX);
         maxX = Math.max(maxX, currentX);
         minY = Math.min(minY, currentY);
         maxY = Math.max(maxY, currentY);
-        // Process remaining pairs in M/m (implicit L/l)
+        
         for (let i = 2; i < values.length; i += 2) {
             if (command === 'M') {
                 currentX = values[i]; currentY = values[i+1];
@@ -78,14 +76,12 @@ const getApproximateTextCoords = (path: string): { x: number; y: number } => {
             }
         }
     }
-    // Basic handling for curves by just taking their end points for bounding box
-    // This is a simplification; true bounding box of curves is more complex.
     else if ( (command === 'C' || command === 'c' || command === 'S' || command === 's' || command === 'Q' || command === 'q' || command === 'T' || command === 't' || command === 'A' || command === 'a') && values.length >=2) {
         const lastValIndex = values.length -1;
-        if (command === command.toLowerCase()) { // relative
+        if (command === command.toLowerCase()) { 
             currentX += values[lastValIndex-1];
             currentY += values[lastValIndex];
-        } else { // absolute
+        } else { 
             currentX = values[lastValIndex-1];
             currentY = values[lastValIndex];
         }
@@ -97,7 +93,6 @@ const getApproximateTextCoords = (path: string): { x: number; y: number } => {
   if (minX !== Infinity && maxX !== -Infinity && minY !== Infinity && maxY !== -Infinity) {
     return { x: minX + (maxX - minX) / 2, y: minY + (maxY - minY) / 2 };
   }
-  // Fallback to the first explicit move-to coordinates if bounding box is degenerate
   return { x: lastMoveX || 0, y: lastMoveY || 0 };
 };
 
@@ -122,27 +117,25 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
 
   const maxMasses = React.useMemo(() => {
     const counts = mapDataWithMasses.map(s => s.massCount);
-    return Math.max(1, ...counts); // Ensure maxMasses is at least 1 to avoid division by zero
+    return Math.max(1, ...counts); 
   }, [mapDataWithMasses]);
 
   const getFillColor = (massCount: number) => {
-    const baseOpacity = 0.2; // Base opacity for states with 0 masses
-    const maxOpacity = 1.0;  // Max opacity for state with most masses
+    const baseOpacity = 0.2; 
+    const maxOpacity = 1.0;  
 
     let opacity;
     if (massCount === 0) {
       opacity = baseOpacity;
     } else {
-      // Scale opacity from baseOpacity up to maxOpacity
       opacity = baseOpacity + (maxOpacity - baseOpacity) * (massCount / maxMasses);
     }
-    opacity = Math.min(Math.max(opacity, baseOpacity), maxOpacity); // Clamp opacity
+    opacity = Math.min(Math.max(opacity, baseOpacity), maxOpacity); 
 
     return `hsla(${primaryHsl.h}, ${primaryHsl.s}%, ${primaryHsl.l}%, ${opacity})`;
   };
   
-  // Determine text color based on primary color lightness for contrast
-  const textColor = primaryHsl.l > 50 ? 'hsl(var(--foreground))' : 'hsl(var(--primary-foreground))';
+  const baseTextColor = primaryHsl.l > 60 ? 'hsl(var(--foreground))' : 'hsl(var(--primary-foreground))';
 
 
   return (
@@ -157,22 +150,22 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
         <div className="mt-4 w-full aspect-[4/3] overflow-hidden rounded-md border">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 750 650" // Adjusted viewBox if necessary based on path coordinates
+              viewBox="0 0 750 650" 
               className="w-full h-full"
             >
               {mapDataWithMasses.map((state) => {
                 const { x, y } = getApproximateTextCoords(state.path);
                 const stateNameParts = state.name.split(' ');
-                const displayName = stateNameParts.length > 1 && state.name !== "FCT - Abuja" ? stateNameParts[0] : state.name;
+                const displayName = stateNameParts.length > 1 && state.name !== "FCT - Abuja" && state.name.length > 10 ? stateNameParts[0] : state.name;
                 
-                const pathLength = state.path.length; // Used as a proxy for state size
+                const pathLength = state.path.length; 
                 let baseFontSizeClass = 'text-[7px]';
                 let hoverFontSizeClass = 'group-hover:text-[10px] group-focus:text-[10px]';
 
-                if (pathLength < 500) {
+                if (pathLength < 500 || state.name === "Lagos" || state.name === "FCT - Abuja" ) { // For very small states
                     baseFontSizeClass = 'text-[5px]';
                     hoverFontSizeClass = 'group-hover:text-[8px] group-focus:text-[8px]';
-                } else if (pathLength < 1000 || state.name === "Lagos" || state.name === "FCT - Abuja") {
+                } else if (pathLength < 1000) { // For small to medium states
                     baseFontSizeClass = 'text-[6px]';
                     hoverFontSizeClass = 'group-hover:text-[9px] group-focus:text-[9px]';
                 }
@@ -190,22 +183,25 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
                       fill={getFillColor(state.massCount)}
                       stroke="hsl(var(--border))"
                       strokeWidth="0.5" 
-                      className="transition-opacity duration-150 group-hover:opacity-70 group-focus:opacity-70"
+                      className={cn(
+                        "transition-colors duration-150",
+                        "group-hover:fill-green-500 group-focus:fill-green-500" 
+                      )}
                     />
                     <text
                       x={x}
                       y={y}
-                      fill={textColor}
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      style={{ pointerEvents: 'none', userSelect: 'none' }}
                       className={cn(
-                        "font-medium transition-all duration-150 ease-in-out",
+                        "font-medium transition-all duration-150 ease-in-out fill-[--base-text-color] group-hover:fill-black group-focus:fill-black",
                         baseFontSizeClass,
                         hoverFontSizeClass
                       )}
+                      style={{ '--base-text-color': baseTextColor, pointerEvents: 'none', userSelect: 'none' } as React.CSSProperties}
                     >
-                      {`${displayName} (${state.massCount})`}
+                       <tspan x={x} dy="-0.1em">{displayName}</tspan>
+                       <tspan x={x} dy="1.1em">({state.massCount})</tspan>
                     </text>
                   </g>
                 );
