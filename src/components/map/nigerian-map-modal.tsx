@@ -29,8 +29,8 @@ const getApproximateTextCoords = (path: string): { x: number; y: number } => {
     const command = commandStr[0];
     const values = commandStr.substring(1).trim().split(/[ ,]+/).map(parseFloat).filter(v => !isNaN(v));
 
-    let tempX = currentX;
-    let tempY = currentY;
+    // let tempX = currentX;
+    // let tempY = currentY;
 
     if ((command === 'M' || command === 'm') && values.length >= 2) {
         if (command === 'M') { // Absolute moveto
@@ -58,13 +58,17 @@ const getApproximateTextCoords = (path: string): { x: number; y: number } => {
         }
     } else if ((command === 'L' || command === 'l' || command === 'H' || command === 'h' || command === 'V' || command === 'v') && values.length > 0) {
         for (let i = 0; i < values.length; ) {
-            if (command === 'L') { currentX = values[i++]; currentY = values[i++]; }
-            else if (command === 'l') { currentX += values[i++]; currentY += values[i++]; }
-            else if (command === 'H') { currentX = values[i++]; }
-            else if (command === 'h') { currentX += values[i++]; }
-            else if (command === 'V') { currentY = values[i++]; }
-            else if (command === 'v') { currentY += values[i++]; }
-            else { i++; continue; } // Should not happen with current regex but good for safety
+            let val1: number | undefined, val2: number | undefined;
+            if (command === 'L') { val1 = values[i++]; val2 = values[i++]; }
+            else if (command === 'l') { val1 = currentX + values[i++]; val2 = currentY + values[i++]; }
+            else if (command === 'H') { val1 = values[i++]; val2 = currentY; }
+            else if (command === 'h') { val1 = currentX + values[i++]; val2 = currentY; }
+            else if (command === 'V') { val1 = currentX; val2 = values[i++]; }
+            else if (command === 'v') { val1 = currentX; val2 = currentY + values[i++]; }
+            else { i++; continue; }
+
+            if (val1 !== undefined) currentX = val1;
+            if (val2 !== undefined) currentY = val2;
 
             if (currentX !== undefined) {
               minX = Math.min(minX, currentX); maxX = Math.max(maxX, currentX);
@@ -147,7 +151,7 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
         <DialogHeader>
           <DialogTitle className="text-xl md:text-2xl font-headline text-center">Map of Masses in Nigeria</DialogTitle>
           <DialogDescription className="text-center text-muted-foreground">
-            Color intensity indicates the number of scheduled Masses.
+            Color intensity indicates the number of scheduled Masses. Hover or focus on a state to enlarge its text.
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4 w-full aspect-[4/3] overflow-hidden rounded-md border">
@@ -161,32 +165,45 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
                 const stateNameParts = state.name.split(' ');
                 const displayName = stateNameParts.length > 1 && state.name !== "FCT - Abuja" ? stateNameParts[0] : state.name;
                 
-                // Heuristic to scale font size, very basic
-                const pathLength = state.path.length;
-                let fontSize = "7px";
-                if (pathLength < 1000) fontSize = "6px"; // Smaller states get smaller font
-                if (pathLength < 500) fontSize = "5px"; 
-                if (state.name === "Lagos" || state.name === "FCT - Abuja") fontSize = "6px";
+                const pathLength = state.path.length; // Used as a proxy for state size
+                let baseFontSizeClass = 'text-[7px]';
+                let hoverFontSizeClass = 'group-hover:text-[10px] group-focus:text-[10px]';
+
+                if (pathLength < 500) {
+                    baseFontSizeClass = 'text-[5px]';
+                    hoverFontSizeClass = 'group-hover:text-[8px] group-focus:text-[8px]';
+                } else if (pathLength < 1000 || state.name === "Lagos" || state.name === "FCT - Abuja") {
+                    baseFontSizeClass = 'text-[6px]';
+                    hoverFontSizeClass = 'group-hover:text-[9px] group-focus:text-[9px]';
+                }
 
 
                 return (
-                  <g key={state.name} className="group" tabIndex={0} aria-label={`${state.name}: ${state.massCount} ${state.massCount === 1 ? 'Mass' : 'Masses'}`}>
+                  <g 
+                    key={state.name} 
+                    className="group cursor-pointer" 
+                    tabIndex={0} 
+                    aria-label={`${state.name}: ${state.massCount} ${state.massCount === 1 ? 'Mass' : 'Masses'}`}
+                  >
                     <path
                       d={state.path}
                       fill={getFillColor(state.massCount)}
                       stroke="hsl(var(--border))"
-                      strokeWidth="0.5" // Thinner stroke for better text visibility
+                      strokeWidth="0.5" 
                       className="transition-opacity duration-150 group-hover:opacity-70 group-focus:opacity-70"
                     />
                     <text
                       x={x}
                       y={y}
-                      fontSize={fontSize}
                       fill={textColor}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       style={{ pointerEvents: 'none', userSelect: 'none' }}
-                      className="font-medium"
+                      className={cn(
+                        "font-medium transition-all duration-150 ease-in-out",
+                        baseFontSizeClass,
+                        hoverFontSizeClass
+                      )}
                     >
                       {`${displayName} (${state.massCount})`}
                     </text>
