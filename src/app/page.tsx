@@ -11,14 +11,17 @@ import { DeleteConfirmModal } from '@/components/grid-accordion/delete-confirm-m
 import { DioceseSummaryModal } from '@/components/grid-accordion/diocese-summary-modal';
 import { StateSummaryModal } from '@/components/grid-accordion/state-summary-modal';
 import { LoginModal } from '@/components/auth/login-modal';
-import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData, PhotoUploadFormData, SummaryItem, LoginFormData as AdminLoginFormData } from '@/types';
+import { NigerianMapModal } from '@/components/map/nigerian-map-modal';
+import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData, PhotoUploadFormData, SummaryItem, LoginFormData as AdminLoginFormData, MassesPerState } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Loader2, LogIn, LogOut, XIcon } from 'lucide-react';
+import { PlusCircle, Loader2, LogIn, LogOut, XIcon, MapIcon } from 'lucide-react';
 import { format as formatDateFns } from 'date-fns';
 import { nigerianDioceses } from '@/lib/nigerian-dioceses';
 import { nigerianStates } from '@/lib/nigerian-states';
+import { nigerianMap } from '@/lib/nigerian-map';
+
 
 const LOCAL_STORAGE_CURRENT_USER_KEY = 'currentUser';
 
@@ -65,6 +68,8 @@ export default function HomePage() {
 
   const [isDioceseSummaryModalOpen, setIsDioceseSummaryModalOpen] = React.useState(false);
   const [isStateSummaryModalOpen, setIsStateSummaryModalOpen] = React.useState(false);
+  const [isMapModalOpen, setIsMapModalOpen] = React.useState(false);
+
 
   const [currentUser, setCurrentUser] = React.useState<string | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
@@ -114,8 +119,7 @@ export default function HomePage() {
         setDefaultOpenAccordionItem(hashId);
 
         setTimeout(() => {
-          //const element = document.querySelector(`[data-radix-accordion-item="${hashId}"]`);
-          const element = document.querySelector(`[data-state="open"]`);
+          const element = document.querySelector(`[data-radix-accordion-item="${hashId}"]`);
           const stickyHeader = document.querySelector('.sticky.top-0.z-50') as HTMLElement;
           
           if (element && stickyHeader) {
@@ -217,6 +221,23 @@ export default function HomePage() {
       breakdown,
     };
   }, [accordionItems]);
+
+  const massesPerStateForMap = React.useMemo(() => {
+    const counts: MassesPerState = {};
+    nigerianMap.forEach(mapState => counts[mapState.name] = 0); // Initialize all map states with 0
+
+    accordionItems.forEach(item => {
+      // Ensure item.state exists and is a valid state name present in your nigerianMap data
+      if (item.state && counts.hasOwnProperty(item.state)) {
+        counts[item.state]++;
+      } else if (item.state) {
+        // This can help identify if accordionItems have state names not in nigerianMap
+        // console.warn(`State "${item.state}" from accordion item not found in nigerianMap data.`);
+      }
+    });
+    return counts;
+  }, [accordionItems]);
+
 
   const handleUploadRequest = (item: AccordionItemData) => {
     setActiveItemIdForUpload(item.id);
@@ -774,21 +795,32 @@ export default function HomePage() {
           onOpenChange={setIsLoginModalOpen}
           onLoginSubmit={handleLogin}
         />
+
+        <NigerianMapModal
+          isOpen={isMapModalOpen}
+          onOpenChange={setIsMapModalOpen}
+          massesPerState={massesPerStateForMap}
+        />
         
         <footer className="text-center mt-12 py-6 border-t border-border">
-          <div className="flex justify-center items-center space-x-4">
+          <div className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <p className="text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} Masses of St Josemaria <br/> <a href="mailto:patxiworks@gmail.com" className="text-[10px]">by Telluris</a>.
+              &copy; {new Date().getFullYear()} Masses of St Josemaria <br className="sm:hidden"/> <a href="mailto:patxiworks@gmail.com" className="text-[10px]">by Telluris</a>.
             </p>
-            {currentUser ? (
-              <Button variant="link" onClick={handleLogout} className="text-xs p-0 h-auto">
-                <LogOut className="mr-1 h-3 w-3" /> Logout ({currentUser})
+            <div className="flex items-center space-x-3">
+              <Button variant="link" onClick={() => setIsMapModalOpen(true)} className="text-xs p-0 h-auto">
+                <MapIcon className="mr-1 h-3 w-3" /> View Map
               </Button>
-            ) : (
-              <Button variant="link" onClick={() => setIsLoginModalOpen(true)} className="text-xs p-0 h-auto">
-                <LogIn className="mr-1 h-3 w-3" /> Admin Login
-              </Button>
-            )}
+              {currentUser ? (
+                <Button variant="link" onClick={handleLogout} className="text-xs p-0 h-auto">
+                  <LogOut className="mr-1 h-3 w-3" /> Logout ({currentUser})
+                </Button>
+              ) : (
+                <Button variant="link" onClick={() => setIsLoginModalOpen(true)} className="text-xs p-0 h-auto">
+                  <LogIn className="mr-1 h-3 w-3" /> Admin Login
+                </Button>
+              )}
+            </div>
           </div>
         </footer>
       </div>

@@ -65,3 +65,20 @@ export interface StateSummaryModalProps {
   summaryData: SummaryItem[];
   onApplyFilter: (filterTerm: string) => void;
 }
+
+// For Nigerian Map Modal
+export interface MassesPerState {
+  [stateName: string]: number;
+}
+
+export interface NigerianMapModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  massesPerState: MassesPerState;
+}
+
+export interface MapStateDataItem {
+  name: string;
+  path: string;
+  massCount: number;
+}
