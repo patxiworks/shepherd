@@ -99,10 +99,14 @@ const getApproximateTextCoords = (path: string): { x: number; y: number } => {
 
 export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: NigerianMapModalProps) {
   const [primaryHsl, setPrimaryHsl] = React.useState({ h: 262, s: 52, l: 47 });
+  const [hoveredState, setHoveredState] = React.useState<MapStateDataItem | null>(null);
 
   React.useEffect(() => {
     if (isOpen && typeof window !== 'undefined') {
       setPrimaryHsl(getPrimaryHslValues());
+    }
+    if (!isOpen) {
+      setHoveredState(null); // Reset hovered state when modal closes
     }
   }, [isOpen]);
 
@@ -143,11 +147,11 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
       <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl p-4 md:p-6">
         <DialogHeader>
           <DialogTitle className="text-xl md:text-2xl font-headline text-center">Map of Masses in Nigeria</DialogTitle>
-          <DialogDescription className="text-center text-muted-foreground">
-            Color intensity indicates the number of scheduled Masses. Hover or focus on a state to enlarge its text.
+          <DialogDescription className="text-xs text-center text-muted-foreground">
+            Color intensity indicates the number of scheduled Masses
           </DialogDescription>
         </DialogHeader>
-        <div className="mt-4 w-full aspect-[4/3] overflow-hidden rounded-md border">
+        <div className="mt-0 w-full aspect-[4/3] overflow-hidden rounded-md border">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 750 650" 
@@ -177,6 +181,10 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
                     className="group cursor-pointer outline-none" 
                     tabIndex={0} 
                     aria-label={`${state.name}: ${state.massCount} ${state.massCount === 1 ? 'Mass' : 'Masses'}`}
+                    onMouseEnter={() => setHoveredState(state)}
+                    onMouseLeave={() => setHoveredState(null)}
+                    onFocus={() => setHoveredState(state)}
+                    onBlur={() => setHoveredState(null)}
                   >
                     <path
                       d={state.path}
@@ -207,6 +215,18 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
                 );
               })}
             </svg>
+        </div>
+        <div className="md:w-1/4 p-4 border rounded-md bg-card flex flex-col justify-center items-center md:items-start">
+          {hoveredState ? (
+            <>
+              <h3 className="text-lg font-semibold text-primary">{hoveredState.name}</h3>
+              <p className="text-muted-foreground">
+                {hoveredState.massCount} {hoveredState.massCount === 1 ? 'Mass' : 'Masses'}
+              </p>
+            </>
+          ) : (
+            <p className="text-muted-foreground text-center md:text-left">Hover over or focus on a region to see details.</p>
+          )}
         </div>
       </DialogContent>
     </Dialog>

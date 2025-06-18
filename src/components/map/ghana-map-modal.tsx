@@ -65,11 +65,11 @@ export function GhanaMapModal({ isOpen, onOpenChange, massesPerRegion }: GhanaMa
       <DialogContent className="sm:max-w-3xl md:max-w-4xl lg:max-w-5xl p-4 md:p-6">
         <DialogHeader>
           <DialogTitle className="text-xl md:text-2xl font-headline text-center">Map of Masses in Ghana</DialogTitle>
-          <DialogDescription className="text-center text-muted-foreground">
-            Color intensity indicates the number of scheduled Masses. Hover or focus on a region to see details.
+          <DialogDescription className="text-xs text-center text-muted-foreground">
+            Color intensity indicates the number of scheduled Masses
           </DialogDescription>
         </DialogHeader>
-        <div className="mt-4 flex flex-col md:flex-row gap-4">
+        <div className="mt-0 flex flex-col md:flex-row gap-4">
           <div className="md:w-3/4 aspect-[4/3] overflow-hidden rounded-md border">
             <svg
               xmlns="http://www.w3.org/2000/svg"

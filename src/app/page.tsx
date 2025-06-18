@@ -672,30 +672,49 @@ export default function HomePage() {
     <>
       <div className="sticky top-0 z-50 bg-background shadow-sm">
         <div className="main-header border-b border-t-2 border-black">
-          <header className="mx-auto container pt-20 pb-2 px-4 text-left">
+          <header className="relative mx-auto container pt-20 pb-2 px-4 text-left">
+            <div className="absolute top-0 left-0 w-full pl-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="link" className="text-sm p-0 h-auto outline-none hover:no-underline hover:text-primary/70 focus-visible:ring-0">
+                    {/* <MapIcon className="mr-1 h-3 w-3" /> */}
+                    Maps
+                    <ChevronDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setIsMapModalOpen(true)}>
+                    Nigeria
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsGhanaMapModalOpen(true)}>
+                    Ghana
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <div className="w-full text-xs text-muted-foreground">Masses on the</div>
             <h1 className="w-[220px] sm:w-full leading-none text-lg sm:text-xl md:text-2xl font-headline font-bold mb-3">
               50th anniversary of <br/>St. Josemaría in heaven!
             </h1>
             <div className="text-xs sm:text-lg text-muted-foreground font-body flex justify-start items-center space-x-2">
-              <Button variant="link" onClick={() => setIsDioceseSummaryModalOpen(true)} className="p-0 h-auto text-md">
+              <Button variant="link" onClick={() => setIsDioceseSummaryModalOpen(true)} className="p-0 h-auto text-md hover:no-underline hover:text-primary/70">
                 Dioceses ({dioceseSummary.count}/{dioceseSummary.total})
               </Button>
               <span>|</span>
-              <Button variant="link" onClick={() => setIsStateSummaryModalOpen(true)} className="p-0 h-auto text-md">
+              <Button variant="link" onClick={() => setIsStateSummaryModalOpen(true)} className="p-0 h-auto text-md hover:no-underline hover:text-primary/70">
                 States ({stateSummary.count}/{stateSummary.total})
               </Button>
             </div>
           </header>
         </div>
-        <div className="container mx-auto sm:px-4 sm:py-3">
+        <div className="container mx-auto sm:px-4 sm:py-3 sm:border-b-1 sm:shadow-sm">
           <div className="relative flex justify-center items-center">
             <Input
               type="text"
               placeholder="Filter by parish, diocese, state, country or date..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
-              className="w-full h-10 px-4 py-4 text-base rounded-none border-x-0 border-t-0 shadow-sm pr-10 placeholder:text-[#aaa]"
+              className="w-full h-10 px-4 py-4 text-base rounded-none border-x-0 border-t-0 shadow-sm sm:border-0 sm:shadow-none pr-10 placeholder:text-[#aaa]"
             />
             {filterQuery && (
               <Button
@@ -830,23 +849,6 @@ export default function HomePage() {
               &copy; {new Date().getFullYear()} Masses of St Josemaria <br className="sm:hidden"/> <a href="mailto:patxiworks@gmail.com" className="text-[10px]">by Telluris</a>.
             </p>
             <div className="flex items-center space-x-3">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="link" className="text-xs p-0 h-auto">
-                    <MapIcon className="mr-1 h-3 w-3" />
-                    Maps
-                    <ChevronDown className="ml-1 h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setIsMapModalOpen(true)}>
-                    Nigeria Map
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setIsGhanaMapModalOpen(true)}>
-                    Ghana Map
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
               {currentUser ? (
                 <Button variant="link" onClick={handleLogout} className="text-xs p-0 h-auto">
                   <LogOut className="mr-1 h-3 w-3" /> Logout ({currentUser})
