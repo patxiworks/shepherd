@@ -12,17 +12,18 @@ import { DioceseSummaryModal } from '@/components/grid-accordion/diocese-summary
 import { StateSummaryModal } from '@/components/grid-accordion/state-summary-modal';
 import { LoginModal } from '@/components/auth/login-modal';
 import { NigerianMapModal } from '@/components/map/nigerian-map-modal';
-import { GhanaMapModal } from '@/components/map/ghana-map-modal'; // Added Ghana Map Modal
+import { GhanaMapModal } from '@/components/map/ghana-map-modal';
 import type { AccordionItemData, ImageData, NewCollectionFormData as CollectionFormSubmitData, PhotoUploadFormData, SummaryItem, LoginFormData as AdminLoginFormData, MassesPerState } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Loader2, LogIn, LogOut, XIcon, MapIcon } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { PlusCircle, Loader2, LogIn, LogOut, XIcon, MapIcon, ChevronDown } from 'lucide-react';
 import { format as formatDateFns } from 'date-fns';
 import { nigerianDioceses } from '@/lib/nigerian-dioceses';
 import { nigerianStates } from '@/lib/nigerian-states';
 import { nigerianMap } from '@/lib/nigerian-map';
-import { ghanaMap } from '@/lib/ghana-map'; // Added Ghana map data
+import { ghanaMap } from '@/lib/ghana-map';
 
 const LOCAL_STORAGE_CURRENT_USER_KEY = 'currentUser';
 
@@ -70,7 +71,7 @@ export default function HomePage() {
   const [isDioceseSummaryModalOpen, setIsDioceseSummaryModalOpen] = React.useState(false);
   const [isStateSummaryModalOpen, setIsStateSummaryModalOpen] = React.useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = React.useState(false);
-  const [isGhanaMapModalOpen, setIsGhanaMapModalOpen] = React.useState(false); // State for Ghana map
+  const [isGhanaMapModalOpen, setIsGhanaMapModalOpen] = React.useState(false);
 
   const [currentUser, setCurrentUser] = React.useState<string | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
@@ -181,7 +182,7 @@ export default function HomePage() {
   };
 
   const nigerianAccordionItems = React.useMemo(() => 
-    accordionItems.filter(item => item.country === "Nigeria" || !item.country) // Default to Nigeria if country is undefined
+    accordionItems.filter(item => item.country === "Nigeria" || !item.country)
   , [accordionItems]);
 
   const dioceseSummary = React.useMemo(() => {
@@ -239,11 +240,10 @@ export default function HomePage() {
   }, [nigerianAccordionItems]);
 
   const massesPerGhanaRegion = React.useMemo(() => {
-    const counts: MassesPerState = {}; // Reusing MassesPerState type
+    const counts: MassesPerState = {}; 
     ghanaMap.forEach(mapRegion => counts[mapRegion.name] = 0);
 
     accordionItems.filter(item => item.country === "Ghana").forEach(item => {
-      // Assuming item.state will hold the region name for Ghana masses
       if (item.state && counts.hasOwnProperty(item.state)) {
         counts[item.state]++;
       }
@@ -383,7 +383,7 @@ export default function HomePage() {
       id: newItemId,
       parishLocation: formData.parishLocation,
       diocese: formData.diocese,
-      state: formData.state, // This will be state or region
+      state: formData.state, 
       country: formData.country,
       date: formattedDate,
       time: formData.time,
@@ -470,7 +470,7 @@ export default function HomePage() {
       ...editingItem,
       parishLocation: formData.parishLocation,
       diocese: formData.diocese,
-      state: formData.state, // This will be state or region
+      state: formData.state, 
       country: formData.country,
       date: formattedDate,
       time: formData.time,
@@ -830,12 +830,23 @@ export default function HomePage() {
               &copy; {new Date().getFullYear()} Masses of St Josemaria <br className="sm:hidden"/> <a href="mailto:patxiworks@gmail.com" className="text-[10px]">by Telluris</a>.
             </p>
             <div className="flex items-center space-x-3">
-              <Button variant="link" onClick={() => setIsMapModalOpen(true)} className="text-xs p-0 h-auto">
-                <MapIcon className="mr-1 h-3 w-3" /> View Nigeria Map
-              </Button>
-              <Button variant="link" onClick={() => setIsGhanaMapModalOpen(true)} className="text-xs p-0 h-auto">
-                <MapIcon className="mr-1 h-3 w-3" /> View Ghana Map
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="link" className="text-xs p-0 h-auto">
+                    <MapIcon className="mr-1 h-3 w-3" />
+                    Maps
+                    <ChevronDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setIsMapModalOpen(true)}>
+                    Nigeria Map
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsGhanaMapModalOpen(true)}>
+                    Ghana Map
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               {currentUser ? (
                 <Button variant="link" onClick={handleLogout} className="text-xs p-0 h-auto">
                   <LogOut className="mr-1 h-3 w-3" /> Logout ({currentUser})
@@ -853,5 +864,8 @@ export default function HomePage() {
   );
 }
     
+
+    
+
 
     

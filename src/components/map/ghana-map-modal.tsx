@@ -90,11 +90,11 @@ export function GhanaMapModal({ isOpen, onOpenChange, massesPerRegion }: GhanaMa
                   <path
                     d={region.path}
                     fill={getFillColor(region.massCount)}
-                    stroke="hsl(var(--border))"
+                    stroke="#666666" //hsl(var(--border))"
                     strokeWidth="0.5"
                     className={cn(
                       "transition-colors duration-150",
-                      "group-hover:fill-green-500 group-focus:fill-green-500"
+                      "group-hover:fill-[#FCD116] group-focus:fill-[#FCD116]"
                     )}
                   />
                 </g>
