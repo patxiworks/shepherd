@@ -186,8 +186,8 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState, accordi
                         className="group cursor-pointer outline-none" 
                         tabIndex={0} 
                         aria-label={`${state.name}: ${state.massCount} ${state.massCount === 1 ? 'Mass' : 'Masses'}`}
-                        onMouseEnter={() => setHoveredState(state)}
-                        onMouseLeave={() => setHoveredState(null)}
+                        //onMouseEnter={() => setHoveredState(state)}
+                        //onMouseLeave={() => setHoveredState(null)}
                         onFocus={() => setHoveredState(state)}
                         onBlur={() => setTimeout(() => {
                             const nextFocusedElement = document.activeElement;
@@ -229,7 +229,7 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState, accordi
             </div>
             <div className="md:w-1/4 p-4 border rounded-md bg-card flex flex-col">
               {hoveredState ? (
-                <div className="flex flex-col h-full">
+                <div className="flex sm:flex-col h-full">
                   <div className="flex-grow"> {/* Main content area */}
                     <h3 className="text-base font-semibold text-primary mb-1">{hoveredState.name}</h3>
                     <p className="text-xs text-muted-foreground mb-3">
@@ -237,7 +237,7 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState, accordi
                     </p>
                   </div>
                   {diocesesInHoveredState.length > 0 && (
-                    <div className="mt-auto pt-2 border-t border-border"> {/* Dioceses list at the bottom */}
+                    <div className="pl-3 border-l sm:pl-0 sm:pt-2 sm:border-l-0 sm:border-t border-border"> {/* Dioceses list at the bottom */}
                       <h4 className="text-xs font-medium text-foreground mb-1">Dioceses:</h4>
                       <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5 max-h-[200px] overflow-y-auto">
                         {diocesesInHoveredState.map(diocese => (

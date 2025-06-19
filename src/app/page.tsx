@@ -842,6 +842,7 @@ export default function HomePage() {
             isOpen={isGhanaMapModalOpen}
             onOpenChange={setIsGhanaMapModalOpen}
             massesPerRegion={massesPerGhanaRegion}
+            accordionItems={accordionItems}
         />
         
         <footer className="text-center mt-12 py-6 border-t border-border">
@@ -872,3 +873,4 @@ export default function HomePage() {
 
 
     
+

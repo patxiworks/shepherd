@@ -84,6 +84,7 @@ export interface GhanaMapModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   massesPerRegion: MassesPerState; // Using MassesPerState type, key is region name
+  accordionItems: AccordionItemData[]; // Added accordionItems
 }
 
 export interface MapStateDataItem { // Can be reused for Ghana regions
@@ -101,3 +102,4 @@ export interface GhanaMapRegionDataItem {
     path: string;
     massCount?: number; // Optional, to be populated by the application
 }
+
