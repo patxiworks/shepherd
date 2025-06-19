@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { PlusCircle, Loader2, LogIn, LogOut, XIcon, MapIcon, ChevronDown } from 'lucide-react';
+import { PlusCircle, Loader2, LogIn, LogOut, XIcon, ChevronDown, MapIcon } from 'lucide-react';
 import { format as formatDateFns } from 'date-fns';
 import { nigerianDioceses } from '@/lib/nigerian-dioceses';
 import { nigerianStates } from '@/lib/nigerian-states';
@@ -244,7 +244,7 @@ export default function HomePage() {
     ghanaMap.forEach(mapRegion => counts[mapRegion.name] = 0);
 
     accordionItems.filter(item => item.country === "Ghana").forEach(item => {
-      if (item.state && counts.hasOwnProperty(item.state)) {
+      if (item.state && counts.hasOwnProperty(item.state)) { // Using item.state as region for Ghana
         counts[item.state]++;
       }
     });
@@ -674,23 +674,23 @@ export default function HomePage() {
         <div className="main-header border-b border-t-2 border-black">
           <header className="relative mx-auto container pt-20 pb-2 px-4 text-left">
             <div className="absolute top-0 left-0 w-full pl-4">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="link" className="text-sm p-0 h-auto outline-none hover:no-underline hover:text-primary/70 focus-visible:ring-0">
-                    {/* <MapIcon className="mr-1 h-3 w-3" /> */}
-                    Maps
-                    <ChevronDown className="ml-1 h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setIsMapModalOpen(true)}>
-                    Nigeria
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setIsGhanaMapModalOpen(true)}>
-                    Ghana
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="link" className="text-sm p-0 h-auto outline-none hover:no-underline hover:text-primary/70 focus-visible:ring-0">
+                       <MapIcon className="mr-1 h-3 w-3" />
+                       Maps
+                      <ChevronDown className="ml-1 h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => setIsMapModalOpen(true)}>
+                      Nigeria
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setIsGhanaMapModalOpen(true)}>
+                      Ghana
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
             </div>
             <div className="w-full text-xs text-muted-foreground">Masses on the</div>
             <h1 className="w-[220px] sm:w-full leading-none text-lg sm:text-xl md:text-2xl font-headline font-bold mb-3">
@@ -835,6 +835,7 @@ export default function HomePage() {
           isOpen={isMapModalOpen}
           onOpenChange={setIsMapModalOpen}
           massesPerState={massesPerStateForMap}
+          accordionItems={accordionItems}
         />
         
         <GhanaMapModal

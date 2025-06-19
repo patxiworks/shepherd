@@ -77,6 +77,7 @@ export interface NigerianMapModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   massesPerState: MassesPerState;
+  accordionItems: AccordionItemData[];
 }
 
 export interface GhanaMapModalProps {

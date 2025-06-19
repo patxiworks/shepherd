@@ -3,20 +3,20 @@
 
 import * as React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import type { NigerianMapModalProps, MapStateDataItem } from '@/types';
+import type { NigerianMapModalProps, MapStateDataItem, AccordionItemData } from '@/types';
 import { nigerianMap } from '@/lib/nigerian-map';
 import { cn } from '@/lib/utils';
 
 const getPrimaryHslValues = () => {
-  if (typeof window === 'undefined') return { h: 262, s: 52, l: 47 }; // Default primary
+  if (typeof window === 'undefined') return { h: 262, s: 52, l: 47 }; 
   const style = getComputedStyle(document.documentElement);
   const primaryColor = style.getPropertyValue('--primary').trim();
-  if (!primaryColor) return { h: 262, s: 52, l: 47 }; // Fallback
+  if (!primaryColor) return { h: 262, s: 52, l: 47 }; 
   const parts = primaryColor.split(' ').map(v => parseFloat(v.replace('%', '')));
   if (parts.length === 3 && !parts.some(isNaN)) {
     return { h: parts[0], s: parts[1], l: parts[2] };
   }
-  return { h: 262, s: 52, l: 47 }; // Fallback if parsing fails
+  return { h: 262, s: 52, l: 47 }; 
 };
 
 const getApproximateTextCoords = (path: string): { x: number; y: number } => {
@@ -97,7 +97,7 @@ const getApproximateTextCoords = (path: string): { x: number; y: number } => {
 };
 
 
-export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: NigerianMapModalProps) {
+export function NigerianMapModal({ isOpen, onOpenChange, massesPerState, accordionItems }: NigerianMapModalProps) {
   const [primaryHsl, setPrimaryHsl] = React.useState({ h: 262, s: 52, l: 47 });
   const [hoveredState, setHoveredState] = React.useState<MapStateDataItem | null>(null);
 
@@ -106,10 +106,9 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
       setPrimaryHsl(getPrimaryHslValues());
     }
     if (!isOpen) {
-      setHoveredState(null); // Reset hovered state when modal closes
+      setHoveredState(null); 
     }
   }, [isOpen]);
-
 
   const mapDataWithMasses: MapStateDataItem[] = React.useMemo(() => {
     return nigerianMap.map(state => ({
@@ -139,8 +138,15 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
     return `hsla(${primaryHsl.h}, ${primaryHsl.s}%, ${primaryHsl.l}%, ${opacity})`;
   };
   
-  const baseTextColor = primaryHsl.l > 60 ? 'hsl(var(--foreground))' : 'hsl(var(--primary-foreground))';
+  const textColor = primaryHsl.l > 60 ? 'hsl(var(--foreground))' : 'hsl(var(--primary-foreground))';
 
+  const diocesesInHoveredState = React.useMemo(() => {
+    if (!hoveredState || !accordionItems) return [];
+    const itemsInState = accordionItems.filter(item => item.state === hoveredState.name && (item.country === "Nigeria" || !item.country));
+    const dioceseSet = new Set<string>();
+    itemsInState.forEach(item => dioceseSet.add(item.diocese));
+    return Array.from(dioceseSet).sort();
+  }, [hoveredState, accordionItems]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -151,97 +157,102 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
             Color intensity indicates the number of scheduled Masses
           </DialogDescription>
         </DialogHeader>
-        <div className="mt-0 w-full aspect-[4/3] overflow-hidden rounded-md border">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 750 650" 
-              className="w-full h-full"
-            >
-              {mapDataWithMasses.map((state) => {
-                const { x, y } = getApproximateTextCoords(state.path);
-                const stateNameParts = state.name.split(' ');
-                const displayName = stateNameParts.length > 1 && state.name !== "FCT - Abuja" && state.name.length > 10 ? stateNameParts[0] : state.name;
-                
-                const pathLength = state.path.length; 
-                let baseFontSizeClass = 'text-[7px]';
-                let hoverFontSizeClass = 'group-hover:text-[7px] group-focus:text-[7px]';
-
-                if (pathLength < 500 || state.name === "Lagos" || state.name === "FCT - Abuja" ) { // For very small states
-                    baseFontSizeClass = 'text-[5px]';
-                    hoverFontSizeClass = 'group-hover:text-[10px] group-focus:text-[10px]';
-                } else if (pathLength < 1000) { // For small to medium states
-                    baseFontSizeClass = 'text-[6px]';
-                    hoverFontSizeClass = 'group-hover:text-[10px] group-focus:text-[10px]';
-                }
-
-
-                return (
-                  <g 
-                    key={state.name} 
-                    className="svg-state group cursor-pointer outline-none" 
-                    tabIndex={0} 
-                    aria-label={`${state.name}: ${state.massCount} ${state.massCount === 1 ? 'Mass' : 'Masses'}`}
-                    //onMouseEnter={() => setHoveredState(state)}
-                    //onMouseLeave={() => setHoveredState(null)}
-                    onFocus={() => setHoveredState(state)}
-                    //onBlur={() => setHoveredState(null)}
-                    onBlur={(event) => {
-                      // Use a small delay to allow the next element's onFocus to fire
-                      setTimeout(() => {
-                        // Check if the newly focused element is NOT one of your SVG regions
-                        const nextFocusedElement = document.activeElement;
-                        const isNextElementSvgState = nextFocusedElement && nextFocusedElement.classList && nextFocusedElement.classList.contains('svg-state'); // Logic to check if nextFocusedElement is an SVG region
+        <div className="mt-0 flex flex-col md:flex-row gap-4 items-stretch">
+            <div className="md:w-3/4 aspect-[4/3] overflow-hidden rounded-md border">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 750 650" 
+                  className="w-full h-full"
+                >
+                  {mapDataWithMasses.map((state) => {
+                    const { x, y } = getApproximateTextCoords(state.path);
+                    const stateNameParts = state.name.split(' ');
+                    const displayName = stateNameParts.length > 1 && state.name !== "FCT - Abuja" && state.name.length > 10 ? stateNameParts[0] : state.name;
                     
-                        if (!isNextElementSvgState) {
-                          setHoveredState(null);
-                        }
-                      }, 50); // Adjust delay as needed
-                    }}
-                  >
-                    <path
-                      d={state.path}
-                      fill={getFillColor(state.massCount)}
-                      stroke="hsl(var(--border))"
-                      strokeWidth="0.5" 
-                      className={cn(
-                        "transition-colors duration-150",
-                        "group-hover:fill-green-500 group-focus:fill-green-500" 
-                      )}
-                    />
-                    <text
-                      x={x}
-                      y={y}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      className={cn(
-                        "font-medium transition-all duration-150 ease-in-out fill-[--base-text-color] group-hover:fill-black group-focus:fill-black",
-                        baseFontSizeClass,
-                        hoverFontSizeClass
-                      )}
-                      style={{ '--base-text-color': baseTextColor, pointerEvents: 'none', userSelect: 'none' } as React.CSSProperties}
-                    >
-                       <tspan x={x} dy="-0.1em">{displayName}</tspan>
-                       <tspan x={x} dy="1.1em">({state.massCount} Masses)</tspan>
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-        </div>
-        <div className="md:w-1/4 p-4 border rounded-md bg-card flex flex-col justify-center items-center md:items-start">
-          {hoveredState ? (
-            <>
-              <h3 className="text-lg font-semibold text-primary">{hoveredState.name}</h3>
-              <p className="text-muted-foreground">
-                {hoveredState.massCount} {hoveredState.massCount === 1 ? 'Mass' : 'Masses'}
-              </p>
-            </>
-          ) : (
-            <p className="text-muted-foreground text-center md:text-left">Select a region to see details.</p>
-          )}
+                    let baseFontSizeClass = 'text-[7px]';
+                    let hoverFontSizeClass = 'group-hover:text-[10px] group-focus:text-[10px]';
+
+                    if (state.path.length < 500 || state.name === "Lagos" || state.name === "FCT - Abuja" ) { 
+                        baseFontSizeClass = 'text-[5px]';
+                        hoverFontSizeClass = 'group-hover:text-[8px] group-focus:text-[8px]';
+                    } else if (state.path.length < 1000) { 
+                        baseFontSizeClass = 'text-[6px]';
+                        hoverFontSizeClass = 'group-hover:text-[9px] group-focus:text-[9px]';
+                    }
+                    
+                    return (
+                      <g 
+                        key={state.name} 
+                        className="group cursor-pointer outline-none" 
+                        tabIndex={0} 
+                        aria-label={`${state.name}: ${state.massCount} ${state.massCount === 1 ? 'Mass' : 'Masses'}`}
+                        onMouseEnter={() => setHoveredState(state)}
+                        onMouseLeave={() => setHoveredState(null)}
+                        onFocus={() => setHoveredState(state)}
+                        onBlur={() => setTimeout(() => {
+                            const nextFocusedElement = document.activeElement;
+                            const isNextElementSvgState = nextFocusedElement && nextFocusedElement.classList && nextFocusedElement.classList.contains('group') && nextFocusedElement.closest('svg');
+                            if (!isNextElementSvgState) {
+                                setHoveredState(null);
+                            }
+                         }, 0)}
+                      >
+                        <path
+                          d={state.path}
+                          fill={getFillColor(state.massCount)}
+                          stroke="hsl(var(--border))"
+                          strokeWidth="0.5" 
+                          className={cn(
+                            "transition-colors duration-150",
+                            "group-hover:fill-green-500 group-focus:fill-green-500"
+                          )}
+                        />
+                        <text
+                          x={x}
+                          y={y}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          className={cn(
+                            "font-medium transition-all duration-150 ease-in-out fill-[--base-text-color] group-hover:fill-black group-focus:fill-black",
+                            baseFontSizeClass,
+                            hoverFontSizeClass
+                          )}
+                          style={{ '--base-text-color': textColor, pointerEvents: 'none', userSelect: 'none' } as React.CSSProperties}
+                        >
+                           <tspan x={x} dy="-0.1em">{displayName}</tspan>
+                           <tspan x={x} dy="1.1em">({state.massCount})</tspan>
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+            </div>
+            <div className="md:w-1/4 p-4 border rounded-md bg-card flex flex-col">
+              {hoveredState ? (
+                <div className="flex flex-col h-full">
+                  <div className="flex-grow"> {/* Main content area */}
+                    <h3 className="text-base font-semibold text-primary mb-1">{hoveredState.name}</h3>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      {hoveredState.massCount} {hoveredState.massCount === 1 ? 'Mass' : 'Masses'}
+                    </p>
+                  </div>
+                  {diocesesInHoveredState.length > 0 && (
+                    <div className="mt-auto pt-2 border-t border-border"> {/* Dioceses list at the bottom */}
+                      <h4 className="text-xs font-medium text-foreground mb-1">Dioceses:</h4>
+                      <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5 max-h-[200px] overflow-y-auto">
+                        {diocesesInHoveredState.map(diocese => (
+                          <li key={diocese}>{diocese}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm m-auto text-center">Hover over or select a state to see details.</p>
+              )}
+            </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
-
