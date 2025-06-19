@@ -677,7 +677,7 @@ export default function HomePage() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="link" className="text-sm p-0 h-auto outline-none hover:no-underline hover:text-primary/70 focus-visible:ring-0">
-                       <MapIcon className="mr-1 h-3 w-3" />
+                       {/* <MapIcon className="mr-1 h-3 w-3" /> */}
                        Maps
                       <ChevronDown className="ml-1 h-3 w-3" />
                     </Button>

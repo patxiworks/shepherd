@@ -91,8 +91,8 @@ export function GhanaMapModal({ isOpen, onOpenChange, massesPerRegion, accordion
                   className="group cursor-pointer outline-none"
                   tabIndex={0}
                   aria-label={`${region.name}: ${region.massCount} ${region.massCount === 1 ? 'Mass' : 'Masses'}`}
-                  onMouseEnter={() => setHoveredRegion(region)}
-                  onMouseLeave={() => setHoveredRegion(null)}
+                  //onMouseEnter={() => setHoveredRegion(region)}
+                  //onMouseLeave={() => setHoveredRegion(null)}
                   onFocus={() => setHoveredRegion(region)}
                   onBlur={() => setTimeout(() => {
                       const nextFocusedElement = document.activeElement;
