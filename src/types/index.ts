@@ -91,10 +91,12 @@ export interface MapStateDataItem { // Can be reused for Ghana regions
   massCount: number;
 }
 
-// Type for Ghana map data items (if different structure is needed, but likely same as MapStateDataItem)
+// Type for Ghana map data items
 export interface GhanaMapRegionDataItem {
     name: string;
-    code: string; // Or any other Ghana-specific fields
+    code: string;
+    pop: number; // Assuming this is total population
+    catholicPopulation: number; // New field for Catholic population
     path: string;
-    massCount?: number; // Optional, to be populated
+    massCount?: number; // Optional, to be populated by the application
 }

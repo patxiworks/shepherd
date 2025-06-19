@@ -79,13 +79,25 @@ export function GhanaMapModal({ isOpen, onOpenChange, massesPerRegion }: GhanaMa
               {mapDataWithMasses.map((region) => (
                 <g
                   key={region.name}
-                  className="group cursor-pointer outline-none"
+                  className="svg-region group cursor-pointer outline-none"
                   tabIndex={0}
                   aria-label={`${region.name}: ${region.massCount} ${region.massCount === 1 ? 'Mass' : 'Masses'}`}
-                  onMouseEnter={() => setHoveredRegion(region)}
-                  onMouseLeave={() => setHoveredRegion(null)}
+                  //onMouseEnter={() => setHoveredRegion(region)}
+                  //onMouseLeave={() => setHoveredRegion(null)}
                   onFocus={() => setHoveredRegion(region)}
-                  onBlur={() => setHoveredRegion(null)}
+                  //onBlur={() => setHoveredRegion(null)}
+                  onBlur={(event) => {
+                    // Use a small delay to allow the next element's onFocus to fire
+                    setTimeout(() => {
+                      // Check if the newly focused element is NOT one of your SVG regions
+                      const nextFocusedElement = document.activeElement;
+                      const isNextElementSvgRegion = nextFocusedElement && nextFocusedElement.classList && nextFocusedElement.classList.contains('svg-region'); // Logic to check if nextFocusedElement is an SVG region
+                  
+                      if (!isNextElementSvgRegion) {
+                        setHoveredRegion(null);
+                      }
+                    }, 50); // Adjust delay as needed
+                  }}
                 >
                   <path
                     d={region.path}
@@ -94,7 +106,7 @@ export function GhanaMapModal({ isOpen, onOpenChange, massesPerRegion }: GhanaMa
                     strokeWidth="0.5"
                     className={cn(
                       "transition-colors duration-150",
-                      "group-hover:fill-[#FCD116] group-focus:fill-[#FCD116]"
+                      "group-hover:fill-primary/10 group-focus:fill-[#FCD116]"
                     )}
                   />
                 </g>
@@ -110,7 +122,7 @@ export function GhanaMapModal({ isOpen, onOpenChange, massesPerRegion }: GhanaMa
                 </p>
               </>
             ) : (
-              <p className="text-muted-foreground text-center md:text-left">Hover over or focus on a region to see details.</p>
+              <p className="text-muted-foreground text-center md:text-left">Select a region to see details.</p>
             )}
           </div>
         </div>

@@ -164,27 +164,39 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
                 
                 const pathLength = state.path.length; 
                 let baseFontSizeClass = 'text-[7px]';
-                let hoverFontSizeClass = 'group-hover:text-[14px] group-focus:text-[14px]';
+                let hoverFontSizeClass = 'group-hover:text-[7px] group-focus:text-[7px]';
 
                 if (pathLength < 500 || state.name === "Lagos" || state.name === "FCT - Abuja" ) { // For very small states
                     baseFontSizeClass = 'text-[5px]';
-                    hoverFontSizeClass = 'group-hover:text-[12px] group-focus:text-[12px]';
+                    hoverFontSizeClass = 'group-hover:text-[10px] group-focus:text-[10px]';
                 } else if (pathLength < 1000) { // For small to medium states
                     baseFontSizeClass = 'text-[6px]';
-                    hoverFontSizeClass = 'group-hover:text-[12px] group-focus:text-[12px]';
+                    hoverFontSizeClass = 'group-hover:text-[10px] group-focus:text-[10px]';
                 }
 
 
                 return (
                   <g 
                     key={state.name} 
-                    className="group cursor-pointer outline-none" 
+                    className="svg-state group cursor-pointer outline-none" 
                     tabIndex={0} 
                     aria-label={`${state.name}: ${state.massCount} ${state.massCount === 1 ? 'Mass' : 'Masses'}`}
-                    onMouseEnter={() => setHoveredState(state)}
-                    onMouseLeave={() => setHoveredState(null)}
+                    //onMouseEnter={() => setHoveredState(state)}
+                    //onMouseLeave={() => setHoveredState(null)}
                     onFocus={() => setHoveredState(state)}
-                    onBlur={() => setHoveredState(null)}
+                    //onBlur={() => setHoveredState(null)}
+                    onBlur={(event) => {
+                      // Use a small delay to allow the next element's onFocus to fire
+                      setTimeout(() => {
+                        // Check if the newly focused element is NOT one of your SVG regions
+                        const nextFocusedElement = document.activeElement;
+                        const isNextElementSvgState = nextFocusedElement && nextFocusedElement.classList && nextFocusedElement.classList.contains('svg-state'); // Logic to check if nextFocusedElement is an SVG region
+                    
+                        if (!isNextElementSvgState) {
+                          setHoveredState(null);
+                        }
+                      }, 50); // Adjust delay as needed
+                    }}
                   >
                     <path
                       d={state.path}
@@ -225,7 +237,7 @@ export function NigerianMapModal({ isOpen, onOpenChange, massesPerState }: Niger
               </p>
             </>
           ) : (
-            <p className="text-muted-foreground text-center md:text-left">Hover over or focus on a region to see details.</p>
+            <p className="text-muted-foreground text-center md:text-left">Select a region to see details.</p>
           )}
         </div>
       </DialogContent>
