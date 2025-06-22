@@ -208,22 +208,24 @@ export default function HomePage() {
   }, [nigerianAccordionItems]);
 
   const stateSummary = React.useMemo(() => {
-    if (!nigerianAccordionItems.length) {
-      return { count: 0, total: nigerianStates.length, breakdown: [] as SummaryItem[] };
-    }
-    const statesInAccordion = nigerianAccordionItems.map(item => item.state).filter(Boolean);
-    const uniqueStatesWithItems = new Set(statesInAccordion);
     const breakdownMap = new Map<string, number>();
-    statesInAccordion.forEach(stateItem => {
-      if (stateItem) { 
-         breakdownMap.set(stateItem, (breakdownMap.get(stateItem) || 0) + 1);
+    nigerianAccordionItems.forEach(item => {
+      if (item.state) {
+        breakdownMap.set(item.state, (breakdownMap.get(item.state) || 0) + 1);
       }
     });
-    const breakdown = Array.from(breakdownMap.entries())
-      .map(([name, count]) => ({ name, count }))
+
+    const breakdown = nigerianStates
+      .map(stateName => ({
+        name: stateName,
+        count: breakdownMap.get(stateName) || 0,
+      }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+    const statesWithMasses = breakdown.filter(s => s.count > 0).length;
+
     return {
-      count: uniqueStatesWithItems.size,
+      count: statesWithMasses,
       total: nigerianStates.length,
       breakdown,
     };
@@ -875,5 +877,6 @@ export default function HomePage() {
 
 
     
+
 
 
