@@ -186,20 +186,22 @@ export default function HomePage() {
   , [accordionItems]);
 
   const dioceseSummary = React.useMemo(() => {
-    if (!nigerianAccordionItems.length) {
-      return { count: 0, total: nigerianDioceses.length, breakdown: [] as SummaryItem[] };
-    }
-    const diocesesInAccordion = nigerianAccordionItems.map(item => item.diocese);
-    const uniqueDiocesesWithItems = new Set(diocesesInAccordion);
     const breakdownMap = new Map<string, number>();
-    diocesesInAccordion.forEach(diocese => {
-      breakdownMap.set(diocese, (breakdownMap.get(diocese) || 0) + 1);
+    nigerianAccordionItems.forEach(item => {
+      breakdownMap.set(item.diocese, (breakdownMap.get(item.diocese) || 0) + 1);
     });
-    const breakdown = Array.from(breakdownMap.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)); 
+
+    const breakdown = nigerianDioceses
+      .map(dioceseName => ({
+        name: dioceseName,
+        count: breakdownMap.get(dioceseName) || 0,
+      }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+    const diocesesWithMasses = breakdown.filter(d => d.count > 0).length;
+
     return {
-      count: uniqueDiocesesWithItems.size,
+      count: diocesesWithMasses,
       total: nigerianDioceses.length,
       breakdown,
     };
@@ -662,7 +664,7 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
         <p className="text-xl text-muted-foreground">
-          {isAuthenticating ? 'Checking authentication...' : 'Loading Masses...'}
+          {isAuthenticating ? 'Checking Data...' : 'Loading Masses...'}
         </p>
       </div>
     );
@@ -873,4 +875,5 @@ export default function HomePage() {
 
 
     
+
 
