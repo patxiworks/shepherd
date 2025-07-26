@@ -11,6 +11,7 @@ import { Loader2, XIcon } from 'lucide-react';
 import { format as formatDateFns } from 'date-fns';
 
 const sortCentres = (a: CentreData, b: CentreData): number => {
+  if (!a.id || !b.id) return 0;
   return a.id.localeCompare(b.id);
 };
 
@@ -31,10 +32,10 @@ export default function HomePage() {
         const data: ApiActivity[] = await response.json();
         
         const centresMap = new Map<string, CentreData>();
-
+        
         data.forEach(activity => {
           const centreName = activity.centre;
-          if (!centresMap.has(centreName)) {
+          if (centreName && !centresMap.has(centreName)) {
             centresMap.set(centreName, {
               id: centreName,
               centre: centreName,
@@ -42,15 +43,17 @@ export default function HomePage() {
             });
           }
           
-          const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
-          const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
+          if(centreName) {
+            const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
+            const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
 
-          centresMap.get(centreName)!.activities.push({
-            activity: activity.activity,
-            day: activity.day,
-            priest: activity.priest,
-            time: `${fromTime} - ${toTime}`
-          });
+            centresMap.get(centreName)!.activities.push({
+              activity: activity.activity,
+              day: activity.day,
+              priest: activity.priest,
+              time: `${fromTime} - ${toTime}`
+            });
+          }
         });
         
         const sortedCentres = Array.from(centresMap.values()).sort(sortCentres);
@@ -77,10 +80,10 @@ export default function HomePage() {
     }
     const lowercasedQuery = filterQuery.toLowerCase();
     return accordionItems.filter(item =>
-      item.centre.toLowerCase().includes(lowercasedQuery) ||
+      (item.centre && item.centre.toLowerCase().includes(lowercasedQuery)) ||
       item.activities.some(activity => 
-        activity.activity.toLowerCase().includes(lowercasedQuery) ||
-        activity.day.toLowerCase().includes(lowercasedQuery) ||
+        (activity.activity && activity.activity.toLowerCase().includes(lowercasedQuery)) ||
+        (activity.day && activity.day.toLowerCase().includes(lowercasedQuery)) ||
         (activity.priest && activity.priest.toLowerCase().includes(lowercasedQuery))
       )
     ); 
