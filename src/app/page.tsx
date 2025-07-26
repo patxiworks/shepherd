@@ -7,6 +7,7 @@ import type { CentreData, ApiActivity } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, XIcon } from 'lucide-react';
 import { format as formatDateFns } from 'date-fns';
 
@@ -19,6 +20,7 @@ export default function HomePage() {
   const [accordionItems, setAccordionItems] = React.useState<CentreData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [filterQuery, setFilterQuery] = React.useState('');
+  const [selectedPriest, setSelectedPriest] = React.useState('All Priests');
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -72,22 +74,51 @@ export default function HomePage() {
     };
     fetchActivities();
   }, [toast]);
+  
+  const priests = React.useMemo(() => {
+    const priestSet = new Set<string>();
+    accordionItems.forEach(centre => {
+        centre.activities.forEach(activity => {
+            if (activity.priest) {
+                priestSet.add(activity.priest);
+            }
+        });
+    });
+    return ["All Priests", ...Array.from(priestSet).sort()];
+  }, [accordionItems]);
 
 
   const filteredAccordionItems = React.useMemo(() => {
-    if (!filterQuery) {
-      return accordionItems; 
+    let filteredItems = accordionItems;
+
+    // Filter by priest first
+    if (selectedPriest && selectedPriest !== 'All Priests') {
+      filteredItems = filteredItems
+        .map(centre => {
+          const priestActivities = centre.activities.filter(
+            activity => activity.priest === selectedPriest
+          );
+          return { ...centre, activities: priestActivities };
+        })
+        .filter(centre => centre.activities.length > 0);
     }
-    const lowercasedQuery = filterQuery.toLowerCase();
-    return accordionItems.filter(item =>
-      (item.centre && item.centre.toLowerCase().includes(lowercasedQuery)) ||
-      item.activities.some(activity => 
-        (activity.activity && activity.activity.toLowerCase().includes(lowercasedQuery)) ||
-        (activity.day && activity.day.toLowerCase().includes(lowercasedQuery)) ||
-        (activity.priest && activity.priest.toLowerCase().includes(lowercasedQuery))
-      )
-    ); 
-  }, [accordionItems, filterQuery]);
+    
+    // Then filter by text query
+    if (filterQuery) {
+      const lowercasedQuery = filterQuery.toLowerCase();
+      return filteredItems.filter(item =>
+        (item.centre && item.centre.toLowerCase().includes(lowercasedQuery)) ||
+        item.activities.some(activity => 
+          (activity.activity && activity.activity.toLowerCase().includes(lowercasedQuery)) ||
+          (activity.day && activity.day.toLowerCase().includes(lowercasedQuery)) ||
+          (activity.priest && activity.priest.toLowerCase().includes(lowercasedQuery))
+        )
+      );
+    }
+    
+    return filteredItems;
+
+  }, [accordionItems, filterQuery, selectedPriest]);
 
 
   if (isLoading) {
@@ -113,25 +144,41 @@ export default function HomePage() {
           </header>
         </div>
         <div className="container mx-auto sm:px-4 sm:py-3 sm:border-b-1 sm:shadow-sm">
-          <div className="relative flex justify-center items-center">
-            <Input
-              type="text"
-              placeholder="Filter by centre, activity, day, or priest..."
-              value={filterQuery}
-              onChange={(e) => setFilterQuery(e.target.value)}
-              className="w-full h-10 px-4 py-4 text-base rounded-none border-x-0 border-t-0 shadow-sm sm:border-0 sm:shadow-none pr-10 placeholder:text-[#aaa]"
-            />
-            {filterQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setFilterQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
-                aria-label="Clear filter"
-              >
-                <XIcon className="h-4 w-4" />
-              </Button>
-            )}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-grow flex justify-center items-center">
+                <Input
+                  type="text"
+                  placeholder="Filter by centre, activity, day, or priest..."
+                  value={filterQuery}
+                  onChange={(e) => setFilterQuery(e.target.value)}
+                  className="w-full h-10 px-4 py-4 text-base rounded-none border-x-0 border-t-0 shadow-sm sm:border-0 sm:shadow-none pr-10 placeholder:text-[#aaa]"
+                />
+                {filterQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setFilterQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                    aria-label="Clear filter"
+                  >
+                    <XIcon className="h-4 w-4" />
+                  </Button>
+                )}
+            </div>
+            <div className="flex-shrink-0 sm:w-52 px-4 sm:px-0">
+                <Select value={selectedPriest} onValueChange={setSelectedPriest}>
+                    <SelectTrigger className="w-full h-10 rounded-none border-x-0 border-t-0 sm:border-0 sm:shadow-none">
+                        <SelectValue placeholder="Filter by priest..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {priests.map(priest => (
+                            <SelectItem key={priest} value={priest}>
+                                {priest}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
           </div>
         </div>
       </div>
@@ -162,3 +209,5 @@ export default function HomePage() {
     </>
   );
 }
+
+    
