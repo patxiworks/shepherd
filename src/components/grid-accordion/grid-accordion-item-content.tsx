@@ -1,28 +1,38 @@
 
-import type { AccordionItemData, ImageData } from '@/types';
-import { ImageGrid } from './image-grid';
-import { Button } from '@/components/ui/button';
-import { Camera } from 'lucide-react';
+import type { CentreData } from '@/types';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface GridAccordionItemContentProps {
-  item: AccordionItemData;
-  onUploadClick: () => void;
-  onImageClick: (image: ImageData, index: number, allImages: ImageData[], collectionId: string) => void;
+  item: CentreData;
 }
 
-export function GridAccordionItemContent({ item, onUploadClick, onImageClick }: GridAccordionItemContentProps) {
+export function GridAccordionItemContent({ item }: GridAccordionItemContentProps) {
+  if (!item.activities || item.activities.length === 0) {
+    return <p className="text-muted-foreground py-4 text-center">No activities scheduled for this centre.</p>;
+  }
+  
   return (
     <div className="px-1 py-2 md:px-2">
-      <ImageGrid 
-        images={item.images} 
-        onImageClick={(image, index) => onImageClick(image, index, item.images, item.id)} 
-      />
-      <div className="mt-4 flex justify-center md:justify-end">
-        <Button onClick={onUploadClick} className="bg-primary/50 hover:bg-primary/90 text-accent-foreground rounded-full px-6 py-3 text-base">
-          <Camera className="mr-2 h-5 w-5" />
-          Upload a photo
-        </Button>
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Activity</TableHead>
+            <TableHead>Day</TableHead>
+            <TableHead>Time</TableHead>
+            <TableHead>Priest</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {item.activities.map((activity, index) => (
+            <TableRow key={index}>
+              <TableCell className="font-medium">{activity.activity}</TableCell>
+              <TableCell>{activity.day}</TableCell>
+              <TableCell>{activity.time}</TableCell>
+              <TableCell>{activity.priest || 'N/A'}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

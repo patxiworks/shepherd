@@ -1,105 +1,32 @@
 
-export interface ImageData {
-  src: string;
-  alt: string;
-  hint?: string; // For data-ai-hint
-  uploadedBy?: string; // To store the phone number of the uploader
+
+// The raw data structure from the remote Google Script URL
+export interface ApiActivity {
+  week: number;
+  day: string;
+  daySerial: number;
+  centre: string;
+  activity: string;
+  section: string;
+  labor: string;
+  from: string; // ISO date string e.g., "1899-12-30T06:45:00.000Z"
+  to: string;   // ISO date string
+  duration: string; // ISO date string
+  "mfrequency  ": number; // Note the trailing spaces in the key
+  priest: string;
 }
 
-export interface AccordionItemData {
-  id: string;
-  parishLocation: string;
-  diocese: string;
-  state: string; 
-  country?: string; // Added country field
-  date: string; // e.g., "July 1"
-  time: string; // e.g., "18:00"
-  images: ImageData[];
+// A cleaned-up version for display within a centre's activity list
+export interface Activity {
+  activity: string;
+  day: string;
+  time: string; // Formatted time string e.g., "6:45 AM - 8:00 AM"
+  priest?: string;
 }
 
-export interface NewCollectionFormData {
-  parishLocation: string;
-  diocese: string;
-  state: string; 
-  country: string; // Added country field
-  date: Date; // Date object from calendar
-  time: string;
+// The new structure for each accordion item, representing a "centre"
+export interface CentreData {
+  id: string; // Will use the centre name for the ID
+  centre: string;
+  activities: Activity[];
 }
-
-
-export interface PhotoUploadFormData {
-  title:string;
-  description?: string; // Made optional as per form
-  photo?: FileList; // FileList can be undefined if no file is selected or after reset
-}
-
-// This will now be used for the phone number sign-in in AuthModal
-export interface SignInFormData { 
-  phoneNumber: string;
-}
-
-export interface UserCredentials {
-  username: string;
-  password?: string; // Password is required for login attempt, optional for user data type
-}
-
-// This is used by the global LoginModal for admin username/password login
-export interface LoginFormData { 
-  username: string;
-  password?: string;
-}
-
-export interface SummaryItem {
-  name: string;
-  count: number;
-}
-
-export interface DioceseSummaryModalProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  summaryData: SummaryItem[];
-  onApplyFilter: (filterTerm: string) => void;
-}
-
-export interface StateSummaryModalProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  summaryData: SummaryItem[];
-  onApplyFilter: (filterTerm: string) => void;
-}
-
-// For Nigerian Map Modal
-export interface MassesPerState { // Can be reused for Ghana (MassesPerRegion)
-  [stateOrRegionName: string]: number;
-}
-
-export interface NigerianMapModalProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  massesPerState: MassesPerState;
-  accordionItems: AccordionItemData[];
-}
-
-export interface GhanaMapModalProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  massesPerRegion: MassesPerState; // Using MassesPerState type, key is region name
-  accordionItems: AccordionItemData[]; // Added accordionItems
-}
-
-export interface MapStateDataItem { // Can be reused for Ghana regions
-  name: string;
-  path: string;
-  massCount: number;
-}
-
-// Type for Ghana map data items
-export interface GhanaMapRegionDataItem {
-    name: string;
-    code: string;
-    pop: number; // Assuming this is total population
-    catholicPopulation: number; // New field for Catholic population
-    path: string;
-    massCount?: number; // Optional, to be populated by the application
-}
-

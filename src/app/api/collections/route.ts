@@ -2,93 +2,40 @@
 'use server';
 
 import { type NextRequest, NextResponse } from 'next/server';
-import type { AccordionItemData } from '@/types';
+import type { ApiActivity } from '@/types';
 
-const REMOTE_COLLECTIONS_URL = process.env.REMOTE_COLLECTIONS_URL || 'https://criterionpublishers.org/sj-masses/photos2025/collections.json';
-const REMOTE_COLLECTIONS_WRITE_URL = process.env.REMOTE_COLLECTIONS_WRITE_URL;
-const COLLECTIONS_API_SECRET_KEY = process.env.SECRET_KEY;
+// The new data source URL
+const REMOTE_ACTIVITIES_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLi9A0g6TGYbQiZ1M5arH8zweUPOgP9JqIdzd6o7-btA7o-dd6MvulPpTwUNPd0FO7DuCJVR8d_Na5Cn1PNxdSs93syaK_zx7psdisDtWt_bXTQaYSO2AseZVmbI7sz2v_gj8Yl1TMSAPdHvji1Yu-kCDyx1lV5_7hUDVXMt9QlLQoRNf3IHZPzGe1K4viG47BaPDZ3sBWJj66JVbOm5w_GdN888Lg0-e9o_AslkBlbACEJeWq3mPxYWfuiNHak-RWoXmSZRAgT22JIWwQdKztD65Y5Idw&lib=MpttvUYGzARBHcLHx-Q7aYCekRsELq_92';
 
-async function readRemoteCollections(): Promise<AccordionItemData[]> {
+
+async function readRemoteActivities(): Promise<ApiActivity[]> {
   try {
-    const response = await fetch(REMOTE_COLLECTIONS_URL, { cache: 'no-store' });
+    const response = await fetch(REMOTE_ACTIVITIES_URL, { cache: 'no-store' });
     if (!response.ok) {
-      if (response.status === 404) {
-        console.warn(`Remote collections file not found at ${REMOTE_COLLECTIONS_URL}. Returning empty array.`);
-        return []; // If not found, assume it's empty and can be created on first write
-      }
-      throw new Error(`Failed to fetch remote collections: ${response.statusText}`);
+        throw new Error(`Failed to fetch remote activities: ${response.statusText}`);
     }
     const data = await response.json();
-    return (data as AccordionItemData[]).map(item => ({
-      ...item,
-      country: item.country || "Nigeria" // Default to Nigeria if country is missing
-    }));
+    // The API returns an object with a 'data' key which is the array
+    return data.data as ApiActivity[];
   } catch (error) {
-    console.error('Error reading remote collections data:', error);
+    console.error('Error reading remote activities data:', error);
     return [];
   }
 }
 
-async function writeRemoteCollections(data: AccordionItemData[]): Promise<void> {
-  if (!REMOTE_COLLECTIONS_WRITE_URL) {
-    throw new Error('Remote write URL is not configured. Cannot save collections.');
-  }
-  if (!COLLECTIONS_API_SECRET_KEY) {
-    throw new Error('Collections API secret key is not configured. Cannot save collections.');
-  }
-
-  try {
-    const response = await fetch(REMOTE_COLLECTIONS_WRITE_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Secret': COLLECTIONS_API_SECRET_KEY,
-      },
-      body: JSON.stringify(data, null, 2), // Send the complete array as JSON
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to write remote collections: ${response.statusText} - ${errorText}`);
-    }
-    const result = await response.json();
-    if (result.status !== 'success') { 
-        console.warn('Remote write operation reported an issue:', result);
-    }
-
-  } catch (error) {
-    console.error('Error writing remote collections data:', error);
-    throw new Error('Failed to write remote collections data.');
-  }
-}
 
 export async function GET() {
   try {
-    const collections = await readRemoteCollections();
-    return NextResponse.json(collections);
+    const activities = await readRemoteActivities();
+    return NextResponse.json(activities);
   } catch (error) {
-    return NextResponse.json({ message: (error as Error).message || 'Failed to fetch collections' }, { status: 500 });
+    return NextResponse.json({ message: (error as Error).message || 'Failed to fetch activities' }, { status: 500 });
   }
 }
 
+// POST, PUT, DELETE are no longer supported with this read-only data source.
+// We can remove the POST handler.
+
 export async function POST(request: NextRequest) {
-  if (!REMOTE_COLLECTIONS_WRITE_URL || !COLLECTIONS_API_SECRET_KEY) {
-    return NextResponse.json({ message: 'Remote write functionality is not configured on the server.' }, { status: 503 });
-  }
-  try {
-    const newCollection: AccordionItemData = await request.json();
-    if (!newCollection.id || !newCollection.parishLocation || !newCollection.diocese || !newCollection.state || !newCollection.country) {
-      return NextResponse.json({ message: 'Invalid collection data: id, parishLocation, diocese, state, and country are required.' }, { status: 400 });
-    }
-
-    // Ensure images are not blobs before saving
-    newCollection.images = newCollection.images.filter(img => typeof img.src === 'string' && !img.src.startsWith('blob:'));
-
-    const collections = await readRemoteCollections();
-    collections.push(newCollection);
-    await writeRemoteCollections(collections);
-    return NextResponse.json(newCollection, { status: 201 });
-  } catch (error) {
-    return NextResponse.json({ message: (error as Error).message || 'Failed to create collection' }, { status: 500 });
-  }
+    return NextResponse.json({ message: 'Method not allowed' }, { status: 405 });
 }
