@@ -9,11 +9,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, XIcon } from 'lucide-react';
-import { format as formatDateFns } from 'date-fns';
+import { format as formatDateFns, parseISO } from 'date-fns';
 
-const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData): number => {
-  if (!a.id || !b.id) return 0;
-  return a.id.localeCompare(b.id);
+const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData, groupBy: 'centre' | 'activity' | 'date'): number => {
+    if (groupBy === 'date') {
+        // Assuming id is an ISO date string for sorting
+        return new Date(a.id).getTime() - new Date(b.id).getTime();
+    }
+    if (!a.id || !b.id) return 0;
+    return a.id.localeCompare(b.id);
 };
 
 export default function HomePage() {
@@ -22,7 +26,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [filterQuery, setFilterQuery] = React.useState('');
   const [selectedPriest, setSelectedPriest] = React.useState('All Priests');
-  const [groupBy, setGroupBy] = React.useState<'centre' | 'activity'>('centre');
+  const [groupBy, setGroupBy] = React.useState<'centre' | 'activity' | 'date'>('centre');
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -71,13 +75,14 @@ export default function HomePage() {
 
                 groupsMap.get(centreName)!.items.push({
                     title: activity.activity,
+                    centre: activity.centre,
                     day: activity.day,
                     priest: activity.priest,
                     time: `${fromTime} - ${toTime}`
                 });
             }
         });
-    } else { // Group by activity
+    } else if (groupBy === 'activity') {
         allActivities.forEach(activity => {
             const activityName = activity.activity;
             if (activityName) {
@@ -93,7 +98,35 @@ export default function HomePage() {
                 const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
 
                 groupsMap.get(activityName)!.items.push({
-                    title: activity.centre, // Here title is the centre
+                    title: activity.activity,
+                    centre: activity.centre,
+                    day: activity.day,
+                    priest: activity.priest,
+                    time: `${fromTime} - ${toTime}`
+                });
+            }
+        });
+    } else { // Group by date
+        allActivities.forEach(activity => {
+            if (activity.from) {
+                const activityDate = new Date(activity.from);
+                const dateKey = activityDate.toISOString().split('T')[0]; // YYYY-MM-DD for stable key
+                const formattedDate = formatDateFns(activityDate, "EEEE, MMMM d, yyyy");
+
+                if (!groupsMap.has(dateKey)) {
+                    groupsMap.set(dateKey, {
+                        id: dateKey, // Use sortable ISO date for ID
+                        title: formattedDate, // Display friendly date
+                        items: []
+                    });
+                }
+
+                const fromTime = formatDateFns(activityDate, "h:mm a");
+                const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
+
+                groupsMap.get(dateKey)!.items.push({
+                    title: activity.activity,
+                    centre: activity.centre,
                     day: activity.day,
                     priest: activity.priest,
                     time: `${fromTime} - ${toTime}`
@@ -102,7 +135,7 @@ export default function HomePage() {
         });
     }
     
-    const sortedGroups = Array.from(groupsMap.values()).sort(sortAccordionGroups);
+    const sortedGroups = Array.from(groupsMap.values()).sort((a, b) => sortAccordionGroups(a, b, groupBy));
     setAccordionItems(sortedGroups);
 
   }, [allActivities, groupBy, isLoading]);
@@ -140,6 +173,7 @@ export default function HomePage() {
         .map(group => {
             const matchingItems = group.items.filter(item => 
                 (item.title && item.title.toLowerCase().includes(lowercasedQuery)) ||
+                (item.centre && item.centre.toLowerCase().includes(lowercasedQuery)) ||
                 (item.day && item.day.toLowerCase().includes(lowercasedQuery)) ||
                 (item.priest && item.priest.toLowerCase().includes(lowercasedQuery))
             );
@@ -170,6 +204,15 @@ export default function HomePage() {
         </p>
       </div>
     );
+  }
+  
+  const getGroupByName = () => {
+    switch(groupBy) {
+        case 'centre': return 'Centres';
+        case 'activity': return 'Activities';
+        case 'date': return 'Dates';
+        default: return 'Items';
+    }
   }
 
   return (
@@ -207,13 +250,14 @@ export default function HomePage() {
             </div>
             <div className="flex flex-row gap-2 px-4 sm:px-0">
                 <div className="flex-grow sm:w-40">
-                    <Select value={groupBy} onValueChange={(value) => setGroupBy(value as 'centre' | 'activity')}>
+                    <Select value={groupBy} onValueChange={(value) => setGroupBy(value as 'centre' | 'activity' | 'date')}>
                         <SelectTrigger className="w-full h-10 rounded-none border-x-0 border-t-0 sm:border-0 sm:shadow-none">
                             <SelectValue placeholder="Group by..." />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="centre">Group by Centre</SelectItem>
                             <SelectItem value="activity">Group by Activity</SelectItem>
+                            <SelectItem value="date">Group by Date</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -241,8 +285,8 @@ export default function HomePage() {
           <div className="max-w-4xl mx-auto flex flex-col sm:flex-row sm:justify-end sm:items-center sm:mb-4">
             <div className="mass-count text-right text-sm text-muted-foreground mb-4 sm:mb-0 ml-auto">
               {filterQuery || selectedPriest !== 'All Priests'
-                ? `${filteredAccordionItems.length} of ${accordionItems.length} ${groupBy === 'centre' ? 'Centres' : 'Activities'} found`
-                : `${accordionItems.length} ${groupBy === 'centre' ? 'Centres' : 'Activities'}`}
+                ? `${filteredAccordionItems.length} of ${accordionItems.length} ${getGroupByName()} found`
+                : `${accordionItems.length} ${getGroupByName()}`}
             </div>
           </div>
 

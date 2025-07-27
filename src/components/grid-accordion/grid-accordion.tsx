@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 interface GridAccordionProps {
   items: AccordionGroupData[];
-  groupBy: 'centre' | 'activity';
+  groupBy: 'centre' | 'activity' | 'date';
   defaultValue?: string;
 }
 
