@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { GridAccordion } from '@/components/grid-accordion/grid-accordion';
-import type { AccordionGroupData, ApiActivity } from '@/types';
+import type { AccordionGroupData, ApiActivity, GroupItem } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData): numb
 };
 
 export default function HomePage() {
+  const [allActivities, setAllActivities] = React.useState<ApiActivity[]>([]);
   const [accordionItems, setAccordionItems] = React.useState<AccordionGroupData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [filterQuery, setFilterQuery] = React.useState('');
@@ -33,60 +34,7 @@ export default function HomePage() {
           throw new Error('Failed to fetch activities');
         }
         const data: ApiActivity[] = await response.json();
-        
-        let groupsMap = new Map<string, AccordionGroupData>();
-
-        if (groupBy === 'centre') {
-            data.forEach(activity => {
-                const centreName = activity.centre;
-                if (centreName) {
-                    if (!groupsMap.has(centreName)) {
-                        groupsMap.set(centreName, {
-                            id: centreName,
-                            title: centreName,
-                            items: []
-                        });
-                    }
-                    
-                    const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
-                    const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
-
-                    groupsMap.get(centreName)!.items.push({
-                        title: activity.activity,
-                        day: activity.day,
-                        priest: activity.priest,
-                        time: `${fromTime} - ${toTime}`
-                    });
-                }
-            });
-        } else { // Group by activity
-            data.forEach(activity => {
-                const activityName = activity.activity;
-                if (activityName) {
-                    if (!groupsMap.has(activityName)) {
-                        groupsMap.set(activityName, {
-                            id: activityName,
-                            title: activityName,
-                            items: []
-                        });
-                    }
-
-                    const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
-                    const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
-
-                    groupsMap.get(activityName)!.items.push({
-                        title: activity.centre, // Here title is the centre
-                        day: activity.day,
-                        priest: activity.priest,
-                        time: `${fromTime} - ${toTime}`
-                    });
-                }
-            });
-        }
-        
-        const sortedGroups = Array.from(groupsMap.values()).sort(sortAccordionGroups);
-        setAccordionItems(sortedGroups);
-
+        setAllActivities(data);
       } catch (error) {
         console.error("Error fetching activities:", error);
         toast({
@@ -99,19 +47,75 @@ export default function HomePage() {
       }
     };
     fetchActivities();
-  }, [toast, groupBy]);
+  }, [toast]);
+
+  React.useEffect(() => {
+    if (isLoading) return;
+
+    let groupsMap = new Map<string, AccordionGroupData>();
+
+    if (groupBy === 'centre') {
+        allActivities.forEach(activity => {
+            const centreName = activity.centre;
+            if (centreName) {
+                if (!groupsMap.has(centreName)) {
+                    groupsMap.set(centreName, {
+                        id: centreName,
+                        title: centreName,
+                        items: []
+                    });
+                }
+                
+                const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
+                const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
+
+                groupsMap.get(centreName)!.items.push({
+                    title: activity.activity,
+                    day: activity.day,
+                    priest: activity.priest,
+                    time: `${fromTime} - ${toTime}`
+                });
+            }
+        });
+    } else { // Group by activity
+        allActivities.forEach(activity => {
+            const activityName = activity.activity;
+            if (activityName) {
+                if (!groupsMap.has(activityName)) {
+                    groupsMap.set(activityName, {
+                        id: activityName,
+                        title: activityName,
+                        items: []
+                    });
+                }
+
+                const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
+                const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
+
+                groupsMap.get(activityName)!.items.push({
+                    title: activity.centre, // Here title is the centre
+                    day: activity.day,
+                    priest: activity.priest,
+                    time: `${fromTime} - ${toTime}`
+                });
+            }
+        });
+    }
+    
+    const sortedGroups = Array.from(groupsMap.values()).sort(sortAccordionGroups);
+    setAccordionItems(sortedGroups);
+
+  }, [allActivities, groupBy, isLoading]);
   
   const priests = React.useMemo(() => {
     const priestSet = new Set<string>();
-    accordionItems.forEach(group => {
-        group.items.forEach(item => {
-            if (item.priest) {
-                priestSet.add(item.priest);
-            }
-        });
+    allActivities.forEach(activity => {
+        if (activity.priest) {
+            priestSet.add(activity.priest);
+        }
     });
     return ["All Priests", ...Array.from(priestSet).sort()];
-  }, [accordionItems]);
+  }, [allActivities]);
 
 
   const filteredAccordionItems = React.useMemo(() => {
@@ -132,14 +136,24 @@ export default function HomePage() {
     // Then filter by text query
     if (filterQuery) {
       const lowercasedQuery = filterQuery.toLowerCase();
-      return filteredItems.filter(group =>
-        (group.title && group.title.toLowerCase().includes(lowercasedQuery)) ||
-        group.items.some(item => 
-            (item.title && item.title.toLowerCase().includes(lowercasedQuery)) ||
-            (item.day && item.day.toLowerCase().includes(lowercasedQuery)) ||
-            (item.priest && item.priest.toLowerCase().includes(lowercasedQuery))
-        )
-      );
+      return filteredItems
+        .map(group => {
+            const matchingItems = group.items.filter(item => 
+                (item.title && item.title.toLowerCase().includes(lowercasedQuery)) ||
+                (item.day && item.day.toLowerCase().includes(lowercasedQuery)) ||
+                (item.priest && item.priest.toLowerCase().includes(lowercasedQuery))
+            );
+
+            // If the group title matches OR any item within the group matches, include it
+            if (group.title && group.title.toLowerCase().includes(lowercasedQuery)) {
+                return group; // Keep all original items if group title matches
+            }
+            if (matchingItems.length > 0) {
+                return { ...group, items: matchingItems }; // Only return items that match the query
+            }
+            return null;
+        })
+        .filter((group): group is AccordionGroupData => group !== null);
     }
     
     return filteredItems;
@@ -226,7 +240,7 @@ export default function HomePage() {
         <div className="mt-4 px-2 sm:px-4">
           <div className="max-w-4xl mx-auto flex flex-col sm:flex-row sm:justify-end sm:items-center sm:mb-4">
             <div className="mass-count text-right text-sm text-muted-foreground mb-4 sm:mb-0 ml-auto">
-              {filterQuery
+              {filterQuery || selectedPriest !== 'All Priests'
                 ? `${filteredAccordionItems.length} of ${accordionItems.length} ${groupBy === 'centre' ? 'Centres' : 'Activities'} found`
                 : `${accordionItems.length} ${groupBy === 'centre' ? 'Centres' : 'Activities'}`}
             </div>

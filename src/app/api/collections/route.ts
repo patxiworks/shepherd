@@ -6,7 +6,7 @@ import type { ApiActivity } from '@/types';
 import { DataPartSchema } from 'genkit/model';
 
 // The new data source URL
-const REMOTE_ACTIVITIES_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLi9A0g6TGYbQiZ1M5arH8zweUPOgP9JqIdzd6o7-btA7o-dd6MvulPpTwUNPd0FO7DuCJVR8d_Na5Cn1PNxdSs93syaK_zx7psdisDtWt_bXTQaYSO2AseZVmbI7sz2v_gj8Yl1TMSAPdHvji1Yu-kCDyx1lV5_7hUDVXMt9QlLQoRNf3IHZPzGe1K4viG47BaPDZ3sBWJj66JVbOm5w_GdN888Lg0-e9o_AslkBlbACEJeWq3mPxYWfuiNHak-RWoXmSZRAgT22JIWwQdKztD65Y5Idw&lib=MpttvUYGzARBHcLHx-Q7aYCekRsELq_92';
+const REMOTE_ACTIVITIES_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLiYpxWU-eORBaf1eCCwidHXXQGWfM1E2tzlvU8e82A93N_Km29FFs4KiqCSGUtn64eBMxZ89qooEPP5EXDgrkTSwekWEkHwNgRwKqP-MwQSYaoM7M0C51hlni3hnYHeoH25lqQQqFaYbwgJ7qYNxPhfYM76E50PrHAqjmnpwZnbQOKhaRsdYvSuQh4mu_vX2W0gjw1yuMKd-Mqp0g4eqpLGlriqs329bEqiHbNsL-sRytXLRdKKj9q759PSK0_r_pFFNFzXB3sIAuC8LgjnoQ-pyEH0us3RujlFmsR5&lib=Myn6iEwL8dqLg0i8ztc1Qms6Fh59HncaP';
 
 
 async function readRemoteActivities(): Promise<{data: ApiActivity[]}> {
