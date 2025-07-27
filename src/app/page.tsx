@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, XIcon } from 'lucide-react';
-import { format as formatDateFns, parseISO } from 'date-fns';
+import { format as formatDateFns } from 'date-fns';
 
 const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData, groupBy: 'centre' | 'activity' | 'date'): number => {
     if (groupBy === 'date') {
@@ -108,8 +108,8 @@ export default function HomePage() {
         });
     } else { // Group by date
         allActivities.forEach(activity => {
-            if (activity.from) {
-                const activityDate = new Date(activity.from);
+            if (activity.date) {
+                const activityDate = new Date(activity.date);
                 const dateKey = activityDate.toISOString().split('T')[0]; // YYYY-MM-DD for stable key
                 const formattedDate = formatDateFns(activityDate, "EEEE, MMMM d, yyyy");
 
@@ -121,7 +121,7 @@ export default function HomePage() {
                     });
                 }
 
-                const fromTime = formatDateFns(activityDate, "h:mm a");
+                const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
                 const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
 
                 groupsMap.get(dateKey)!.items.push({

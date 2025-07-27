@@ -1,9 +1,12 @@
 
 // The raw data structure from the remote Google Script URL
 export interface ApiActivity {
+  unit?: string | null;
   week: number | null;
   day: string | null;
+  weekday?: number | null;
   daySerial: number | null;
+  date: string | null; // ISO date string e.g., "2025-07-26T23:00:00.000Z"
   centre: string | null;
   activity: string | null;
   section: string | null;
