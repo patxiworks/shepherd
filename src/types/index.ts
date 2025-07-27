@@ -22,7 +22,7 @@ export interface ApiActivity {
 export interface GroupItem {
   title: string | null; // Will be activity name or centre name depending on grouping
   centre: string | null;
-  day: string | null;
+  date: string | null;
   time: string;
   priest?: string | null;
 }

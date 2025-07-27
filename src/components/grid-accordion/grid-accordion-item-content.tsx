@@ -1,5 +1,5 @@
 
-import type { AccordionGroupData } from '@/types';
+import type { AccordionGroupData, GroupItem } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface GridAccordionItemContentProps {
@@ -15,9 +15,9 @@ export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemCon
   const getHeaders = () => {
     switch(groupBy) {
       case 'centre':
-        return ['Activity', 'Day', 'Time', 'Priest'];
+        return ['Activity', 'Date', 'Time', 'Priest'];
       case 'activity':
-        return ['Centre', 'Day', 'Time', 'Priest'];
+        return ['Centre', 'Date', 'Time', 'Priest'];
       case 'date':
         return ['Activity', 'Centre', 'Time', 'Priest'];
       default:
@@ -25,12 +25,12 @@ export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemCon
     }
   };
 
-  const getCellData = (activityItem: any) => {
+  const getCellData = (activityItem: GroupItem) => {
      switch(groupBy) {
       case 'centre':
-        return [activityItem.title, activityItem.day, activityItem.time, activityItem.priest];
+        return [activityItem.title, activityItem.date, activityItem.time, activityItem.priest];
       case 'activity':
-        return [activityItem.centre, activityItem.day, activityItem.time, activityItem.priest];
+        return [activityItem.centre, activityItem.date, activityItem.time, activityItem.priest];
        case 'date':
         return [activityItem.title, activityItem.centre, activityItem.time, activityItem.priest];
       default:

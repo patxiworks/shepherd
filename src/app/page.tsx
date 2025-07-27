@@ -58,6 +58,20 @@ export default function HomePage() {
 
     let groupsMap = new Map<string, AccordionGroupData>();
 
+    const createGroupItem = (activity: ApiActivity): GroupItem => {
+      const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
+      const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
+      const activityDate = activity.date ? formatDateFns(new Date(activity.date), "EEE, MMM d") : "N/A";
+
+      return {
+        title: activity.activity,
+        centre: activity.centre,
+        date: activityDate,
+        priest: activity.priest,
+        time: `${fromTime} - ${toTime}`
+      };
+    };
+
     if (groupBy === 'centre') {
         allActivities.forEach(activity => {
             const centreName = activity.centre;
@@ -69,17 +83,7 @@ export default function HomePage() {
                         items: []
                     });
                 }
-                
-                const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
-                const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
-
-                groupsMap.get(centreName)!.items.push({
-                    title: activity.activity,
-                    centre: activity.centre,
-                    day: activity.day,
-                    priest: activity.priest,
-                    time: `${fromTime} - ${toTime}`
-                });
+                groupsMap.get(centreName)!.items.push(createGroupItem(activity));
             }
         });
     } else if (groupBy === 'activity') {
@@ -93,17 +97,7 @@ export default function HomePage() {
                         items: []
                     });
                 }
-
-                const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
-                const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
-
-                groupsMap.get(activityName)!.items.push({
-                    title: activity.activity,
-                    centre: activity.centre,
-                    day: activity.day,
-                    priest: activity.priest,
-                    time: `${fromTime} - ${toTime}`
-                });
+                groupsMap.get(activityName)!.items.push(createGroupItem(activity));
             }
         });
     } else { // Group by date
@@ -120,17 +114,7 @@ export default function HomePage() {
                         items: []
                     });
                 }
-
-                const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
-                const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
-
-                groupsMap.get(dateKey)!.items.push({
-                    title: activity.activity,
-                    centre: activity.centre,
-                    day: activity.day,
-                    priest: activity.priest,
-                    time: `${fromTime} - ${toTime}`
-                });
+                groupsMap.get(dateKey)!.items.push(createGroupItem(activity));
             }
         });
     }
@@ -174,7 +158,7 @@ export default function HomePage() {
             const matchingItems = group.items.filter(item => 
                 (item.title && item.title.toLowerCase().includes(lowercasedQuery)) ||
                 (item.centre && item.centre.toLowerCase().includes(lowercasedQuery)) ||
-                (item.day && item.day.toLowerCase().includes(lowercasedQuery)) ||
+                (item.date && item.date.toLowerCase().includes(lowercasedQuery)) ||
                 (item.priest && item.priest.toLowerCase().includes(lowercasedQuery))
             );
 
@@ -231,7 +215,7 @@ export default function HomePage() {
             <div className="relative flex-grow flex justify-center items-center">
                 <Input
                   type="text"
-                  placeholder="Filter by centre, activity, day, or priest..."
+                  placeholder="Filter by centre, activity, date, or priest..."
                   value={filterQuery}
                   onChange={(e) => setFilterQuery(e.target.value)}
                   className="w-full h-10 px-4 py-4 text-base rounded-none border-x-0 border-t-0 shadow-sm sm:border-0 sm:shadow-none pr-10 placeholder:text-[#aaa]"
