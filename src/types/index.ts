@@ -1,5 +1,4 @@
 
-
 // The raw data structure from the remote Google Script URL
 export interface ApiActivity {
   week: number;
@@ -16,17 +15,17 @@ export interface ApiActivity {
   priest: string;
 }
 
-// A cleaned-up version for display within a centre's activity list
-export interface Activity {
-  activity: string;
+// A generic structure for an item within an accordion group
+export interface GroupItem {
+  title: string; // Will be activity name or centre name depending on grouping
   day: string;
-  time: string; // Formatted time string e.g., "6:45 AM - 8:00 AM"
+  time: string;
   priest?: string;
 }
 
-// The new structure for each accordion item, representing a "centre"
-export interface CentreData {
-  id: string; // Will use the centre name for the ID
-  centre: string;
-  activities: Activity[];
+// The new generic structure for each accordion item (a group)
+export interface AccordionGroupData {
+  id: string;    // Will use the group title for the ID
+  title: string; // Will be centre name or activity name
+  items: GroupItem[];
 }

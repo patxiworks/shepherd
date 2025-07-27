@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { GridAccordion } from '@/components/grid-accordion/grid-accordion';
-import type { CentreData, ApiActivity } from '@/types';
+import type { AccordionGroupData, ApiActivity } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,16 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, XIcon } from 'lucide-react';
 import { format as formatDateFns } from 'date-fns';
 
-const sortCentres = (a: CentreData, b: CentreData): number => {
+const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData): number => {
   if (!a.id || !b.id) return 0;
   return a.id.localeCompare(b.id);
 };
 
 export default function HomePage() {
-  const [accordionItems, setAccordionItems] = React.useState<CentreData[]>([]);
+  const [accordionItems, setAccordionItems] = React.useState<AccordionGroupData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [filterQuery, setFilterQuery] = React.useState('');
   const [selectedPriest, setSelectedPriest] = React.useState('All Priests');
+  const [groupBy, setGroupBy] = React.useState<'centre' | 'activity'>('centre');
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -33,33 +34,58 @@ export default function HomePage() {
         }
         const data: ApiActivity[] = await response.json();
         
-        const centresMap = new Map<string, CentreData>();
-        
-        data.forEach(activity => {
-          const centreName = activity.centre;
-          if (centreName && !centresMap.has(centreName)) {
-            centresMap.set(centreName, {
-              id: centreName,
-              centre: centreName,
-              activities: []
-            });
-          }
-          
-          if(centreName) {
-            const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
-            const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
+        let groupsMap = new Map<string, AccordionGroupData>();
 
-            centresMap.get(centreName)!.activities.push({
-              activity: activity.activity,
-              day: activity.day,
-              priest: activity.priest,
-              time: `${fromTime} - ${toTime}`
+        if (groupBy === 'centre') {
+            data.forEach(activity => {
+                const centreName = activity.centre;
+                if (centreName) {
+                    if (!groupsMap.has(centreName)) {
+                        groupsMap.set(centreName, {
+                            id: centreName,
+                            title: centreName,
+                            items: []
+                        });
+                    }
+                    
+                    const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
+                    const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
+
+                    groupsMap.get(centreName)!.items.push({
+                        title: activity.activity,
+                        day: activity.day,
+                        priest: activity.priest,
+                        time: `${fromTime} - ${toTime}`
+                    });
+                }
             });
-          }
-        });
+        } else { // Group by activity
+            data.forEach(activity => {
+                const activityName = activity.activity;
+                if (activityName) {
+                    if (!groupsMap.has(activityName)) {
+                        groupsMap.set(activityName, {
+                            id: activityName,
+                            title: activityName,
+                            items: []
+                        });
+                    }
+
+                    const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
+                    const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
+
+                    groupsMap.get(activityName)!.items.push({
+                        title: activity.centre, // Here title is the centre
+                        day: activity.day,
+                        priest: activity.priest,
+                        time: `${fromTime} - ${toTime}`
+                    });
+                }
+            });
+        }
         
-        const sortedCentres = Array.from(centresMap.values()).sort(sortCentres);
-        setAccordionItems(sortedCentres);
+        const sortedGroups = Array.from(groupsMap.values()).sort(sortAccordionGroups);
+        setAccordionItems(sortedGroups);
 
       } catch (error) {
         console.error("Error fetching activities:", error);
@@ -73,14 +99,14 @@ export default function HomePage() {
       }
     };
     fetchActivities();
-  }, [toast]);
+  }, [toast, groupBy]);
   
   const priests = React.useMemo(() => {
     const priestSet = new Set<string>();
-    accordionItems.forEach(centre => {
-        centre.activities.forEach(activity => {
-            if (activity.priest) {
-                priestSet.add(activity.priest);
+    accordionItems.forEach(group => {
+        group.items.forEach(item => {
+            if (item.priest) {
+                priestSet.add(item.priest);
             }
         });
     });
@@ -94,24 +120,24 @@ export default function HomePage() {
     // Filter by priest first
     if (selectedPriest && selectedPriest !== 'All Priests') {
       filteredItems = filteredItems
-        .map(centre => {
-          const priestActivities = centre.activities.filter(
-            activity => activity.priest === selectedPriest
+        .map(group => {
+          const priestActivities = group.items.filter(
+            item => item.priest === selectedPriest
           );
-          return { ...centre, activities: priestActivities };
+          return { ...group, items: priestActivities };
         })
-        .filter(centre => centre.activities.length > 0);
+        .filter(group => group.items.length > 0);
     }
     
     // Then filter by text query
     if (filterQuery) {
       const lowercasedQuery = filterQuery.toLowerCase();
-      return filteredItems.filter(item =>
-        (item.centre && item.centre.toLowerCase().includes(lowercasedQuery)) ||
-        item.activities.some(activity => 
-          (activity.activity && activity.activity.toLowerCase().includes(lowercasedQuery)) ||
-          (activity.day && activity.day.toLowerCase().includes(lowercasedQuery)) ||
-          (activity.priest && activity.priest.toLowerCase().includes(lowercasedQuery))
+      return filteredItems.filter(group =>
+        (group.title && group.title.toLowerCase().includes(lowercasedQuery)) ||
+        group.items.some(item => 
+            (item.title && item.title.toLowerCase().includes(lowercasedQuery)) ||
+            (item.day && item.day.toLowerCase().includes(lowercasedQuery)) ||
+            (item.priest && item.priest.toLowerCase().includes(lowercasedQuery))
         )
       );
     }
@@ -165,19 +191,32 @@ export default function HomePage() {
                   </Button>
                 )}
             </div>
-            <div className="flex-shrink-0 sm:w-52 px-4 sm:px-0">
-                <Select value={selectedPriest} onValueChange={setSelectedPriest}>
-                    <SelectTrigger className="w-full h-10 rounded-none border-x-0 border-t-0 sm:border-0 sm:shadow-none">
-                        <SelectValue placeholder="Filter by priest..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {priests.map(priest => (
-                            <SelectItem key={priest} value={priest}>
-                                {priest}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+            <div className="flex flex-row gap-2 px-4 sm:px-0">
+                <div className="flex-grow sm:w-40">
+                    <Select value={groupBy} onValueChange={(value) => setGroupBy(value as 'centre' | 'activity')}>
+                        <SelectTrigger className="w-full h-10 rounded-none border-x-0 border-t-0 sm:border-0 sm:shadow-none">
+                            <SelectValue placeholder="Group by..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="centre">Group by Centre</SelectItem>
+                            <SelectItem value="activity">Group by Activity</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex-grow sm:w-40">
+                    <Select value={selectedPriest} onValueChange={setSelectedPriest}>
+                        <SelectTrigger className="w-full h-10 rounded-none border-x-0 border-t-0 sm:border-0 sm:shadow-none">
+                            <SelectValue placeholder="Filter by priest..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {priests.map(priest => (
+                                <SelectItem key={priest} value={priest}>
+                                    {priest}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
           </div>
         </div>
@@ -188,13 +227,14 @@ export default function HomePage() {
           <div className="max-w-4xl mx-auto flex flex-col sm:flex-row sm:justify-end sm:items-center sm:mb-4">
             <div className="mass-count text-right text-sm text-muted-foreground mb-4 sm:mb-0 ml-auto">
               {filterQuery
-                ? `${filteredAccordionItems.length} of ${accordionItems.length} Centres found`
-                : `${accordionItems.length} Centres`}
+                ? `${filteredAccordionItems.length} of ${accordionItems.length} ${groupBy === 'centre' ? 'Centres' : 'Activities'} found`
+                : `${accordionItems.length} ${groupBy === 'centre' ? 'Centres' : 'Activities'}`}
             </div>
           </div>
 
           <GridAccordion 
             items={filteredAccordionItems} 
+            groupBy={groupBy}
           />
         </div>
         
@@ -209,5 +249,3 @@ export default function HomePage() {
     </>
   );
 }
-
-    

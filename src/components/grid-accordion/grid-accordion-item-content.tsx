@@ -1,14 +1,15 @@
 
-import type { CentreData } from '@/types';
+import type { AccordionGroupData } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface GridAccordionItemContentProps {
-  item: CentreData;
+  item: AccordionGroupData;
+  groupBy: 'centre' | 'activity';
 }
 
-export function GridAccordionItemContent({ item }: GridAccordionItemContentProps) {
-  if (!item.activities || item.activities.length === 0) {
-    return <p className="text-muted-foreground py-4 text-center">No activities scheduled for this centre.</p>;
+export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemContentProps) {
+  if (!item.items || item.items.length === 0) {
+    return <p className="text-muted-foreground py-4 text-center">No scheduled items.</p>;
   }
   
   return (
@@ -16,19 +17,19 @@ export function GridAccordionItemContent({ item }: GridAccordionItemContentProps
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Activity</TableHead>
+            <TableHead>{groupBy === 'centre' ? 'Activity' : 'Centre'}</TableHead>
             <TableHead>Day</TableHead>
             <TableHead>Time</TableHead>
             <TableHead>Priest</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {item.activities.map((activity, index) => (
+          {item.items.map((activityItem, index) => (
             <TableRow key={index}>
-              <TableCell className="font-medium">{activity.activity}</TableCell>
-              <TableCell>{activity.day}</TableCell>
-              <TableCell>{activity.time}</TableCell>
-              <TableCell>{activity.priest || 'N/A'}</TableCell>
+              <TableCell className="font-medium">{activityItem.title}</TableCell>
+              <TableCell>{activityItem.day}</TableCell>
+              <TableCell>{activityItem.time}</TableCell>
+              <TableCell>{activityItem.priest || 'N/A'}</TableCell>
             </TableRow>
           ))}
         </TableBody>

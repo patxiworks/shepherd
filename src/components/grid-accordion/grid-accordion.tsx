@@ -4,21 +4,23 @@
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { ChevronDown } from 'lucide-react';
-import type { CentreData } from '@/types';
+import type { AccordionGroupData } from '@/types';
 import { GridAccordionItemContent } from './grid-accordion-item-content';
 import { cn } from "@/lib/utils";
 
 interface GridAccordionProps {
-  items: CentreData[];
+  items: AccordionGroupData[];
+  groupBy: 'centre' | 'activity';
   defaultValue?: string;
 }
 
 export function GridAccordion({ 
   items, 
+  groupBy,
   defaultValue
 }: GridAccordionProps) {
   if (!items || items.length === 0) {
-    return <p className="text-center text-muted-foreground py-10">No centres to display.</p>;
+    return <p className="text-center text-muted-foreground py-10">No items to display.</p>;
   }
   
   return (
@@ -40,7 +42,7 @@ export function GridAccordion({
             >
               <div className="flex flex-col items-start text-left flex-grow mr-2">
                 <span className="text-base font-semibold group-hover:none">
-                  {item.centre}
+                  {item.title}
                 </span>
               </div>
               <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
@@ -49,6 +51,7 @@ export function GridAccordion({
           <AccordionContent className="bg-background/100 border-t border-border">
             <GridAccordionItemContent 
               item={item} 
+              groupBy={groupBy}
             />
           </AccordionContent>
         </AccordionItem>
