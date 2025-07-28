@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, XIcon } from 'lucide-react';
-import { format as formatDateFns } from 'date-fns';
+import { parseISO } from 'date-fns';
+import { format as formatDateFnsTz, utcToZonedTime } from 'date-fns-tz';
 import { getSectionColor, getLaborColor } from '@/lib/section-colors';
 
 const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData, groupBy: 'centre' | 'activity' | 'date'): number => {
@@ -62,13 +63,17 @@ export default function HomePage() {
     let groupsMap = new Map<string, AccordionGroupData>();
 
     const createGroupItem = (activity: ApiActivity): GroupItem => {
-      const fromTime = activity.from ? formatDateFns(new Date(activity.from), "h:mm a") : "N/A";
-      const toTime = activity.to ? formatDateFns(new Date(activity.to), "h:mm a") : "N/A";
+      const timeZone = 'UTC';
+      const fromDate = activity.from ? parseISO(activity.from) : null;
+      const toDate = activity.to ? parseISO(activity.to) : null;
+
+      const fromTime = fromDate ? formatDateFnsTz(utcToZonedTime(fromDate, timeZone), "h:mm a", { timeZone }) : "N/A";
+      const toTime = toDate ? formatDateFnsTz(utcToZonedTime(toDate, timeZone), "h:mm a", { timeZone }) : "N/A";
       
       return {
         title: activity.activity,
         centre: activity.centre,
-        date: activity.date ? formatDateFns(new Date(activity.date), "EEE, MMM d") : "N/A",
+        date: activity.date ? formatDateFnsTz(parseISO(activity.date), "EEE, MMM d") : "N/A",
         priest: activity.priest,
         time: `${fromTime} - ${toTime}`,
         section: activity.section || 'default',
@@ -122,9 +127,9 @@ export default function HomePage() {
     } else { // Group by date
         filteredActivities.forEach(activity => {
             if (activity.date) {
-                const activityDate = new Date(activity.date);
+                const activityDate = parseISO(activity.date);
                 const dateKey = activityDate.toISOString().split('T')[0]; // YYYY-MM-DD for stable key
-                const formattedDate = formatDateFns(activityDate, "EEEE, MMMM d, yyyy");
+                const formattedDate = formatDateFnsTz(activityDate, "EEEE, MMMM d, yyyy");
 
                 if (!groupsMap.has(dateKey)) {
                     groupsMap.set(dateKey, {
@@ -300,60 +305,63 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+
+        <div className="flex flex-row gap-2 my-2 px-4 sm:px-0 container mx-auto sm:px-4 sm:py-3 sm:border-b-1 sm:shadow-sm justify-end">
+          <div className="flex-grow sm:flex-grow-0 sm:w-40">
+            <Select value={selectedSection} onValueChange={setSelectedSection}>
+                <SelectTrigger className="w-full h-10 rounded-none border-x-0 border-t-0 sm:border-0 sm:shadow-none">
+                    <SelectValue placeholder="Filter by section..." />
+                </SelectTrigger>
+                <SelectContent>
+                    {sections.map(section => (
+                        <SelectItem key={section} value={section}>
+                            <div className="flex items-center gap-2">
+                            {section !== 'All Sections' && (
+                                <div 
+                                className="h-4 w-4 rounded-full"
+                                style={{ backgroundColor: getSectionColor(section) }}
+                                />
+                            )}
+                            <span>{section}</span>
+                            </div>
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-grow sm:flex-grow-0 sm:w-40">
+            <Select value={selectedLabor} onValueChange={setSelectedLabor}>
+                <SelectTrigger className="w-full h-10 rounded-none border-x-0 border-t-0 sm:border-0 sm:shadow-none">
+                    <SelectValue placeholder="Filter by labor..." />
+                </SelectTrigger>
+                <SelectContent>
+                    {labors.map(labor => (
+                        <SelectItem key={labor} value={labor}>
+                            <div className="flex items-center gap-2">
+                            {labor !== 'All Labor' && (
+                                <div 
+                                className="h-4 w-4 rounded-full"
+                                style={{ backgroundColor: getLaborColor(labor) }}
+                                />
+                            )}
+                            <span>{labor}</span>
+                            </div>
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+          </div>
+        
+        </div>
       </div>
 
       <div className="container mx-auto px-0 py-0 min-h-screen">
         <div className="mt-4 px-2 sm:px-4">
-          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row sm:justify-between sm:items-center sm:mb-4">
-             <div className="flex-grow sm:w-40">
-                <Select value={selectedSection} onValueChange={setSelectedSection}>
-                    <SelectTrigger className="w-full h-10 rounded-none border-x-0 border-t-0 sm:border-0 sm:shadow-none">
-                        <SelectValue placeholder="Filter by section..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {sections.map(section => (
-                            <SelectItem key={section} value={section}>
-                               <div className="flex items-center gap-2">
-                                {section !== 'All Sections' && (
-                                    <div 
-                                    className="h-4 w-4 rounded-full"
-                                    style={{ backgroundColor: getSectionColor(section) }}
-                                    />
-                                )}
-                                <span>{section}</span>
-                               </div>
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-             <div className="flex-grow sm:w-40 ml-2">
-                <Select value={selectedLabor} onValueChange={setSelectedLabor}>
-                    <SelectTrigger className="w-full h-10 rounded-none border-x-0 border-t-0 sm:border-0 sm:shadow-none">
-                        <SelectValue placeholder="Filter by labor..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {labors.map(labor => (
-                            <SelectItem key={labor} value={labor}>
-                               <div className="flex items-center gap-2">
-                                {labor !== 'All Labor' && (
-                                    <div 
-                                    className="h-4 w-4 rounded-full"
-                                    style={{ backgroundColor: getLaborColor(labor) }}
-                                    />
-                                )}
-                                <span>{labor}</span>
-                               </div>
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-            <div className="mass-count text-right text-sm text-muted-foreground mb-4 sm:mb-0 ml-auto">
+          
+          <div className="mass-count text-right text-sm text-muted-foreground mb-4 my-2 ml-auto">
               {filterQuery || selectedPriest !== 'All Priests' || selectedSection !== 'All Sections'
                 ? `${filteredAccordionItems.length} of ${accordionItems.length} ${getGroupByName()} found`
                 : `${accordionItems.length} ${getGroupByName()}`}
-            </div>
           </div>
 
           <GridAccordion 

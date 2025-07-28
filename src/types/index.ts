@@ -13,7 +13,7 @@ export interface ApiActivity {
   from: string | null; // ISO date string e.g., "1899-12-30T06:45:00.000Z"
   to: string | null;   // ISO date string
   duration: string | null; // ISO date string
-  "mfrequency  ": number | null; // Note the trailing spaces in the key
+  mfrequency: number | null;
   priest: string | null;
 }
 
