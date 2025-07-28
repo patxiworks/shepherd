@@ -1,23 +1,23 @@
 
 
 export const sectionColors: { [key: string]: string } = {
-  sf: '#FFDDC1', // Light Peach
-  sm: '#C1E1FF', // Light Blue
-  'c-m': '#D4F8E8', // Mint Green
-  'c-w': '#FFFACD', // Lemon Chiffon
-  'p-m': '#F8D4D4', // Light Pink
-  'p-w': '#E6E6FA', // Lavender
-  default: '#F5F5F5', // Light Gray for any section not specified
+  sf: '#FFB74D', // Bright Orange
+  sm: '#64B5F6', // Bright Blue
+  'c-m': '#81C784', // Bright Green
+  'c-w': '#FFF176', // Bright Yellow
+  'p-m': '#F06292', // Bright Pink
+  'p-w': '#BA68C8', // Bright Purple
+  default: '#E0E0E0', // A slightly darker gray for contrast
 };
 
 export const laborColors: { [key: string]: string } = {
-  sm: '#B2EBF2',   // Light Cyan
-  sf: '#FFCCBC',   // Light Coral
-  sscc: '#C8E6C9', // Light Green
-  'c-m': '#F0F4C3', // Light Lime
-  'c-w': '#D1C4E9', // Light Purple
-  'p-m': '#FFCDD2', // Light Pink
-  'p-w': '#CFD8DC', // Blue Grey
+  sm: '#4DD0E1',   // Bright Cyan
+  sf: '#FF8A65',   // Bright Coral
+  sscc: '#AED581', // Bright Light Green
+  'c-m': '#DCE775', // Bright Lime
+  'c-w': '#9575CD', // Bright Deep Purple
+  'p-m': '#E57373', // Bright Red
+  'p-w': '#7986CB', // Bright Indigo
   default: '#FAFAFA', // Off-white
 };
 
