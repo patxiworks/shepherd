@@ -1,6 +1,7 @@
 
 import type { AccordionGroupData, GroupItem } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { getSectionColor } from '@/lib/section-colors';
 
 interface GridAccordionItemContentProps {
   item: AccordionGroupData;
@@ -51,8 +52,14 @@ export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemCon
         <TableBody>
           {item.items.map((activityItem, index) => {
             const cells = getCellData(activityItem);
+            const rowColor = getSectionColor(activityItem.section);
+
             return (
-              <TableRow key={index}>
+              <TableRow 
+                key={index}
+                style={{ backgroundColor: rowColor ? `${rowColor}1A` : 'transparent' }}
+                className="transition-colors hover:bg-muted/80"
+              >
                 <TableCell className="font-medium">{cells[0] || 'N/A'}</TableCell>
                 <TableCell>{cells[1] || 'N/A'}</TableCell>
                 <TableCell>{cells[2] || 'N/A'}</TableCell>

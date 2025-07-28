@@ -5,7 +5,6 @@ export interface ApiActivity {
   week: number | null;
   day: string | null;
   weekday?: number | null;
-  daySerial: number | null;
   date: string | null; // ISO date string e.g., "2025-07-26T23:00:00.000Z"
   centre: string | null;
   activity: string | null;
@@ -25,6 +24,7 @@ export interface GroupItem {
   date: string | null;
   time: string;
   priest?: string | null;
+  section: string;
 }
 
 // The new generic structure for each accordion item (a group)
