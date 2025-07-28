@@ -25,11 +25,13 @@ export interface GroupItem {
   time: string;
   priest?: string | null;
   section: string;
+  labor: string;
 }
 
 // The new generic structure for each accordion item (a group)
 export interface AccordionGroupData {
   id: string;    // Will use the group title for the ID
-  title: string; // Will be centre name or activity name
+  title: string; // Will be centre name, activity name, or date
   items: GroupItem[];
+  mainSection: string; // The dominant section for coloring the accordion header
 }

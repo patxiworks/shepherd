@@ -1,4 +1,5 @@
 
+
 export const sectionColors: { [key: string]: string } = {
   sf: '#FFDDC1', // Light Peach
   sm: '#C1E1FF', // Light Blue
@@ -9,6 +10,22 @@ export const sectionColors: { [key: string]: string } = {
   default: '#F5F5F5', // Light Gray for any section not specified
 };
 
+export const laborColors: { [key: string]: string } = {
+  sm: '#B2EBF2',   // Light Cyan
+  sf: '#FFCCBC',   // Light Coral
+  sscc: '#C8E6C9', // Light Green
+  'c-m': '#F0F4C3', // Light Lime
+  'c-w': '#D1C4E9', // Light Purple
+  'p-m': '#FFCDD2', // Light Pink
+  'p-w': '#CFD8DC', // Blue Grey
+  default: '#FAFAFA', // Off-white
+};
+
+
 export const getSectionColor = (section: string): string => {
   return sectionColors[section] || sectionColors.default;
+};
+
+export const getLaborColor = (labor: string): string => {
+  return laborColors[labor] || laborColors.default;
 };

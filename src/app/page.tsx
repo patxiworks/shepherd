@@ -6,10 +6,11 @@ import { GridAccordion } from '@/components/grid-accordion/grid-accordion';
 import type { AccordionGroupData, ApiActivity, GroupItem } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, XIcon } from 'lucide-react';
 import { format as formatDateFns } from 'date-fns';
-import { sectionColors, getSectionColor } from '@/lib/section-colors';
+import { getSectionColor, getLaborColor } from '@/lib/section-colors';
 
 const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData, groupBy: 'centre' | 'activity' | 'date'): number => {
     if (groupBy === 'date') {
@@ -27,6 +28,7 @@ export default function HomePage() {
   const [filterQuery, setFilterQuery] = React.useState('');
   const [selectedPriest, setSelectedPriest] = React.useState('All Priests');
   const [selectedSection, setSelectedSection] = React.useState('All Sections');
+  const [selectedLabor, setSelectedLabor] = React.useState('All Labor');
   const [groupBy, setGroupBy] = React.useState<'centre' | 'activity' | 'date'>('centre');
   const { toast } = useToast();
 
@@ -70,49 +72,55 @@ export default function HomePage() {
         priest: activity.priest,
         time: `${fromTime} - ${toTime}`,
         section: activity.section || 'default',
+        labor: activity.labor || 'default',
       };
     };
 
-    let filteredForGrouping = allActivities;
+    let filteredActivities = allActivities;
 
     if (selectedPriest && selectedPriest !== 'All Priests') {
-        filteredForGrouping = filteredForGrouping.filter(activity => activity.priest === selectedPriest);
+        filteredActivities = filteredActivities.filter(activity => activity.priest === selectedPriest);
     }
-     if (selectedSection && selectedSection !== 'All Sections') {
-        filteredForGrouping = filteredForGrouping.filter(activity => activity.section === selectedSection);
+    if (selectedSection && selectedSection !== 'All Sections') {
+        filteredActivities = filteredActivities.filter(activity => activity.section === selectedSection);
+    }
+    if (selectedLabor && selectedLabor !== 'All Labor') {
+        filteredActivities = filteredActivities.filter(activity => activity.labor === selectedLabor);
     }
 
 
     if (groupBy === 'centre') {
-        filteredForGrouping.forEach(activity => {
+        filteredActivities.forEach(activity => {
             const centreName = activity.centre;
             if (centreName) {
                 if (!groupsMap.has(centreName)) {
                     groupsMap.set(centreName, {
                         id: centreName,
                         title: centreName,
-                        items: []
+                        items: [],
+                        mainSection: ''
                     });
                 }
                 groupsMap.get(centreName)!.items.push(createGroupItem(activity));
             }
         });
     } else if (groupBy === 'activity') {
-        filteredForGrouping.forEach(activity => {
+        filteredActivities.forEach(activity => {
             const activityName = activity.activity;
             if (activityName) {
                 if (!groupsMap.has(activityName)) {
                     groupsMap.set(activityName, {
                         id: activityName,
                         title: activityName,
-                        items: []
+                        items: [],
+                        mainSection: ''
                     });
                 }
                 groupsMap.get(activityName)!.items.push(createGroupItem(activity));
             }
         });
     } else { // Group by date
-        filteredForGrouping.forEach(activity => {
+        filteredActivities.forEach(activity => {
             if (activity.date) {
                 const activityDate = new Date(activity.date);
                 const dateKey = activityDate.toISOString().split('T')[0]; // YYYY-MM-DD for stable key
@@ -122,18 +130,33 @@ export default function HomePage() {
                     groupsMap.set(dateKey, {
                         id: dateKey, // Use sortable ISO date for ID
                         title: formattedDate, // Display friendly date
-                        items: []
+                        items: [],
+                        mainSection: ''
                     });
                 }
                 groupsMap.get(dateKey)!.items.push(createGroupItem(activity));
             }
         });
     }
+
+    // Determine the main section for each group (for coloring accordion header)
+    groupsMap.forEach((group) => {
+        if (group.items.length > 0) {
+            const sectionCounts = group.items.reduce((acc, item) => {
+                acc[item.section] = (acc[item.section] || 0) + 1;
+                return acc;
+            }, {} as Record<string, number>);
+            
+            const mainSection = Object.keys(sectionCounts).reduce((a, b) => sectionCounts[a] > sectionCounts[b] ? a : b);
+            group.mainSection = mainSection;
+        }
+    });
+
     
     const sortedGroups = Array.from(groupsMap.values()).sort((a, b) => sortAccordionGroups(a, b, groupBy));
     setAccordionItems(sortedGroups);
 
-  }, [allActivities, groupBy, isLoading, selectedPriest, selectedSection]);
+  }, [allActivities, groupBy, isLoading, selectedPriest, selectedSection, selectedLabor]);
   
   const priests = React.useMemo(() => {
     const priestSet = new Set<string>();
@@ -155,6 +178,15 @@ export default function HomePage() {
     return ["All Sections", ...Array.from(sectionSet).sort()];
   }, [allActivities]);
 
+  const labors = React.useMemo(() => {
+    const laborSet = new Set<string>();
+    allActivities.forEach(activity => {
+      if (activity.labor) {
+        laborSet.add(activity.labor);
+      }
+    });
+    return ["All Labor", ...Array.from(laborSet).sort()];
+  }, [allActivities]);
 
   const filteredAccordionItems = React.useMemo(() => {
     if (!filterQuery) {
@@ -289,6 +321,28 @@ export default function HomePage() {
                                     />
                                 )}
                                 <span>{section}</span>
+                               </div>
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+             <div className="flex-grow sm:w-40 ml-2">
+                <Select value={selectedLabor} onValueChange={setSelectedLabor}>
+                    <SelectTrigger className="w-full h-10 rounded-none border-x-0 border-t-0 sm:border-0 sm:shadow-none">
+                        <SelectValue placeholder="Filter by labor..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {labors.map(labor => (
+                            <SelectItem key={labor} value={labor}>
+                               <div className="flex items-center gap-2">
+                                {labor !== 'All Labor' && (
+                                    <div 
+                                    className="h-4 w-4 rounded-full"
+                                    style={{ backgroundColor: getLaborColor(labor) }}
+                                    />
+                                )}
+                                <span>{labor}</span>
                                </div>
                             </SelectItem>
                         ))}
