@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, XIcon } from 'lucide-react';
 import { parseISO } from 'date-fns';
-import { format as formatDateFnsTz, utcToZonedTime } from 'date-fns-tz';
+import { format as formatDateFnsTz, toZonedTime } from 'date-fns-tz';
 import { getSectionColor, getLaborColor } from '@/lib/section-colors';
 
 const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData, groupBy: 'centre' | 'activity' | 'date'): number => {
@@ -67,8 +67,8 @@ export default function HomePage() {
       const fromDate = activity.from ? parseISO(activity.from) : null;
       const toDate = activity.to ? parseISO(activity.to) : null;
 
-      const fromTime = fromDate ? formatDateFnsTz(utcToZonedTime(fromDate, timeZone), "h:mm a", { timeZone }) : "N/A";
-      const toTime = toDate ? formatDateFnsTz(utcToZonedTime(toDate, timeZone), "h:mm a", { timeZone }) : "N/A";
+      const fromTime = fromDate ? formatDateFnsTz(toZonedTime(fromDate, timeZone), "h:mm a", { timeZone }) : "N/A";
+      const toTime = toDate ? formatDateFnsTz(toZonedTime(toDate, timeZone), "h:mm a", { timeZone }) : "N/A";
       
       return {
         title: activity.activity,
@@ -129,7 +129,7 @@ export default function HomePage() {
             if (activity.date) {
                 const activityDate = parseISO(activity.date);
                 const dateKey = activityDate.toISOString().split('T')[0]; // YYYY-MM-DD for stable key
-                const formattedDate = formatDateFnsTz(activityDate, "EEEE, MMMM d, yyyy");
+                const formattedDate = formatDateFnsTz(toZonedTime(activityDate, 'UTC'), "EEEE, MMMM d, yyyy", {timeZone: 'UTC'});
 
                 if (!groupsMap.has(dateKey)) {
                     groupsMap.set(dateKey, {
