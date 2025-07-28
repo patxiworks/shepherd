@@ -44,12 +44,12 @@ export function GridAccordion({
             <AccordionPrimitive.Header className="flex items-center group data-[state=open]:bg-primary/80 data-[state=open]:text-white">
               <AccordionPrimitive.Trigger
                 className={cn(
-                  "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:none",
-                  "px-4 group-hover:bg-primary/80 group-hover:text-white"
+                  "flex flex-1 items-center justify-between py-4 font-medium transition-all",
+                  "px-4 hover:brightness-90"
                 )}
               >
                 <div className="flex flex-col items-start text-left flex-grow mr-2">
-                  <span className="text-base font-semibold group-hover:none">
+                  <span className="text-base font-semibold">
                     {item.title}
                   </span>
                 </div>
