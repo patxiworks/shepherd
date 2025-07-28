@@ -64,11 +64,14 @@ export default function HomePage() {
 
     const createGroupItem = (activity: ApiActivity): GroupItem => {
       const timeZone = 'UTC';
-      const fromDate = activity.from ? parseISO(activity.from) : null;
-      const toDate = activity.to ? parseISO(activity.to) : null;
 
-      const fromTime = fromDate ? formatDateFnsTz(toZonedTime(fromDate, timeZone), "h:mm a", { timeZone }) : "N/A";
-      const toTime = toDate ? formatDateFnsTz(toZonedTime(toDate, timeZone), "h:mm a", { timeZone }) : "N/A";
+      const fromTime = activity.from && activity.from.includes('T')
+        ? formatDateFnsTz(toZonedTime(parseISO(activity.from), timeZone), "h:mm a", { timeZone })
+        : activity.from || 'N/A';
+      
+      const toTime = activity.to && activity.to.includes('T')
+        ? formatDateFnsTz(toZonedTime(parseISO(activity.to), timeZone), "h:mm a", { timeZone })
+        : activity.to || 'N/A';
       
       return {
         title: activity.activity,
