@@ -43,8 +43,9 @@ export default function HomePage() {
         if (!response.ok) {
           throw new Error('Failed to fetch activities');
         }
-        const result: { data: ApiActivity[] } = await response.json();
-        const data = result.data || [];
+        const data: ApiActivity[] = await response.json();
+        //const result: { data: ApiActivity[] } = await response.json();
+        //const data = result.data || [];
         setAllActivities(data);
       } catch (error) {
         console.error("Error fetching activities:", error);
@@ -296,7 +297,7 @@ export default function HomePage() {
 
   return (
     <>
-      <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-lg border-b border-[#bbb]">
+      <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-md border-b border-[#bbb]">
         <div className="main-header border-b border-t-2 border-black bg-background">
           <header className="relative mx-auto container pt-4 pb-2 px-4 text-left">
             <h1 className="w-[220px] sm:w-full leading-none text-[26px] sm:text-[33px] font-bold text-primary">
@@ -416,7 +417,7 @@ export default function HomePage() {
               {groupBy === 'date' && defaultValue && filteredAccordionItems.some(item => item.id === defaultValue) && (
                 <button
                   onClick={handleScrollToToday}
-                  className="text-sm font-semibold text-primary animate-pulse hover:underline focus:outline-none focus:ring-2 focus:ring-ring rounded"
+                  className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-ring rounded"
                 >
                   Today
                 </button>
