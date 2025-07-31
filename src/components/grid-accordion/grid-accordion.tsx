@@ -36,6 +36,7 @@ export function GridAccordion({
         const headerColor = groupBy === 'centre' ? getSectionColor(item.mainSection) : '';
         return (
           <AccordionItem 
+            id={`accordion-group-${item.id}`}
             value={item.id} 
             key={item.id} 
             className="border border-border rounded-lg shadow-sm overflow-hidden"
@@ -45,7 +46,7 @@ export function GridAccordion({
               <AccordionPrimitive.Trigger
                 className={cn(
                   "flex flex-1 items-center justify-between py-4 font-medium transition-all",
-                  "px-4 hover:brightness-90 data-[state=open]:brightness-90"
+                  "px-4 hover:filter hover:brightness-90 data-[state=open]:filter data-[state=open]:brightness-90"
                 )}
               >
                 <div className="flex flex-col items-start text-left flex-grow mr-2">

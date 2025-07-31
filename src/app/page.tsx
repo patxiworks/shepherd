@@ -42,7 +42,8 @@ export default function HomePage() {
         if (!response.ok) {
           throw new Error('Failed to fetch activities');
         }
-        const data: ApiActivity[] = await response.json();
+        const result = await response.json();
+        const data: ApiActivity[] = result.data || [];
         setAllActivities(data);
       } catch (error) {
         console.error("Error fetching activities:", error);
@@ -59,7 +60,7 @@ export default function HomePage() {
   }, [toast]);
 
   React.useEffect(() => {
-    if (isLoading || !allActivities) return;
+    if (!allActivities || allActivities.length === 0) return;
 
     let groupsMap = new Map<string, AccordionGroupData>();
 
@@ -170,8 +171,19 @@ export default function HomePage() {
     const sortedGroups = Array.from(groupsMap.values()).sort((a, b) => sortAccordionGroups(a, b, groupBy));
     setAccordionItems(sortedGroups);
 
-  }, [allActivities, groupBy, isLoading, selectedPriest, selectedSection, selectedLabor, defaultValue]);
+  }, [allActivities, groupBy, selectedPriest, selectedSection, selectedLabor]);
   
+  React.useEffect(() => {
+    if (defaultValue) {
+      setTimeout(() => {
+        const element = document.getElementById(`accordion-group-${defaultValue}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100); // Small delay to ensure the element is rendered
+    }
+  }, [defaultValue]);
+
   const priests = React.useMemo(() => {
     if (!allActivities) return ["All Priests"];
     const priestSet = new Set<string>();
