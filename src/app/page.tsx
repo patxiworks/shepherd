@@ -278,9 +278,9 @@ export default function HomePage() {
 
   return (
     <>
-      <div id="filter-header" className="sticky top-0 z-50 bg-background shadow-sm border-b border-[#bbb]">
-        <div className="main-header border-b border-t-2 border-black">
-          <header className="relative mx-auto container pt-20 pb-2 px-4 text-left">
+      <div id="filter-header" className="sticky top-0 z-50 bg-[#eee] shadow-sm border-b border-[#bbb]">
+        <div className="main-header border-b border-t-2 border-black bg-background">
+          <header className="relative mx-auto container pt-4 pb-2 px-4 text-left">
             <h1 className="w-[220px] sm:w-full leading-none text-[33px] font-bold text-primary">
               Shepherd
             </h1>
@@ -295,7 +295,7 @@ export default function HomePage() {
                   placeholder="Filter by centre, activity, date, or priest..."
                   value={filterQuery}
                   onChange={(e) => setFilterQuery(e.target.value)}
-                  className="w-full h-10 px-4 py-4 text-base rounded-none border-x-0 border-t-0 shadow-sm sm:border-0 sm:shadow-none pr-10 placeholder:text-primary/50"
+                  className="w-full h-10 px-4 py-4 text-xs rounded-none border-x-0 border-t-0 shadow-sm sm:border-0 sm:shadow-none pr-10 placeholder:text-primary/50"
                 />
                 {filterQuery && (
                   <Button
@@ -317,7 +317,7 @@ export default function HomePage() {
           <div className="flex flex-row flex-grow gap-2 px-4 sm:px-0">
             <div className="flex flex-grow">
               <Select value={groupBy} onValueChange={(value) => setGroupBy(value as 'date' | 'centre' | 'activity')}>
-                  <SelectTrigger className="w-full h-10 rounded-lg border-x-0 border-t-0 sm:border-0 sm:shadow-none bg-secondary">
+                  <SelectTrigger className="w-full h-10 rounded-lg text-xs border-x-0 border-t-0 sm:border-0 sm:shadow-none bg-secondary">
                       <SelectValue placeholder="Group by..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -329,7 +329,7 @@ export default function HomePage() {
             </div>
             <div className="flex flex-grow">
               <Select value={selectedPriest} onValueChange={setSelectedPriest}>
-                <SelectTrigger className="w-full h-10 rounded-lg border-x-0 border-t-0 sm:border-0 sm:shadow-none bg-secondary">
+                <SelectTrigger className="w-full h-10 rounded-lg text-xs border-x-0 border-t-0 sm:border-0 sm:shadow-none bg-secondary">
                     <SelectValue placeholder="Filter by priest..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -345,7 +345,7 @@ export default function HomePage() {
           <div className="flex flex-row flex-grow gap-2 px-4 sm:px-0">
             <div className="flex flex-grow">
               <Select value={selectedSection} onValueChange={setSelectedSection}>
-                <SelectTrigger className="w-full h-10 rounded-lg border-x-0 border-y-0 sm:border-0 sm:shadow-none bg-secondary">
+                <SelectTrigger className="w-full h-10 rounded-lg text-xs border-x-0 border-y-0 sm:border-0 sm:shadow-none bg-secondary">
                     <SelectValue placeholder="Filter by section..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -367,7 +367,7 @@ export default function HomePage() {
             </div>
             <div className="flex flex-grow">
               <Select value={selectedLabor} onValueChange={setSelectedLabor}>
-                  <SelectTrigger className="w-full h-10 rounded-lg border-x-0 border-y-0 sm:border-0 sm:shadow-none bg-secondary">
+                  <SelectTrigger className="w-full h-10 rounded-lg text-xs border-x-0 border-y-0 sm:border-0 sm:shadow-none bg-secondary">
                       <SelectValue placeholder="Filter by labor..." />
                   </SelectTrigger>
                   <SelectContent>
