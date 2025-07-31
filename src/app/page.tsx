@@ -278,13 +278,13 @@ export default function HomePage() {
 
   return (
     <>
-      <div id="filter-header" className="sticky top-0 z-50 bg-[#eee] shadow-sm border-b border-[#bbb]">
+      <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-sm border-b border-[#bbb]">
         <div className="main-header border-b border-t-2 border-black bg-background">
           <header className="relative mx-auto container pt-4 pb-2 px-4 text-left">
-            <h1 className="w-[220px] sm:w-full leading-none text-[33px] font-bold text-primary">
+            <h1 className="w-[220px] sm:w-full leading-none text-[26px] sm:text-[33px] font-bold text-primary">
               Shepherd
             </h1>
-            <div className="sub-header mt-0 w-full text-xs text-[#ccc]">Monthly schedule for Priests</div>
+            <div className="sub-header mt-0 w-full text-[10px] sm:text-xs text-[#ccc]">Monthly schedule for Priests</div>
           </header>
         </div>
         <div className="container mx-auto mb-1 sm:px-4 sm:py-3 sm:border-b-1 border-[#000] sm:shadow-sm">

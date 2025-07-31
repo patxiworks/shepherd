@@ -6,8 +6,8 @@
 header {
   /* font-family is now primarily handled by the font-body class in layout.tsx */
   background-image: url('/shepherd-bg.png'); /* URL of the image you provided */
-  background-size: 250px;
-  background-position: right -20px top -70px;
+  background-size: 200px;
+  background-position: right -20px top -55px;
   background-repeat: no-repeat;
   /*background-attachment: fixed;*/
   font-family: "Petit Formal Script", cursive;
