@@ -317,7 +317,7 @@ export default function HomePage() {
           <div className="flex flex-row flex-grow gap-2 px-4 sm:px-0">
             <div className="flex flex-grow">
               <Select value={groupBy} onValueChange={(value) => setGroupBy(value as 'date' | 'centre' | 'activity')}>
-                  <SelectTrigger className="w-full h-10 rounded-lg text-xs border-x-0 border-t-0 sm:border-0 sm:shadow-none bg-secondary">
+                  <SelectTrigger className="w-full h-10 rounded-lg text-xs sm:shadow-none bg-secondary border-t-1 border-primary/20">
                       <SelectValue placeholder="Group by..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -329,7 +329,7 @@ export default function HomePage() {
             </div>
             <div className="flex flex-grow">
               <Select value={selectedPriest} onValueChange={setSelectedPriest}>
-                <SelectTrigger className="w-full h-10 rounded-lg text-xs border-x-0 border-t-0 sm:border-0 sm:shadow-none bg-secondary">
+                <SelectTrigger className="w-full h-10 rounded-lg text-xs  sm:shadow-none bg-secondary border-t-1 border-primary/20">
                     <SelectValue placeholder="Filter by priest..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -345,7 +345,7 @@ export default function HomePage() {
           <div className="flex flex-row flex-grow gap-2 px-4 sm:px-0">
             <div className="flex flex-grow">
               <Select value={selectedSection} onValueChange={setSelectedSection}>
-                <SelectTrigger className="w-full h-10 rounded-lg text-xs border-x-0 border-y-0 sm:border-0 sm:shadow-none bg-secondary">
+                <SelectTrigger className="w-full h-10 rounded-lg text-xs sm:shadow-none bg-secondary border-t-1 border-primary/20">
                     <SelectValue placeholder="Filter by section..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -367,7 +367,7 @@ export default function HomePage() {
             </div>
             <div className="flex flex-grow">
               <Select value={selectedLabor} onValueChange={setSelectedLabor}>
-                  <SelectTrigger className="w-full h-10 rounded-lg text-xs border-x-0 border-y-0 sm:border-0 sm:shadow-none bg-secondary">
+                  <SelectTrigger className="w-full h-10 rounded-lg text-xs sm:shadow-none bg-secondary border-t-1 border-primary/20">
                       <SelectValue placeholder="Filter by labor..." />
                   </SelectTrigger>
                   <SelectContent>
