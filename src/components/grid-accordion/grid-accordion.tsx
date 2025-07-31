@@ -12,13 +12,15 @@ import { getSectionColor } from "@/lib/section-colors";
 interface GridAccordionProps {
   items: AccordionGroupData[];
   groupBy: 'centre' | 'activity' | 'date';
-  defaultValue?: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
 }
 
 export function GridAccordion({ 
   items, 
   groupBy,
-  defaultValue
+  value,
+  onValueChange
 }: GridAccordionProps) {
   if (!items || items.length === 0) {
     return <p className="text-center text-muted-foreground py-10">No items to display.</p>;
@@ -29,8 +31,8 @@ export function GridAccordion({
         type="single" 
         collapsible 
         className="w-full max-w-4xl mx-auto space-y-2"
-        defaultValue={defaultValue}
-        key={defaultValue}
+        value={value}
+        onValueChange={onValueChange}
     >
       {items.map((item) => {
         const headerColor = groupBy === 'centre' ? getSectionColor(item.mainSection) : '';

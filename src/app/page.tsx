@@ -25,26 +25,24 @@ const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData, group
 export default function HomePage() {
   const [allActivities, setAllActivities] = React.useState<ApiActivity[]>([]);
   const [accordionItems, setAccordionItems] = React.useState<AccordionGroupData[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
   const [filterQuery, setFilterQuery] = React.useState('');
   const [selectedPriest, setSelectedPriest] = React.useState('All Priests');
   const [selectedSection, setSelectedSection] = React.useState('All Sections');
   const [selectedLabor, setSelectedLabor] = React.useState('All Labor');
   const [groupBy, setGroupBy] = React.useState<'date' | 'centre' | 'activity'>('date');
   const [defaultValue, setDefaultValue] = React.useState<string | undefined>(undefined);
+  const [openAccordionValue, setOpenAccordionValue] = React.useState<string | undefined>(undefined);
   const { toast } = useToast();
 
   React.useEffect(() => {
-    const fetchActivities = async () => {
-      setIsLoading(true);
+    const fetchAndProcessActivities = async () => {
       try {
         const response = await fetch('/api/collections');
         if (!response.ok) {
           throw new Error('Failed to fetch activities');
         }
-        const data: ApiActivity[] = await response.json();
-        //const result = await response.json();
-        //const data: ApiActivity[] = result.data || [];
+        const result: { data: ApiActivity[] } = await response.json();
+        const data = result.data || [];
         setAllActivities(data);
       } catch (error) {
         console.error("Error fetching activities:", error);
@@ -53,39 +51,37 @@ export default function HomePage() {
           description: "Could not load activities data.",
           variant: "destructive",
         });
-      } finally {
-        setIsLoading(false);
       }
     };
-    fetchActivities();
+    fetchAndProcessActivities();
   }, [toast]);
 
   React.useEffect(() => {
-    if (!allActivities || allActivities.length === 0) return;
+    if (allActivities.length === 0) return;
 
     let groupsMap = new Map<string, AccordionGroupData>();
 
     const createGroupItem = (activity: ApiActivity): GroupItem => {
-        const timeZone = 'UTC'; // Assuming times from sheet are UTC or should be treated as such
-  
-        const fromTime = activity.from && activity.from.includes('T')
-          ? formatDateFnsTz(toZonedTime(parseISO(activity.from), timeZone), "h:mm a", { timeZone })
-          : activity.from || 'N/A';
-        
-        const toTime = activity.to && activity.to.includes('T')
-          ? formatDateFnsTz(toZonedTime(parseISO(activity.to), timeZone), "h:mm a", { timeZone })
-          : activity.to || 'N/A';
-        
-        return {
-          title: activity.activity,
-          centre: activity.centre,
-          date: activity.date ? formatDateFnsTz(toZonedTime(parseISO(activity.date), 'UTC'), "EEE, MMM d") : "N/A",
-          priest: activity.priest,
-          time: `${fromTime} - ${toTime}`,
-          section: activity.section || 'default',
-          labor: activity.labor || 'default',
-        };
+      const timeZone = 'UTC'; // Assuming times from sheet are UTC or should be treated as such
+
+      const fromTime = activity.from && activity.from.includes('T')
+        ? formatDateFnsTz(toZonedTime(parseISO(activity.from), timeZone), "h:mm a", { timeZone })
+        : activity.from || 'N/A';
+      
+      const toTime = activity.to && activity.to.includes('T')
+        ? formatDateFnsTz(toZonedTime(parseISO(activity.to), timeZone), "h:mm a", { timeZone })
+        : activity.to || 'N/A';
+      
+      return {
+        title: activity.activity,
+        centre: activity.centre,
+        date: activity.date ? formatDateFnsTz(toZonedTime(parseISO(activity.date), 'UTC'), "EEE, MMM d") : "N/A",
+        priest: activity.priest,
+        time: `${fromTime} - ${toTime}`,
+        section: activity.section || 'default',
+        labor: activity.labor || 'default',
       };
+    };
 
     let filteredActivities = allActivities;
 
@@ -150,6 +146,7 @@ export default function HomePage() {
 
                 if (dateKey === todayKey && !defaultValue) {
                     setDefaultValue(dateKey);
+                    setOpenAccordionValue(dateKey); // Also set the controlled value
                 }
             }
         });
@@ -167,32 +164,49 @@ export default function HomePage() {
             group.mainSection = mainSection;
         }
     });
-
     
     const sortedGroups = Array.from(groupsMap.values()).sort((a, b) => sortAccordionGroups(a, b, groupBy));
     setAccordionItems(sortedGroups);
 
   }, [allActivities, groupBy, selectedPriest, selectedSection, selectedLabor]);
   
-  React.useEffect(() => {
-    if (defaultValue) {
-      setTimeout(() => {
-        const accordionElement = document.getElementById(`accordion-group-${defaultValue}`);
-        const headerElement = document.getElementById('filter-header');
+  const scrollToToday = () => {
+    if (defaultValue) { // `defaultValue` holds today's date key
+      const accordionElement = document.getElementById(`accordion-group-${defaultValue}`);
+      const headerElement = document.getElementById('filter-header');
+      
+      if (accordionElement && headerElement) {
+          const headerHeight = headerElement.offsetHeight;
+          const elementPosition = accordionElement.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 10; // 10px padding
         
-        if (accordionElement && headerElement) {
-            const headerHeight = headerElement.offsetHeight;
-            const elementPosition = accordionElement.getBoundingClientRect().top;
-            const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 10; // 10px padding
-          
-            window.scrollTo({
-                top: offsetPosition,
-                behavior: 'smooth'
-            });
-        }
-      }, 100); // Small delay to ensure the element is rendered
+          window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+          });
+      }
     }
-  }, [defaultValue]);
+  };
+
+  const handleScrollToToday = () => {
+    if (defaultValue) {
+      setOpenAccordionValue(defaultValue); // Open the accordion
+      setTimeout(() => {
+          scrollToToday();
+      }, 50); // A small delay to ensure the DOM updates before scrolling
+    }
+  };
+
+  React.useEffect(() => {
+    // Only auto-scroll on initial page load
+    if (defaultValue && allActivities.length > 0) {
+      const timer = setTimeout(() => {
+        scrollToToday();
+      }, 100); // Delay to ensure element is rendered
+      return () => clearTimeout(timer);
+    }
+  }, [defaultValue, allActivities.length]);
+
 
   const priests = React.useMemo(() => {
     if (!allActivities) return ["All Priests"];
@@ -256,7 +270,7 @@ export default function HomePage() {
   }, [accordionItems, filterQuery]);
 
 
-  if (isLoading) {
+  if (allActivities.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -396,7 +410,12 @@ export default function HomePage() {
           <div className="flex justify-between items-center mb-4 my-2 sm:px-4">
             <div>
               {groupBy === 'date' && defaultValue && filteredAccordionItems.some(item => item.id === defaultValue) && (
-                <span className="text-sm font-semibold text-primary animate-pulse">Today</span>
+                <button
+                  onClick={handleScrollToToday}
+                  className="text-sm font-semibold text-primary animate-pulse hover:underline focus:outline-none focus:ring-2 focus:ring-ring rounded"
+                >
+                  Today
+                </button>
               )}
             </div>
             <div className="mass-count text-right text-sm text-muted-foreground">
@@ -409,7 +428,8 @@ export default function HomePage() {
           <GridAccordion 
             items={filteredAccordionItems} 
             groupBy={groupBy}
-            defaultValue={defaultValue}
+            value={openAccordionValue}
+            onValueChange={setOpenAccordionValue}
           />
         </div>
         
