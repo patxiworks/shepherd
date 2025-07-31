@@ -1,4 +1,5 @@
 
+import { useState } from 'react';
 import type { AccordionGroupData, GroupItem } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getLaborColor } from '@/lib/section-colors';
@@ -9,6 +10,8 @@ interface GridAccordionItemContentProps {
 }
 
 export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemContentProps) {
+  const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
+
   if (!item.items || item.items.length === 0) {
     return <p className="text-muted-foreground py-4 text-center">No scheduled items.</p>;
   }
@@ -42,7 +45,7 @@ export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemCon
   const headers = getHeaders();
   
   return (
-    <div className="px-1 py-2 md:px-2">
+    <div className="px-0 py-0 md:px-0">
       <Table>
         <TableHeader>
           <TableRow>
@@ -57,8 +60,13 @@ export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemCon
             return (
               <TableRow 
                 key={index}
-                style={{ backgroundColor: rowColor ? `${rowColor}1A` : 'transparent' }}
-                className="transition-colors hover:bg-muted/80"
+                //style={{ backgroundColor: rowColor ? `${rowColor}1A` : 'transparent' }}
+                style={{
+                  backgroundColor: hoveredRowIndex === index && rowColor ? `${rowColor}33` : rowColor ? `${rowColor}1A` : 'transparent',
+                }}
+                onMouseEnter={() => setHoveredRowIndex(index)}
+                onMouseLeave={() => setHoveredRowIndex(null)}
+                className="transition-colors"
               >
                 <TableCell className="font-medium">{cells[0] || 'N/A'}</TableCell>
                 <TableCell>{cells[1] || 'N/A'}</TableCell>
