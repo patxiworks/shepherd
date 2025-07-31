@@ -42,8 +42,9 @@ export default function HomePage() {
         if (!response.ok) {
           throw new Error('Failed to fetch activities');
         }
-        const result = await response.json();
-        const data: ApiActivity[] = result.data || [];
+        const data: ApiActivity[] = await response.json();
+        //const result = await response.json();
+        //const data: ApiActivity[] = result.data || [];
         setAllActivities(data);
       } catch (error) {
         console.error("Error fetching activities:", error);
@@ -176,9 +177,18 @@ export default function HomePage() {
   React.useEffect(() => {
     if (defaultValue) {
       setTimeout(() => {
-        const element = document.getElementById(`accordion-group-${defaultValue}`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const accordionElement = document.getElementById(`accordion-group-${defaultValue}`);
+        const headerElement = document.getElementById('filter-header');
+        
+        if (accordionElement && headerElement) {
+            const headerHeight = headerElement.offsetHeight;
+            const elementPosition = accordionElement.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 10; // 10px padding
+          
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: 'smooth'
+            });
         }
       }, 100); // Small delay to ensure the element is rendered
     }
@@ -268,7 +278,7 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="sticky top-0 z-50 bg-background shadow-sm">
+      <div id="filter-header" className="sticky top-0 z-50 bg-background shadow-sm">
         <div className="main-header border-b border-t-2 border-black">
           <header className="relative mx-auto container pt-20 pb-2 px-4 text-left">
             <div className="w-full text-xs text-muted-foreground">Activity Schedule</div>
