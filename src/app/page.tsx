@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, XIcon } from 'lucide-react';
-import { parseISO } from 'date-fns';
+import { parseISO, format as formatDate } from 'date-fns';
 import { format as formatDateFnsTz, toZonedTime } from 'date-fns-tz';
 import { getSectionColor, getLaborColor } from '@/lib/section-colors';
 
@@ -31,6 +31,7 @@ export default function HomePage() {
   const [selectedSection, setSelectedSection] = React.useState('All Sections');
   const [selectedLabor, setSelectedLabor] = React.useState('All Labor');
   const [groupBy, setGroupBy] = React.useState<'date' | 'centre' | 'activity'>('date');
+  const [defaultValue, setDefaultValue] = React.useState<string | undefined>(undefined);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -58,31 +59,31 @@ export default function HomePage() {
   }, [toast]);
 
   React.useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !allActivities) return;
 
     let groupsMap = new Map<string, AccordionGroupData>();
 
     const createGroupItem = (activity: ApiActivity): GroupItem => {
-      const timeZone = 'UTC';
-
-      const fromTime = activity.from && activity.from.includes('T')
-        ? formatDateFnsTz(toZonedTime(parseISO(activity.from), timeZone), "h:mm a", { timeZone })
-        : activity.from || 'N/A';
-      
-      const toTime = activity.to && activity.to.includes('T')
-        ? formatDateFnsTz(toZonedTime(parseISO(activity.to), timeZone), "h:mm a", { timeZone })
-        : activity.to || 'N/A';
-      
-      return {
-        title: activity.activity,
-        centre: activity.centre,
-        date: activity.date ? formatDateFnsTz(parseISO(activity.date), "EEE, MMM d") : "N/A",
-        priest: activity.priest,
-        time: `${fromTime} - ${toTime}`,
-        section: activity.section || 'default',
-        labor: activity.labor || 'default',
+        const timeZone = 'UTC'; // Assuming times from sheet are UTC or should be treated as such
+  
+        const fromTime = activity.from && activity.from.includes('T')
+          ? formatDateFnsTz(toZonedTime(parseISO(activity.from), timeZone), "h:mm a", { timeZone })
+          : activity.from || 'N/A';
+        
+        const toTime = activity.to && activity.to.includes('T')
+          ? formatDateFnsTz(toZonedTime(parseISO(activity.to), timeZone), "h:mm a", { timeZone })
+          : activity.to || 'N/A';
+        
+        return {
+          title: activity.activity,
+          centre: activity.centre,
+          date: activity.date ? formatDateFnsTz(toZonedTime(parseISO(activity.date), 'UTC'), "EEE, MMM d") : "N/A",
+          priest: activity.priest,
+          time: `${fromTime} - ${toTime}`,
+          section: activity.section || 'default',
+          labor: activity.labor || 'default',
+        };
       };
-    };
 
     let filteredActivities = allActivities;
 
@@ -128,21 +129,26 @@ export default function HomePage() {
             }
         });
     } else { // Group by date
+        const todayKey = formatDate(new Date(), "yyyy-MM-dd");
         filteredActivities.forEach(activity => {
             if (activity.date) {
-                const activityDate = parseISO(activity.date);
-                const dateKey = activityDate.toISOString().split('T')[0]; // YYYY-MM-DD for stable key
-                const formattedDate = formatDateFnsTz(toZonedTime(activityDate, 'UTC'), "EEEE, MMMM d, yyyy", {timeZone: 'UTC'});
+                const activityDate = toZonedTime(parseISO(activity.date), 'UTC');
+                const dateKey = formatDate(activityDate, "yyyy-MM-dd"); 
+                const formattedDate = formatDate(activityDate, "EEEE, MMMM d, yyyy");
 
                 if (!groupsMap.has(dateKey)) {
                     groupsMap.set(dateKey, {
-                        id: dateKey, // Use sortable ISO date for ID
-                        title: formattedDate, // Display friendly date
+                        id: dateKey,
+                        title: formattedDate,
                         items: [],
                         mainSection: ''
                     });
                 }
                 groupsMap.get(dateKey)!.items.push(createGroupItem(activity));
+
+                if (dateKey === todayKey && !defaultValue) {
+                    setDefaultValue(dateKey);
+                }
             }
         });
     }
@@ -164,9 +170,10 @@ export default function HomePage() {
     const sortedGroups = Array.from(groupsMap.values()).sort((a, b) => sortAccordionGroups(a, b, groupBy));
     setAccordionItems(sortedGroups);
 
-  }, [allActivities, groupBy, isLoading, selectedPriest, selectedSection, selectedLabor]);
+  }, [allActivities, groupBy, isLoading, selectedPriest, selectedSection, selectedLabor, defaultValue]);
   
   const priests = React.useMemo(() => {
+    if (!allActivities) return ["All Priests"];
     const priestSet = new Set<string>();
     allActivities.forEach(activity => {
         if (activity.priest) {
@@ -177,6 +184,7 @@ export default function HomePage() {
   }, [allActivities]);
 
   const sections = React.useMemo(() => {
+    if (!allActivities) return ["All Sections"];
     const sectionSet = new Set<string>();
     allActivities.forEach(activity => {
       if (activity.section) {
@@ -187,6 +195,7 @@ export default function HomePage() {
   }, [allActivities]);
 
   const labors = React.useMemo(() => {
+    if (!allActivities) return ["All Labor"];
     const laborSet = new Set<string>();
     allActivities.forEach(activity => {
       if (activity.labor) {
@@ -372,6 +381,7 @@ export default function HomePage() {
           <GridAccordion 
             items={filteredAccordionItems} 
             groupBy={groupBy}
+            defaultValue={defaultValue}
           />
         </div>
         
@@ -385,4 +395,5 @@ export default function HomePage() {
       </div>
     </>
   );
-}
+
+    
