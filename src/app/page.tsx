@@ -32,11 +32,13 @@ export default function HomePage() {
   const [groupBy, setGroupBy] = React.useState<'date' | 'centre' | 'activity'>('date');
   const [defaultValue, setDefaultValue] = React.useState<string | undefined>(undefined);
   const [openAccordionValue, setOpenAccordionValue] = React.useState<string | undefined>(undefined);
+  const [isLoading, setIsLoading] = React.useState(true);
   const { toast } = useToast();
 
   React.useEffect(() => {
     const fetchAndProcessActivities = async () => {
       try {
+        setIsLoading(true);
         const response = await fetch('/api/collections');
         if (!response.ok) {
           throw new Error('Failed to fetch activities');
@@ -51,13 +53,15 @@ export default function HomePage() {
           description: "Could not load activities data.",
           variant: "destructive",
         });
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchAndProcessActivities();
   }, [toast]);
 
   React.useEffect(() => {
-    if (allActivities.length === 0) return;
+    if (isLoading || allActivities.length === 0) return;
 
     let groupsMap = new Map<string, AccordionGroupData>();
 
@@ -168,7 +172,7 @@ export default function HomePage() {
     const sortedGroups = Array.from(groupsMap.values()).sort((a, b) => sortAccordionGroups(a, b, groupBy));
     setAccordionItems(sortedGroups);
 
-  }, [allActivities, groupBy, selectedPriest, selectedSection, selectedLabor]);
+  }, [allActivities, groupBy, selectedPriest, selectedSection, selectedLabor, isLoading, defaultValue]);
   
   const scrollToToday = () => {
     if (defaultValue) { // `defaultValue` holds today's date key
@@ -199,13 +203,13 @@ export default function HomePage() {
 
   React.useEffect(() => {
     // Only auto-scroll on initial page load
-    if (defaultValue && allActivities.length > 0) {
+    if (defaultValue && !isLoading) {
       const timer = setTimeout(() => {
         scrollToToday();
       }, 100); // Delay to ensure element is rendered
       return () => clearTimeout(timer);
     }
-  }, [defaultValue, allActivities.length]);
+  }, [defaultValue, isLoading]);
 
 
   const priests = React.useMemo(() => {
@@ -270,7 +274,7 @@ export default function HomePage() {
   }, [accordionItems, filterQuery]);
 
 
-  if (allActivities.length === 0) {
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
