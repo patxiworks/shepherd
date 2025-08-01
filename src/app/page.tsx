@@ -289,9 +289,9 @@ export default function HomePage() {
   const getGroupByName = () => {
     switch(groupBy) {
         case 'centre': return 'Centres';
-        case 'activity': return 'Activities';
-        case 'date': return 'Days';
-        default: return 'Items';
+        case 'activity': return 'activities';
+        case 'date': return 'days';
+        default: return 'items';
     }
   }
 
@@ -419,7 +419,7 @@ export default function HomePage() {
                   onClick={handleScrollToToday}
                   className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-ring rounded"
                 >
-                  Today
+                  Jump to today
                 </button>
               )}
             </div>
