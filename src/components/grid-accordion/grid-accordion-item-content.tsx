@@ -66,7 +66,7 @@ export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemCon
                 }}
                 onMouseEnter={() => setHoveredRowIndex(index)}
                 onMouseLeave={() => setHoveredRowIndex(null)}
-                className="transition-colors"
+                className="transition-colors text-xs"
               >
                 <TableCell className="font-medium">{cells[0] || 'N/A'}</TableCell>
                 <TableCell>{cells[1] || 'N/A'}</TableCell>

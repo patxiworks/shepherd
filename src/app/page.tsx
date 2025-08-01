@@ -303,7 +303,7 @@ export default function HomePage() {
             <h1 className="w-[220px] sm:w-full leading-none text-[26px] sm:text-[33px] font-bold text-primary">
               Shepherd
             </h1>
-            <div className="sub-header mt-0 w-full text-[10px] sm:text-xs text-[#ccc]">Monthly schedule for Priests</div>
+            <div className="sub-header mt-0 w-full text-[9px] sm:text-xs text-[#ccc]">Schedule for Pastoral Attention</div>
           </header>
         </div>
         <div className="container mx-auto mb-1 sm:px-4 sm:py-3 sm:border-b-1 border-[#000] sm:shadow-sm">

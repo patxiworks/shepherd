@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: '50th Anniversary of St. Josemaría in heaven',
-  description: "Celebrating the 50th anniversary of St. Josemaría's departure to heaven",
+  title: 'Shepherd: Schedule for Pastoral Attention',
+  description: "Schedule for pastoral attention for Centres in Nigeria",
 };
 
 export default function RootLayout({
