@@ -48,7 +48,7 @@ export function GridAccordion({
               <AccordionPrimitive.Trigger
                 className={cn(
                   "flex flex-1 items-center justify-between py-4 font-medium transition-all",
-                  "px-4 hover:filter hover:brightness-90 data-[state=open]:filter data-[state=open]:brightness-90"
+                  "px-4 hover:filter hover:brightness-95 data-[state=open]:bg-primary data-[state=open]:text-primary-foreground data-[state=open]:filter-none"
                 )}
               >
                 <div className="flex flex-col items-start text-left flex-grow mr-2">
