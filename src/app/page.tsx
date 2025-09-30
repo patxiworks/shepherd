@@ -71,18 +71,18 @@ export default function HomePage() {
 
       const fromTime = activity.from && activity.from.includes('T')
         ? formatDateFnsTz(toZonedTime(parseISO(activity.from), timeZone), "h:mm a", { timeZone })
-        : activity.from || 'N/A';
+        : activity.from;
       
       const toTime = activity.to && activity.to.includes('T')
         ? formatDateFnsTz(toZonedTime(parseISO(activity.to), timeZone), "h:mm a", { timeZone })
-        : activity.to || 'N/A';
+        : activity.to;
       
       return {
         title: activity.activity,
         centre: activity.centre,
         date: activity.date ? formatDateFnsTz(toZonedTime(parseISO(activity.date), 'UTC'), "EEE, MMM d") : "N/A",
         priest: activity.priest,
-        time: `${fromTime} - ${toTime}`,
+        time: fromTime && toTime ? `${fromTime} - ${toTime}` : fromTime ? `${fromTime}` : '',
         section: activity.section || 'default',
         labor: activity.labor || 'default',
       };
@@ -214,6 +214,7 @@ export default function HomePage() {
 
 
   const priests = React.useMemo(() => {
+    //console.log(allActivities)
     if (!allActivities) return ["All Priests"];
     const priestSet = new Set<string>();
     allActivities.forEach(activity => {

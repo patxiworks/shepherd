@@ -19,11 +19,14 @@ export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemCon
   const getHeaders = () => {
     switch(groupBy) {
       case 'centre':
-        return ['Activity', 'Date', 'Time', 'Priest'];
+        //return ['Activity', 'Date', 'Time', 'Priest'];
+        return ['Activity', 'Priest'];
       case 'activity':
-        return ['Centre', 'Date', 'Time', 'Priest'];
+        //return ['Centre', 'Date', 'Time', 'Priest'];
+        return ['Centre', 'Priest'];
       case 'date':
-        return ['Activity', 'Centre', 'Time', 'Priest'];
+        //return ['Activity', 'Centre', 'Time', 'Priest'];
+        return ['Activity', 'Priest'];
       default:
         return [];
     }
@@ -68,9 +71,9 @@ export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemCon
                 onMouseLeave={() => setHoveredRowIndex(null)}
                 className="transition-colors text-xs"
               >
-                <TableCell className="font-medium">{cells[0] || 'N/A'}</TableCell>
-                <TableCell>{cells[1] || 'N/A'}</TableCell>
-                <TableCell>{cells[2] || 'N/A'}</TableCell>
+                <TableCell className="font-medium"><span className="text-[14px]"><strong>{cells[0] || 'N/A'}</strong></span> <br/> {cells[1]} {cells[2] ? "| "+cells[2] : ''}</TableCell>
+                {/*<TableCell>{cells[1] || 'N/A'}</TableCell>
+                <TableCell>{cells[2] || 'N/A'}</TableCell>*/}
                 <TableCell>{cells[3] || 'N/A'}</TableCell>
               </TableRow>
             )
