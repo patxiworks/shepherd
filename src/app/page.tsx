@@ -301,7 +301,7 @@ export default function HomePage() {
       <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-md border-b border-[#bbb] bg-primary">
         <div className="main-header border-b border-t-2 border-black bg-background">
           <header className="relative mx-auto container pt-4 pb-2 px-4 text-left">
-            <h1 className="w-[220px] sm:w-full leading-none text-[36px] sm:text-[33px] font-bold text-[#fff]">
+            <h1 className="w-[220px] sm:w-full leading-none text-[35px] sm:text-[33px] font-bold text-[#fff]">
               Pastores
             </h1>
             <div className="sub-header mt-0 w-full text-[9px] sm:text-xs text-[#ccc]">Schedule for Pastoral Attention</div>
