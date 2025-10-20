@@ -9,11 +9,13 @@ header {
   background-size: 200px;
   background-position: right -20px top -55px;
   background-repeat: no-repeat;
+  background-color: #000;
   /*background-attachment: fixed;*/
   font-family: "Petit Formal Script", cursive;
 }
 .main-header {
   background-image: url('/sj-bg3.png');
+  background-color: #000;
 }
 .sub-header {
   font-family: Inter;
