@@ -1,5 +1,6 @@
 
-// The raw data structure from the remote Google Script URL for activities
+
+// The raw data structure from the remote Google Script URL
 export interface ApiActivity {
   unit?: string | null;
   week: number | null;

@@ -48,6 +48,7 @@ export function GridAccordion({
               <AccordionPrimitive.Trigger
                 className={cn(
                   "flex flex-1 items-center justify-between py-4 font-medium transition-all",
+                  //"px-4 hover:filter hover:brightness-90 data-[state=open]:filter data-[state=open]:brightness-90"
                   "px-4 hover:filter hover:brightness-95 data-[state=open]:bg-primary/80 data-[state=open]:text-primary-foreground data-[state=open]:filter-none"
                 )}
               >
@@ -59,7 +60,7 @@ export function GridAccordion({
                 <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
               </AccordionPrimitive.Trigger>
             </AccordionPrimitive.Header>
-            <AccordionContent className="bg-background/100">
+            <AccordionContent className="bg-background/100 border-t border-primary">
               <GridAccordionItemContent 
                 item={item} 
                 groupBy={groupBy}

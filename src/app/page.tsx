@@ -43,9 +43,10 @@ export default function HomePage() {
         if (!response.ok) {
           throw new Error('Failed to fetch activities');
         }
-        const { activities } = await response.json();
-
-        setAllActivities(activities || []);
+        const data: ApiActivity[] = await response.json();
+        //const result: { data: ApiActivity[] } = await response.json();
+        //const data = result.data || [];
+        setAllActivities(data);
       } catch (error) {
         console.error("Error fetching activities:", error);
         toast({
@@ -143,7 +144,7 @@ export default function HomePage() {
                         id: dateKey,
                         title: formattedDate,
                         items: [],
-                        mainSection: '',
+                        mainSection: ''
                     });
                 }
                 groupsMap.get(dateKey)!.items.push(createGroupItem(activity));
@@ -213,6 +214,7 @@ export default function HomePage() {
 
 
   const priests = React.useMemo(() => {
+    //console.log(allActivities)
     if (!allActivities) return ["All Priests"];
     const priestSet = new Set<string>();
     allActivities.forEach(activity => {
