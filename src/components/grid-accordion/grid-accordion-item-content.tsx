@@ -17,19 +17,6 @@ export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionI
     return <p className="text-muted-foreground py-4 text-center">No scheduled items.</p>;
   }
 
-  const getHeaders = () => {
-    switch(groupBy) {
-      case 'centre':
-        return ['Activity', 'Priest'];
-      case 'activity':
-        return ['Centre', 'Priest'];
-      case 'date':
-        return ['Activity', 'Priest'];
-      default:
-        return [];
-    }
-  };
-
   const getCellData = (activityItem: GroupItem) => {
      switch(groupBy) {
       case 'centre':
@@ -43,16 +30,13 @@ export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionI
     }
   }
   
-  const headers = getHeaders();
-  
   return (
     <div className="px-0 py-0 md:px-0">
       <Table>
-        <TableHeader>
+        <TableHeader className='bg-white'>
           <TableRow>
-            {headers.map(header => <TableHead key={header}>{header}</TableHead>)}
             {groupBy === 'date' && mass && (
-                <TableHead>{mass}</TableHead>
+                <TableHead colSpan={2}>{mass}</TableHead>
             )}
           </TableRow>
         </TableHeader>
@@ -69,9 +53,9 @@ export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionI
                 }}
                 onMouseEnter={() => setHoveredRowIndex(index)}
                 onMouseLeave={() => setHoveredRowIndex(null)}
-                className="transition-colors text-xs"
+                className="transition-colors text-sm"
               >
-                <TableCell className="font-medium"><span className="text-[14px]"><strong>{cells[0] || 'N/A'}</strong></span> <br/> {cells[1]} {cells[2] ? "| "+cells[2] : ''}</TableCell>
+                <TableCell className="font-medium"><span className="text-base"><strong>{cells[0] || 'N/A'}</strong></span> <br/> {cells[1]} {cells[2] ? "| "+cells[2] : ''}</TableCell>
                 <TableCell>{cells[3] || 'N/A'}</TableCell>
               </TableRow>
             )
