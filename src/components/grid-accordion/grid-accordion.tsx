@@ -11,13 +11,15 @@ import { getSectionColor } from "@/lib/section-colors";
 
 interface GridAccordionProps {
   items: AccordionGroupData[];
+  masses: any;
   groupBy: 'centre' | 'activity' | 'date';
   value?: string;
   onValueChange?: (value: string) => void;
 }
 
 export function GridAccordion({ 
-  items, 
+  items,
+  masses,
   groupBy,
   value,
   onValueChange
@@ -48,7 +50,6 @@ export function GridAccordion({
               <AccordionPrimitive.Trigger
                 className={cn(
                   "flex flex-1 items-center justify-between py-4 font-medium transition-all",
-                  //"px-4 hover:filter hover:brightness-90 data-[state=open]:filter data-[state=open]:brightness-90"
                   "px-4 hover:filter hover:brightness-95 data-[state=open]:bg-primary/80 data-[state=open]:text-primary-foreground data-[state=open]:filter-none"
                 )}
               >
@@ -56,6 +57,11 @@ export function GridAccordion({
                   <span className="text-base font-semibold">
                     {item.title}
                   </span>
+                  {groupBy === 'date' && masses[item.id] && (
+                    <span className="text-xs text-muted-foreground group-data-[state=open]:text-primary-foreground/80 mt-1">
+                      {masses[item.id].Mass}
+                    </span>
+                  )}
                 </div>
                 <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
               </AccordionPrimitive.Trigger>

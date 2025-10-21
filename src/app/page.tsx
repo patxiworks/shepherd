@@ -24,6 +24,7 @@ const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData, group
 
 export default function HomePage() {
   const [allActivities, setAllActivities] = React.useState<ApiActivity[]>([]);
+  const [massesData, setMassesData] = React.useState<ApiActivity[]>([]);
   const [accordionItems, setAccordionItems] = React.useState<AccordionGroupData[]>([]);
   const [filterQuery, setFilterQuery] = React.useState('');
   const [selectedPriest, setSelectedPriest] = React.useState('All Priests');
@@ -46,7 +47,8 @@ export default function HomePage() {
         const data: ApiActivity[] = await response.json();
         //const result: { data: ApiActivity[] } = await response.json();
         //const data = result.data || [];
-        setAllActivities(data);
+        setAllActivities(data.activities);
+        setMassesData(data.masses)
       } catch (error) {
         console.error("Error fetching activities:", error);
         toast({
@@ -432,7 +434,8 @@ export default function HomePage() {
           </div>
 
           <GridAccordion 
-            items={filteredAccordionItems} 
+            items={filteredAccordionItems}
+            masses={massesData}
             groupBy={groupBy}
             value={openAccordionValue}
             onValueChange={setOpenAccordionValue}

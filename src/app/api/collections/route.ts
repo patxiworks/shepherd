@@ -47,7 +47,7 @@ export async function GET() {
     ]);
     
     return NextResponse.json({
-      data: activitiesResult.data || [],
+      activities: activitiesResult || [],
       masses: massesResult || {},
     });
   } catch (error) {
@@ -55,6 +55,17 @@ export async function GET() {
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
+
+// export async function GET() {
+//   try {
+//     const remoteData = await readRemoteActivities();
+//     // The API returns an object with a 'data' key which is the array
+//     //const activities = remoteData.data || [];
+//     return NextResponse.json(remoteData);
+//   } catch (error) {
+//     return NextResponse.json({ message: (error as Error).message || 'Failed to fetch activities' }, { status: 500 });
+//   }
+// }
 
 // POST, PUT, DELETE are no longer supported with this read-only data source.
 // We can remove the POST handler.
