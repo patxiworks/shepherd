@@ -7,9 +7,10 @@ import { getLaborColor } from '@/lib/section-colors';
 interface GridAccordionItemContentProps {
   item: AccordionGroupData;
   groupBy: 'centre' | 'activity' | 'date';
+  mass: string;
 }
 
-export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemContentProps) {
+export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionItemContentProps) {
   const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
 
   if (!item.items || item.items.length === 0) {
@@ -19,13 +20,10 @@ export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemCon
   const getHeaders = () => {
     switch(groupBy) {
       case 'centre':
-        //return ['Activity', 'Date', 'Time', 'Priest'];
         return ['Activity', 'Priest'];
       case 'activity':
-        //return ['Centre', 'Date', 'Time', 'Priest'];
         return ['Centre', 'Priest'];
       case 'date':
-        //return ['Activity', 'Centre', 'Time', 'Priest'];
         return ['Activity', 'Priest'];
       default:
         return [];
@@ -53,6 +51,9 @@ export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemCon
         <TableHeader>
           <TableRow>
             {headers.map(header => <TableHead key={header}>{header}</TableHead>)}
+            {groupBy === 'date' && mass && (
+                <TableHead>{mass}</TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -63,7 +64,6 @@ export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemCon
             return (
               <TableRow 
                 key={index}
-                //style={{ backgroundColor: rowColor ? `${rowColor}1A` : 'transparent' }}
                 style={{
                   backgroundColor: hoveredRowIndex === index && rowColor ? `${rowColor}33` : rowColor ? `${rowColor}1A` : 'transparent',
                 }}
@@ -72,8 +72,6 @@ export function GridAccordionItemContent({ item, groupBy }: GridAccordionItemCon
                 className="transition-colors text-xs"
               >
                 <TableCell className="font-medium"><span className="text-[14px]"><strong>{cells[0] || 'N/A'}</strong></span> <br/> {cells[1]} {cells[2] ? "| "+cells[2] : ''}</TableCell>
-                {/*<TableCell>{cells[1] || 'N/A'}</TableCell>
-                <TableCell>{cells[2] || 'N/A'}</TableCell>*/}
                 <TableCell>{cells[3] || 'N/A'}</TableCell>
               </TableRow>
             )

@@ -24,7 +24,7 @@ const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData, group
 
 export default function HomePage() {
   const [allActivities, setAllActivities] = React.useState<ApiActivity[]>([]);
-  const [massesData, setMassesData] = React.useState<ApiActivity[]>([]);
+  const [massesData, setMassesData] = React.useState<Record<string, any>>({});
   const [accordionItems, setAccordionItems] = React.useState<AccordionGroupData[]>([]);
   const [filterQuery, setFilterQuery] = React.useState('');
   const [selectedPriest, setSelectedPriest] = React.useState('All Priests');
@@ -44,11 +44,12 @@ export default function HomePage() {
         if (!response.ok) {
           throw new Error('Failed to fetch activities');
         }
-        const data: ApiActivity[] = await response.json();
-        //const result: { data: ApiActivity[] } = await response.json();
-        //const data = result.data || [];
-        setAllActivities(data.activities);
-        setMassesData(data.masses)
+        const data = await response.json();
+
+        // Correctly access nested data
+        setAllActivities(data.activities?.data || []);
+        setMassesData(data.masses || {});
+        
       } catch (error) {
         console.error("Error fetching activities:", error);
         toast({
@@ -64,7 +65,7 @@ export default function HomePage() {
   }, [toast]);
 
   React.useEffect(() => {
-    if (isLoading || allActivities.length === 0) return;
+    if (isLoading) return;
 
     let groupsMap = new Map<string, AccordionGroupData>();
 
@@ -175,7 +176,7 @@ export default function HomePage() {
     const sortedGroups = Array.from(groupsMap.values()).sort((a, b) => sortAccordionGroups(a, b, groupBy));
     setAccordionItems(sortedGroups);
 
-  }, [allActivities, groupBy, selectedPriest, selectedSection, selectedLabor, isLoading, defaultValue]);
+  }, [allActivities, massesData, groupBy, selectedPriest, selectedSection, selectedLabor, isLoading]);
   
   const scrollToToday = () => {
     if (defaultValue) { // `defaultValue` holds today's date key
@@ -205,18 +206,18 @@ export default function HomePage() {
   };
 
   React.useEffect(() => {
-    // Only auto-scroll on initial page load
-    if (defaultValue && !isLoading) {
-      const timer = setTimeout(() => {
-        scrollToToday();
-      }, 100); // Delay to ensure element is rendered
-      return () => clearTimeout(timer);
+    // Only auto-scroll on initial page load if defaultValue is set and data isn't loading
+    if (defaultValue && !isLoading && accordionItems.length > 0) {
+        const hasTodayBeenScrolled = sessionStorage.getItem('scrolledToToday');
+        if (!hasTodayBeenScrolled) {
+            handleScrollToToday();
+            sessionStorage.setItem('scrolledToToday', 'true');
+        }
     }
-  }, [defaultValue, isLoading]);
+  }, [defaultValue, isLoading, accordionItems]);
 
 
   const priests = React.useMemo(() => {
-    //console.log(allActivities)
     if (!allActivities) return ["All Priests"];
     const priestSet = new Set<string>();
     allActivities.forEach(activity => {

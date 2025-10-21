@@ -11,7 +11,7 @@ import { getSectionColor } from "@/lib/section-colors";
 
 interface GridAccordionProps {
   items: AccordionGroupData[];
-  masses: any;
+  masses: Record<string, any>;
   groupBy: 'centre' | 'activity' | 'date';
   value?: string;
   onValueChange?: (value: string) => void;
@@ -57,19 +57,15 @@ export function GridAccordion({
                   <span className="text-base font-semibold">
                     {item.title}
                   </span>
-                  {groupBy === 'date' && masses[item.id] && (
-                    <span className="text-xs text-muted-foreground group-data-[state=open]:text-primary-foreground/80 mt-1">
-                      {masses[item.id].Mass}
-                    </span>
-                  )}
                 </div>
                 <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
               </AccordionPrimitive.Trigger>
             </AccordionPrimitive.Header>
-            <AccordionContent className="bg-background/100 border-t border-primary">
+            <AccordionContent className="bg-background/100 border-t border-primary/20">
               <GridAccordionItemContent 
                 item={item} 
                 groupBy={groupBy}
+                mass={groupBy === 'date' && masses[item.id] ? masses[item.id].Mass : ""}
               />
             </AccordionContent>
           </AccordionItem>
