@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { GridAccordion } from '@/components/grid-accordion/grid-accordion';
-import type { AccordionGroupData, ApiActivity, GroupItem, MassData } from '@/types';
+import type { AccordionGroupData, ApiActivity, GroupItem } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,6 @@ const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData, group
 
 export default function HomePage() {
   const [allActivities, setAllActivities] = React.useState<ApiActivity[]>([]);
-  const [masses, setMasses] = React.useState<MassData>({});
   const [accordionItems, setAccordionItems] = React.useState<AccordionGroupData[]>([]);
   const [filterQuery, setFilterQuery] = React.useState('');
   const [selectedPriest, setSelectedPriest] = React.useState('All Priests');
@@ -44,10 +43,9 @@ export default function HomePage() {
         if (!response.ok) {
           throw new Error('Failed to fetch activities');
         }
-        const { activities, masses: fetchedMasses } = await response.json();
+        const { activities } = await response.json();
 
         setAllActivities(activities || []);
-        setMasses(fetchedMasses || {});
       } catch (error) {
         console.error("Error fetching activities:", error);
         toast({
@@ -139,7 +137,6 @@ export default function HomePage() {
                 const activityDate = toZonedTime(parseISO(activity.date), 'UTC');
                 const dateKey = formatDate(activityDate, "yyyy-MM-dd"); 
                 const formattedDate = formatDate(activityDate, "EEEE, MMMM d, yyyy");
-                const massInfo = masses[dateKey];
 
                 if (!groupsMap.has(dateKey)) {
                     groupsMap.set(dateKey, {
@@ -147,7 +144,6 @@ export default function HomePage() {
                         title: formattedDate,
                         items: [],
                         mainSection: '',
-                        massTitle: massInfo ? massInfo.Mass : undefined,
                     });
                 }
                 groupsMap.get(dateKey)!.items.push(createGroupItem(activity));
@@ -176,7 +172,7 @@ export default function HomePage() {
     const sortedGroups = Array.from(groupsMap.values()).sort((a, b) => sortAccordionGroups(a, b, groupBy));
     setAccordionItems(sortedGroups);
 
-  }, [allActivities, masses, groupBy, selectedPriest, selectedSection, selectedLabor, isLoading, defaultValue]);
+  }, [allActivities, groupBy, selectedPriest, selectedSection, selectedLabor, isLoading, defaultValue]);
   
   const scrollToToday = () => {
     if (defaultValue) { // `defaultValue` holds today's date key

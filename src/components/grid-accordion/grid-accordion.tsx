@@ -55,16 +55,11 @@ export function GridAccordion({
                   <span className="text-base font-semibold">
                     {item.title}
                   </span>
-                  {groupBy === 'date' && item.massTitle && (
-                    <span className="text-xs font-normal opacity-80 mt-1">
-                      {item.massTitle}
-                    </span>
-                  )}
                 </div>
                 <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
               </AccordionPrimitive.Trigger>
             </AccordionPrimitive.Header>
-            <AccordionContent className="bg-background/100 border-t border-primary/20">
+            <AccordionContent className="bg-background/100">
               <GridAccordionItemContent 
                 item={item} 
                 groupBy={groupBy}
