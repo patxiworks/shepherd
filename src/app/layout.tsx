@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Shepherd: Schedule for Pastoral Attention',
-  description: "Schedule for pastoral attention for Centres in Nigeria",
+  title: 'Pastores: Schedule for Pastoral Attention',
+  description: "Schedule for pastoral attention of Centres in Nigeria",
 };
 
 export default function RootLayout({

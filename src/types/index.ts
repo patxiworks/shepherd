@@ -1,5 +1,5 @@
 
-// The raw data structure from the remote Google Script URL
+// The raw data structure from the remote Google Script URL for activities
 export interface ApiActivity {
   unit?: string | null;
   week: number | null;
@@ -16,6 +16,16 @@ export interface ApiActivity {
   mfrequency: number | null;
   priest: string | null;
 }
+
+// The structure for the new masses data
+export interface MassData {
+  [date: string]: {
+    Day: string;
+    Class: string;
+    Mass: string;
+  };
+}
+
 
 // A generic structure for an item within an accordion group
 export interface GroupItem {
@@ -34,4 +44,5 @@ export interface AccordionGroupData {
   title: string; // Will be centre name, activity name, or date
   items: GroupItem[];
   mainSection: string; // The dominant section for coloring the accordion header
+  massTitle?: string; // Optional title for the daily Mass
 }
