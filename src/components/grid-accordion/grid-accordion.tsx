@@ -65,7 +65,7 @@ export function GridAccordion({
               <GridAccordionItemContent 
                 item={item} 
                 groupBy={groupBy}
-                mass={groupBy === 'date' && masses[item.id] ? masses[item.id].Mass : ""}
+                mass={groupBy === 'date' && masses[item.id] ? `${masses[item.id].Class ? '('+masses[item.id].Class+')' : ''} ${masses[item.id].Mass}` : ""}
               />
             </AccordionContent>
           </AccordionItem>
