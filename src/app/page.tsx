@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, XIcon } from 'lucide-react';
-import { parseISO, format as formatDate } from 'date-fns';
+import { parse, parseISO, format as formatDate } from 'date-fns';
 import { format as formatDateFnsTz, toZonedTime } from 'date-fns-tz';
+import { formatInTimeZone } from "date-fns-tz";
 import { getSectionColor, getLaborColor } from '@/lib/section-colors';
 
 const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData, groupBy: 'centre' | 'activity' | 'date'): number => {
@@ -79,6 +80,7 @@ export default function HomePage() {
       const toTime = activity.to && activity.to.includes('T')
         ? formatDateFnsTz(toZonedTime(parseISO(activity.to), timeZone), "h:mm a", { timeZone })
         : activity.to;
+      //console.log(activity)
       
       return {
         title: activity.activity,
@@ -138,8 +140,11 @@ export default function HomePage() {
         const todayKey = formatDate(new Date(), "yyyy-MM-dd");
         filteredActivities.forEach(activity => {
             if (activity.date) {
-                const activityDate = toZonedTime(parseISO(activity.date), 'UTC');
-                const dateKey = formatDate(activityDate, "yyyy-MM-dd"); 
+                //const activityDate = toZonedTime(parseISO(activity.date), 'UTC');
+                //const dateKey = formatDate(activityDate, "yyyy-MM-dd"); 
+                const activityDate = parse(activity.date, 'yyyy-MM-dd', new Date());
+                const dateKey = formatDate(activityDate, 'yyyy-MM-dd'); // → "2025-11-03"
+                //console.log(activity.date, dateKey)
                 const formattedDate = formatDate(activityDate, "EEEE, MMMM d, yyyy");
 
                 if (!groupsMap.has(dateKey)) {
@@ -159,6 +164,7 @@ export default function HomePage() {
             }
         });
     }
+    //console.log(filteredActivities)
 
     // Determine the main section for each group (for coloring accordion header)
     groupsMap.forEach((group) => {

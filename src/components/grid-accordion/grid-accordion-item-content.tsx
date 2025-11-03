@@ -42,6 +42,7 @@ export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionI
         </TableHeader>
         <TableBody>
           {item.items.map((activityItem, index) => {
+            //console.log(activityItem)
             const cells = getCellData(activityItem);
             const rowColor = getLaborColor(activityItem.labor);
 
