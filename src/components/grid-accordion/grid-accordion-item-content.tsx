@@ -50,7 +50,9 @@ export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionI
               <TableRow 
                 key={index}
                 style={{
-                  backgroundColor: hoveredRowIndex === index && rowColor ? `${rowColor}33` : rowColor ? `${rowColor}1A` : 'transparent',
+                  // DO NOT REMOVE FOR NOW
+                  //backgroundColor: hoveredRowIndex === index && rowColor ? `${rowColor}33` : rowColor ? `${rowColor}1A` : 'transparent',
+                  backgroundColor: 'transparent',
                 }}
                 onMouseEnter={() => setHoveredRowIndex(index)}
                 onMouseLeave={() => setHoveredRowIndex(null)}
