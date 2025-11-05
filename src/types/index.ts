@@ -27,6 +27,7 @@ export interface GroupItem {
   priest?: string | null;
   section: string;
   labor: string;
+  sortableDate: string; // The original, sortable date string
 }
 
 // The new generic structure for each accordion item (a group)

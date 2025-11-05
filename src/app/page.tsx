@@ -48,7 +48,7 @@ export default function HomePage() {
         const data = await response.json();
 
         // Correctly access nested data
-        setAllActivities(data.activities || []);
+        setAllActivities(data.activities.data || []);
         setMassesData(data.masses || {});
         
       } catch (error) {
@@ -80,16 +80,16 @@ export default function HomePage() {
       const toTime = activity.to && activity.to.includes('T')
         ? formatDateFnsTz(toZonedTime(parseISO(activity.to), timeZone), "h:mm a", { timeZone })
         : activity.to;
-      //console.log(activity)
       
       return {
         title: activity.activity,
         centre: activity.centre,
-        date: activity.date ? formatDateFnsTz(toZonedTime(parseISO(activity.date), 'UTC'), "EEE, MMM d") : "N/A",
+        date: activity.date ? formatDate(parse(activity.date, 'yyyy-MM-dd', new Date()), 'EEE, MMM d') : "N/A", 
         priest: activity.priest,
         time: fromTime && toTime ? `${fromTime} - ${toTime}` : fromTime ? `${fromTime}` : '',
         section: activity.section || 'default',
         labor: activity.labor || 'default',
+        sortableDate: activity.date || '',
       };
     };
 
@@ -140,11 +140,8 @@ export default function HomePage() {
         const todayKey = formatDate(new Date(), "yyyy-MM-dd");
         filteredActivities.forEach(activity => {
             if (activity.date) {
-                //const activityDate = toZonedTime(parseISO(activity.date), 'UTC');
-                //const dateKey = formatDate(activityDate, "yyyy-MM-dd"); 
                 const activityDate = parse(activity.date, 'yyyy-MM-dd', new Date());
-                const dateKey = formatDate(activityDate, 'yyyy-MM-dd'); // → "2025-11-03"
-                //console.log(activity.date, dateKey)
+                const dateKey = formatDate(activityDate, 'yyyy-MM-dd'); 
                 const formattedDate = formatDate(activityDate, "EEEE, MMMM d, yyyy");
 
                 if (!groupsMap.has(dateKey)) {
@@ -164,7 +161,14 @@ export default function HomePage() {
             }
         });
     }
-    //console.log(filteredActivities)
+
+    // Sort items within each group by date
+    groupsMap.forEach((group) => {
+      group.items.sort((a, b) => {
+        if (!a.sortableDate || !b.sortableDate) return 0;
+        return a.sortableDate.localeCompare(b.sortableDate);
+      });
+    });
 
     // Determine the main section for each group (for coloring accordion header)
     groupsMap.forEach((group) => {
