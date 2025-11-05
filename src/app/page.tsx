@@ -193,21 +193,29 @@ export default function HomePage() {
 
   }, [allActivities, massesData, groupBy, selectedPriest, selectedSection, selectedLabor, isLoading]);
   
-  const scrollToToday = () => {
-    if (defaultValue) { // `defaultValue` holds today's date key
-      const accordionElement = document.getElementById(`accordion-group-${defaultValue}`);
-      const headerElement = document.getElementById('filter-header');
+  const scrollToAccordion = (accordionId: string) => {
+    const accordionElement = document.getElementById(`accordion-group-${accordionId}`);
+    const headerElement = document.getElementById('filter-header');
+    
+    if (accordionElement && headerElement) {
+        const headerHeight = headerElement.offsetHeight;
+        const elementPosition = accordionElement.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 10; // 10px padding
       
-      if (accordionElement && headerElement) {
-          const headerHeight = headerElement.offsetHeight;
-          const elementPosition = accordionElement.getBoundingClientRect().top;
-          const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 10; // 10px padding
-        
-          window.scrollTo({
-              top: offsetPosition,
-              behavior: 'smooth'
-          });
-      }
+        window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+        });
+    }
+  };
+
+  const handleAccordionValueChange = (value: string | undefined) => {
+    setOpenAccordionValue(value);
+    if (value) {
+      // Use a timeout to ensure the DOM has updated and the accordion is open before scrolling
+      setTimeout(() => {
+        scrollToAccordion(value);
+      }, 50);
     }
   };
 
@@ -215,7 +223,7 @@ export default function HomePage() {
     if (defaultValue) {
       setOpenAccordionValue(defaultValue); // Open the accordion
       setTimeout(() => {
-          scrollToToday();
+          scrollToAccordion(defaultValue);
       }, 50); // A small delay to ensure the DOM updates before scrolling
     }
   };
@@ -228,6 +236,7 @@ export default function HomePage() {
             handleScrollToToday();
             sessionStorage.setItem('scrolledToToday', 'true');
         }
+        //handleScrollToToday();
     }
   }, [defaultValue, isLoading, accordionItems]);
 
@@ -454,7 +463,7 @@ export default function HomePage() {
             masses={massesData}
             groupBy={groupBy}
             value={openAccordionValue}
-            onValueChange={setOpenAccordionValue}
+            onValueChange={handleAccordionValueChange}
           />
         </div>
         
@@ -471,3 +480,5 @@ export default function HomePage() {
 }
 
   
+
+    
