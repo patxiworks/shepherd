@@ -42,7 +42,7 @@ body {
     --popover: 0 0% 100%; /* White popovers */
     --popover-foreground: 0 0% 13%; /* Darker text for popovers */
 
-    --primary: 246 97% 42%; /*262 52% 47%; /* #673AB7 Deep purple */
+    --primary: 200 99% 42%; /*246 97% 42% - dark blue; /*262 52% 47% - purple; /* #673AB7 Deep purple */
     --primary-foreground: 0 0% 100%; /* White text on primary */
 
     --secondary: 262 60% 92%; /* Lighter purple for secondary elements */
