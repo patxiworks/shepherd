@@ -43,14 +43,14 @@ export function GridAccordion({
             id={`accordion-group-${item.id}`}
             value={item.id} 
             key={item.id} 
-            className="border border-border data-[state=open]:border-primary/80 rounded-lg shadow-sm overflow-hidden"
+            className="border border-border data-[state=open]:border-accent/40 rounded-lg shadow-sm overflow-hidden"
             style={{ backgroundColor: headerColor ? `${headerColor}33` : 'hsl(var(--secondary)/0.5)' }}
           >
             <AccordionPrimitive.Header className="flex items-center group">
               <AccordionPrimitive.Trigger
                 className={cn(
                   "flex flex-1 items-center justify-between py-4 font-medium transition-all",
-                  "px-4 hover:filter hover:brightness-95 data-[state=open]:bg-primary/80 data-[state=open]:text-primary-foreground data-[state=open]:filter-none"
+                  "px-4 hover:filter hover:brightness-95 data-[state=open]:bg-accent/90 data-[state=open]:text-accent-foreground data-[state=open]:filter-none"
                 )}
               >
                 <div className="flex flex-col items-start text-left flex-grow mr-2">
