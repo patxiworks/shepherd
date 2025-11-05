@@ -48,7 +48,7 @@ export default function HomePage() {
         const data = await response.json();
 
         // Correctly access nested data
-        setAllActivities(data.activities || []);
+        setAllActivities(data.activities.data || []);
         setMassesData(data.masses || {});
         
       } catch (error) {
@@ -299,7 +299,7 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
         <p className="text-xl text-muted-foreground">
-          Loading Activities...
+          Loading Masses & Activities...
         </p>
       </div>
     );
@@ -469,3 +469,5 @@ export default function HomePage() {
     </>
   );
 }
+
+  
