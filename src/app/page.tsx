@@ -50,6 +50,7 @@ export default function HomePage() {
 
   React.useEffect(() => {
     const fetchAndProcessActivities = async () => {
+      setIsLoading(true);
       let user: ZoneUser | null = null;
       let apiUrl = '/api/collections';
       
@@ -61,7 +62,6 @@ export default function HomePage() {
             apiUrl += `?section=${user.section}`;
           }
         } else {
-            // Redirect if user is not found, though the effect above should handle it.
             router.push('/login');
             return;
         }
@@ -70,21 +70,19 @@ export default function HomePage() {
         if (cachedData) {
             try {
                 const parsedData = JSON.parse(cachedData);
-                // Basic validation to ensure cache is not malformed
                 if (parsedData.activities && parsedData.masses) {
-                    setAllActivities(parsedData.activities.data || []);
+                    setAllActivities(parsedData.activities || []);
                     setMassesData(parsedData.masses || {});
                     setIsLoading(false);
                 }
             } catch (e) {
                 console.warn("Could not parse cached data, fetching fresh.", e);
-                localStorage.removeItem('pastoresData'); // Clear invalid cache
+                localStorage.removeItem('pastoresData');
             }
         }
       }
 
       try {
-        setIsLoading(true);
         const response = await fetch(apiUrl);
         if (!response.ok) {
           throw new Error('Failed to fetch activities');
@@ -95,7 +93,7 @@ export default function HomePage() {
             localStorage.setItem('pastoresData', JSON.stringify(data));
         }
 
-        setAllActivities(data.activities.data || []);
+        setAllActivities(data.activities || []);
         setMassesData(data.masses || {});
         
       } catch (error) {
@@ -113,7 +111,7 @@ export default function HomePage() {
   }, [toast, router]);
 
   React.useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !allActivities) return;
 
     let groupsMap = new Map<string, AccordionGroupData>();
 
@@ -288,6 +286,7 @@ export default function HomePage() {
             sessionStorage.setItem('scrolledToToday', 'true');
         }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultValue, isLoading, accordionItems]);
 
 
@@ -562,5 +561,3 @@ export default function HomePage() {
     </>
   );
 }
-
-    
