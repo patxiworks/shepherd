@@ -558,7 +558,7 @@ export default function HomePage() {
               {groupBy === 'date' && defaultValue && filteredAccordionItems.some(item => item.id === defaultValue) && (
                 <button
                   onClick={handleScrollToToday}
-                  className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-ring rounded"
+                  className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
                 >
                   Jump to today
                 </button>
