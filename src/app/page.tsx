@@ -586,11 +586,13 @@ export default function HomePage() {
         <footer className="text-center mt-12 py-6 border-t border-border">
           <div className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <p className="text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} Activity Scheduler <br className="sm:hidden"/> <a href="mailto:patxiworks@gmail.com" className="text-[10px]">by Telluris</a>.
+              &copy; {new Date().getFullYear()} Pastores <br className="sm:hidden"/> <a href="mailto:patxiworks@gmail.com" className="text-[10px]">Schedule for pastoral attention</a>
             </p>
-             <button onClick={handleLogout} className="text-xs text-destructive hover:underline">
-                Logout
-            </button>
+            <div>
+            <button onClick={handleLogout} className="text-xs text-destructive hover:underline">Logout</button>
+            <span className="text-xs"> | </span>
+            <a href="mailto:patxiworks@gmail.com" className="text-xs">Ask for help</a>
+            </div>
           </div>
         </footer>
       </div>
