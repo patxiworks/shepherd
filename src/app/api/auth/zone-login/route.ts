@@ -13,8 +13,9 @@ async function getZoneUsers(): Promise<ZoneUser[]> {
     if (!response.ok) {
       throw new Error('Failed to fetch zone user data');
     }
-    const data = (await response.json()) as {data: ZoneUser[]};
-    return data.data || [];
+    // The endpoint returns an array of users directly.
+    const data = (await response.json()) as ZoneUser[];
+    return data || [];
   } catch (error) {
     console.error('Error fetching zone users:', error);
     return [];

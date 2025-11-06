@@ -53,6 +53,7 @@ export default function LoginPage() {
         const response = await fetch('/api/auth/zone-login');
         if (!response.ok) throw new Error('Failed to fetch zones');
         const data = await response.json();
+        console.log(data)
         setZones(data.zones || []);
       } catch (error) {
         toast({
