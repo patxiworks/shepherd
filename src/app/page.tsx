@@ -2,8 +2,9 @@
 "use client";
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { GridAccordion } from '@/components/grid-accordion/grid-accordion';
-import type { AccordionGroupData, ApiActivity, GroupItem } from '@/types';
+import type { AccordionGroupData, ApiActivity, GroupItem, ZoneUser } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, XIcon } from 'lucide-react';
 import { parse, parseISO, format as formatDate } from 'date-fns';
 import { format as formatDateFnsTz, toZonedTime } from 'date-fns-tz';
-import { formatInTimeZone } from "date-fns-tz";
 import { getSectionColor, getLaborColor } from '@/lib/section-colors';
 
 const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData, groupBy: 'centre' | 'activity' | 'date'): number => {
@@ -36,19 +36,66 @@ export default function HomePage() {
   const [openAccordionValue, setOpenAccordionValue] = React.useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = React.useState(true);
   const { toast } = useToast();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const user = localStorage.getItem('zoneUser');
+      if (!user) {
+        router.push('/login');
+      }
+    }
+  }, [router]);
+
 
   React.useEffect(() => {
     const fetchAndProcessActivities = async () => {
+      let user: ZoneUser | null = null;
+      let apiUrl = '/api/collections';
+      
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const userData = localStorage.getItem('zoneUser');
+        if (userData) {
+          user = JSON.parse(userData);
+          if (user?.section && (user.section === 'sf' || user.section === 'sv')) {
+            apiUrl += `?section=${user.section}`;
+          }
+        } else {
+            // Redirect if user is not found, though the effect above should handle it.
+            router.push('/login');
+            return;
+        }
+
+        const cachedData = localStorage.getItem('pastoresData');
+        if (cachedData) {
+            try {
+                const parsedData = JSON.parse(cachedData);
+                // Basic validation to ensure cache is not malformed
+                if (parsedData.activities && parsedData.masses) {
+                    setAllActivities(parsedData.activities.data || []);
+                    setMassesData(parsedData.masses || {});
+                    setIsLoading(false);
+                }
+            } catch (e) {
+                console.warn("Could not parse cached data, fetching fresh.", e);
+                localStorage.removeItem('pastoresData'); // Clear invalid cache
+            }
+        }
+      }
+
       try {
         setIsLoading(true);
-        const response = await fetch('/api/collections');
+        const response = await fetch(apiUrl);
         if (!response.ok) {
           throw new Error('Failed to fetch activities');
         }
         const data = await response.json();
+        
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('pastoresData', JSON.stringify(data));
+        }
 
-        // Correctly access nested data
-        setAllActivities(data.activities || []);
+        setAllActivities(data.activities.data || []);
         setMassesData(data.masses || {});
         
       } catch (error) {
@@ -63,7 +110,7 @@ export default function HomePage() {
       }
     };
     fetchAndProcessActivities();
-  }, [toast]);
+  }, [toast, router]);
 
   React.useEffect(() => {
     if (isLoading) return;
@@ -71,7 +118,7 @@ export default function HomePage() {
     let groupsMap = new Map<string, AccordionGroupData>();
 
     const createGroupItem = (activity: ApiActivity): GroupItem => {
-      const timeZone = 'UTC'; // Assuming times from sheet are UTC or should be treated as such
+      const timeZone = 'UTC'; 
 
       const fromTime = activity.from && activity.from.includes('T')
         ? formatDateFnsTz(toZonedTime(parseISO(activity.from), timeZone), "h:mm a", { timeZone })
@@ -84,7 +131,6 @@ export default function HomePage() {
       return {
         title: activity.activity,
         centre: activity.centre,
-        //date: activity.date ? formatDateFnsTz(toZonedTime(parseISO(activity.date), 'UTC'), "EEE, MMM d") : "N/A", // shifts the date backward by several hours — often resulting in the previous day.
         date: activity.date ? formatDate(parse(activity.date, 'yyyy-MM-dd', new Date()), 'EEE, MMM d') : "N/A", 
         priest: activity.priest,
         time: fromTime && toTime ? `${fromTime}` : fromTime ? `${fromTime}` : '',
@@ -141,11 +187,8 @@ export default function HomePage() {
         const todayKey = formatDate(new Date(), "yyyy-MM-dd");
         filteredActivities.forEach(activity => {
             if (activity.date) {
-                //const activityDate = toZonedTime(parseISO(activity.date), 'UTC');
-                //const dateKey = formatDate(activityDate, "yyyy-MM-dd"); 
                 const activityDate = parse(activity.date, 'yyyy-MM-dd', new Date());
-                const dateKey = formatDate(activityDate, 'yyyy-MM-dd'); // → "2025-11-03"
-                //console.log(activity.date, dateKey)
+                const dateKey = formatDate(activityDate, 'yyyy-MM-dd'); 
                 const formattedDate = formatDate(activityDate, "EEEE, MMMM d, yyyy");
 
                 if (!groupsMap.has(dateKey)) {
@@ -165,9 +208,7 @@ export default function HomePage() {
             }
         });
     }
-    //console.log(filteredActivities)
 
-    // Sort items within each group by date
     groupsMap.forEach((group) => {
       group.items.sort((a, b) => {
         if (!a.sortableDate || !b.sortableDate) return 0;
@@ -175,7 +216,6 @@ export default function HomePage() {
       });
     });
 
-    // Determine the main section for each group (for coloring accordion header)
     groupsMap.forEach((group) => {
         if (group.items.length > 0) {
             const sectionCounts = group.items.reduce((acc, item) => {
@@ -212,19 +252,18 @@ export default function HomePage() {
   const handleAccordionValueChange = (value: string | undefined) => {
     setOpenAccordionValue(value);
     if (value) {
-      // Use a timeout to ensure the DOM has updated and the accordion is open before scrolling
       setTimeout(() => {
         scrollToAccordion(value);
-      }, 500);
+      }, 50);
     }
   };
 
   const handleScrollToToday = () => {
     if (defaultValue) {
-      setOpenAccordionValue(defaultValue); // Open the accordion
+      setOpenAccordionValue(defaultValue); 
       setTimeout(() => {
           scrollToAccordion(defaultValue);
-      }, 50); // A small delay to ensure the DOM updates before scrolling
+      }, 50); 
     }
   };
 
@@ -242,14 +281,12 @@ export default function HomePage() {
   };
 
   React.useEffect(() => {
-    // Only auto-scroll on initial page load if defaultValue is set and data isn't loading
     if (defaultValue && !isLoading && accordionItems.length > 0) {
         const hasTodayBeenScrolled = sessionStorage.getItem('scrolledToToday');
         if (!hasTodayBeenScrolled) {
             handleScrollToToday();
             sessionStorage.setItem('scrolledToToday', 'true');
         }
-        //handleScrollToToday();
     }
   }, [defaultValue, isLoading, accordionItems]);
 
@@ -319,12 +356,11 @@ export default function HomePage() {
                 (item.priest && item.priest.toLowerCase().includes(lowercasedQuery))
             );
 
-            // If the group title matches OR any item within the group matches, include it
             if (group.title && group.title.toLowerCase().includes(lowercasedQuery)) {
-                return group; // Keep all original items if group title matches
+                return group; 
             }
             if (matchingItems.length > 0) {
-                return { ...group, items: matchingItems }; // Only return items that match the query
+                return { ...group, items: matchingItems }; 
             }
             return null;
         })
@@ -338,7 +374,7 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
         <p className="text-lg text-muted-foreground">
-          Loading Masses & Activities...
+          Loading Schedule...
         </p>
       </div>
     );
@@ -526,11 +562,5 @@ export default function HomePage() {
     </>
   );
 }
-
-  
-
-    
-
-    
 
     
