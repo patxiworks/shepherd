@@ -5,7 +5,7 @@ import type {ZoneUser} from '@/types';
 
 // This URL should be in an environment variable in a real application
 const REMOTE_USERS_URL =
-  'https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLgY2m6JdYSLfN5zGz_pC4F2A_C3mQG4s-hX0x4s3E8a3e7s8g5f2t1q0w9p8o7n6m5l4k3j2h1g0f9e8d7c6b5a4&lib=Myn6iEwL8dqLg0i8ztc1Qms6Fh59HncaP';
+  'https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLgX4O59qf8lE6-6XV8Kq2ongA-WcFOd3IGdb23XXM0PyhA4eTa0vaSXthm7N4lnFDLglwaQZREDNJ8dNrOCnY1GwxZJIdYZG9wtjkYOAaQlkqPnyI5z-AGECd611Z-w3Ipw5JEvacQDznA8HNFqz7nmma0ro8ajOFQTIBzmMXxyHECYBEZbzMcl034fD0orgf9tQ8DSKdwu-sY50DwQsBEeOKZFkH8HQsjGvJyIjiFELW6-dItNCvAmIufnP4TY0bLzVZF_3LkLu0UQ1gor-GARkYUf0O74QmexfrG6KL5tm6vujWg&lib=Myn6iEwL8dqLg0i8ztc1Qms6Fh59HncaP';
 
 async function getZoneUsers(): Promise<ZoneUser[]> {
   try {
