@@ -29,6 +29,7 @@ export default function HomePage() {
   const [accordionItems, setAccordionItems] = React.useState<AccordionGroupData[]>([]);
   const [filterQuery, setFilterQuery] = React.useState('');
   const [selectedPriest, setSelectedPriest] = React.useState('All Priests');
+  const [selectedCentre, setSelectedCentre] = React.useState('All Centres');
   const [selectedSection, setSelectedSection] = React.useState('All Sections');
   const [selectedLabor, setSelectedLabor] = React.useState('All Labor');
   const [groupBy, setGroupBy] = React.useState<'date' | 'centre' | 'activity'>('date');
@@ -37,6 +38,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const { toast } = useToast();
   const router = useRouter();
+  const initialLoadHandled = React.useRef(false);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -64,6 +66,10 @@ export default function HomePage() {
         } else {
             router.push('/login');
             return;
+        }
+
+        if (user && user.centre && !initialLoadHandled.current) {
+            handleGoToCentre(user.centre);
         }
 
         const cachedData = localStorage.getItem('pastoresData');
@@ -105,9 +111,11 @@ export default function HomePage() {
         });
       } finally {
         setIsLoading(false);
+        initialLoadHandled.current = true;
       }
     };
     fetchAndProcessActivities();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast, router]);
 
   React.useEffect(() => {
@@ -266,8 +274,11 @@ export default function HomePage() {
   };
 
   const handleGoToCentre = (centreName: string) => {
+    setSelectedCentre(centreName);
     if (!centreName || centreName === 'All Centres') {
       setFilterQuery('');
+      // Optionally reset accordion
+      setOpenAccordionValue(undefined);
       return;
     }
     setGroupBy('centre');
@@ -368,7 +379,7 @@ export default function HomePage() {
   }, [accordionItems, filterQuery]);
 
 
-  if (isLoading) {
+  if (isLoading && !initialLoadHandled.current) {
     return (
       <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -401,7 +412,7 @@ export default function HomePage() {
                 <div className="sub-header mt-0 w-full text-[9px] sm:text-xs text-[#ccc]">Schedule for Pastoral Attention</div>
               </div>
               <div className="flex flex-grow justify-end">
-                <Select onValueChange={handleGoToCentre}>
+                <Select value={selectedCentre} onValueChange={handleGoToCentre}>
                   <SelectTrigger className="sub-header w-auto p-0 text-xs text-white bg-black border-none sm:shadow-none focus:outline-none focus:ring-0 focus:ring-offset-0">
                       <SelectValue placeholder="Go to centre..." />
                   </SelectTrigger>
@@ -541,13 +552,23 @@ export default function HomePage() {
             </div>
           </div>
 
-          <GridAccordion 
-            items={filteredAccordionItems}
-            masses={massesData}
-            groupBy={groupBy}
-            value={openAccordionValue}
-            onValueChange={handleAccordionValueChange}
-          />
+          {isLoading && initialLoadHandled.current ? (
+             <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                <p className="text-lg text-muted-foreground">
+                    Filtering schedule...
+                </p>
+            </div>
+          ) : (
+            <GridAccordion 
+                items={filteredAccordionItems}
+                masses={massesData}
+                groupBy={groupBy}
+                value={openAccordionValue}
+                onValueChange={handleAccordionValueChange}
+            />
+          )}
+
         </div>
         
         <footer className="text-center mt-12 py-6 border-t border-border">
