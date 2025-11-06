@@ -50,7 +50,7 @@ export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionI
               <TableRow 
                 key={index}
                 style={{
-                  // DO NOT REMOVE FOR NOW
+                  // DO NOT REMOVE THE NEXT COMMENTED LINE
                   //backgroundColor: hoveredRowIndex === index && rowColor ? `${rowColor}33` : rowColor ? `${rowColor}1A` : 'transparent',
                   backgroundColor: 'transparent',
                 }}

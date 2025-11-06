@@ -307,7 +307,7 @@ export default function HomePage() {
     return (
       <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <p className="text-xl text-muted-foreground">
+        <p className="text-lg text-muted-foreground">
           Loading Masses & Activities...
         </p>
       </div>
@@ -328,10 +328,28 @@ export default function HomePage() {
       <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-md border-b border-[#bbb] bg-primary">
         <div className="main-header border-b border-t-2 border-black bg-background">
           <header className="relative mx-auto container pt-4 pb-2 px-4 text-left">
-            <h1 className="w-[220px] sm:w-full leading-none text-[35px] sm:text-[33px] font-bold text-[#fff]">
-              Pastores
-            </h1>
-            <div className="sub-header mt-0 w-full text-[9px] sm:text-xs text-[#ccc]">Schedule for Pastoral Attention</div>
+            <div className="flex flex-row items-center justify-between">
+              <div>
+                <h1 className="w-[210px] sm:w-full leading-none text-[35px] sm:text-[33px] font-bold text-[#fff]">
+                  Pastores
+                </h1>
+                <div className="sub-header mt-0 w-full text-[9px] sm:text-xs text-[#ccc]">Schedule for Pastoral Attention</div>
+              </div>
+              <div className="flex flex-grow justify-end">
+                <Select value={selectedPriest} onValueChange={setSelectedPriest}>
+                  <SelectTrigger className="sub-header w-auto p-0 text-xs text-white bg-black border-none sm:shadow-none focus:outline-none focus:ring-0 focus:ring-offset-0">
+                      <SelectValue placeholder="Filter by priest..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {priests.map(priest => (
+                          <SelectItem key={priest} value={priest}>
+                              {priest}
+                          </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </header>
         </div>
         <div className="container mx-auto mb-1 sm:px-4 sm:py-3 sm:border-b-1 border-[#000] sm:shadow-sm">
