@@ -60,17 +60,25 @@ export default function HomePage() {
       setIsLoading(true);
       let user: ZoneUser | null = null;
       let apiUrl = '/api/collections';
-      
+      const urlParams = new URLSearchParams();
+
       if (typeof window !== 'undefined' && window.localStorage) {
         const userData = localStorage.getItem('zoneUser');
         if (userData) {
           user = JSON.parse(userData);
+          if (user?.zone) {
+            urlParams.append('zone', user.zone);
+          }
           if (user?.section && (user.section === 'sf' || user.section === 'sv')) {
-            apiUrl += `?section=${user.section}`;
+            urlParams.append('section', user.section);
           }
         } else {
             router.push('/login');
             return;
+        }
+
+        if (urlParams.toString()) {
+            apiUrl += `?${urlParams.toString()}`;
         }
 
         const cachedData = localStorage.getItem('pastoresData');
@@ -606,5 +614,7 @@ export default function HomePage() {
     </>
   );
 }
+
+    
 
     

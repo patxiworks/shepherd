@@ -7,13 +7,16 @@ import type { ApiActivity } from '@/types';
 let REMOTE_ACTIVITIES_URL = 'https://script.google.com/macros/s/AKfycbwUCnrFYXswKFBRIN-cQHIApyLwbLjDxjfPeOHEoPlani7vuQRu_Z7mou8GhrAjdKLMvw/exec';
 const REMOTE_MASSES_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLiHOCjJ0S2XNOHXVk3AEesA4qe5dMyuZTqCK9wtU-_MRXFZj6000SRLROk0fd9R4DImOeusBE4_pb1i4iRUr8b6ow2cSMAGRk2KNWQZ_uKAhtVq6Jt3wU3GYMSAGCBHvzahEsYHKhlJXaSITrCVq4RAWWanNLDLnGiTt-eJcUzM7qgZWI9WiOtkFN2zYnTvvdy7PI78fW7k4-noDdwTuiWf-sXHO81SpLA6ty-pTpMcjjr7WBDzmO4j8tZRcHPiT4rKyUHpugSodFl_hiFgjxbmLGP8zvCcVyDMI1ogir8Iz-rHt8c&lib=Myn6iEwL8dqLg0i8ztc1Qms6Fh59HncaP';
 
-async function readRemoteActivities(section?: string | null): Promise<ApiActivity[]> {
+async function readRemoteActivities(zone?: string | null, section?: string | null): Promise<ApiActivity[]> {
   try {
-    let url = REMOTE_ACTIVITIES_URL;
-    if (section) {
-      url += `?section=${section}`;
+    const url = new URL(REMOTE_ACTIVITIES_URL);
+    if (zone) {
+      url.searchParams.append('zone', zone);
     }
-    const response = await fetch(url, { cache: 'no-store' });
+    if (section) {
+      url.searchParams.append('section', section);
+    }
+    const response = await fetch(url.toString(), { cache: 'no-store' });
     if (!response.ok) {
         throw new Error(`Failed to fetch remote activities: ${response.statusText}`);
     }
@@ -44,10 +47,11 @@ async function readRemoteMasses(): Promise<Record<string, any>> {
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
+    const zone = searchParams.get('zone');
     const section = searchParams.get('section');
     
     const [activitiesResult, massesResult] = await Promise.all([
-      readRemoteActivities(section),
+      readRemoteActivities(zone, section),
       readRemoteMasses(),
     ]);
     
@@ -64,3 +68,5 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Method not allowed' }, { status: 405 });
 }
+
+    
