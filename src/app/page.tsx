@@ -48,7 +48,7 @@ export default function HomePage() {
         const data = await response.json();
 
         // Correctly access nested data
-        setAllActivities(data.activities.data || []);
+        setAllActivities(data.activities || []);
         setMassesData(data.masses || {});
         
       } catch (error) {
