@@ -1,5 +1,3 @@
-
-
 // The raw data structure from the remote Google Script URL
 export interface ApiActivity {
   unit?: string | null;
@@ -12,10 +10,19 @@ export interface ApiActivity {
   section: string | null;
   labor: string | null;
   from: string | null; // ISO date string e.g., "1899-12-30T06:45:00.000Z"
-  to: string | null;   // ISO date string
+  to: string | null; // ISO date string
   duration: string | null; // ISO date string
   mfrequency: number | null;
   priest: string | null;
+}
+
+// User data from the zone login JSON
+export interface ZoneUser {
+  zone: string;
+  name: string;
+  centre: string;
+  section: string;
+  passcode: string;
 }
 
 // A generic structure for an item within an accordion group
@@ -32,7 +39,7 @@ export interface GroupItem {
 
 // The new generic structure for each accordion item (a group)
 export interface AccordionGroupData {
-  id: string;    // Will use the group title for the ID
+  id: string; // Will use the group title for the ID
   title: string; // Will be centre name, activity name, or date
   items: GroupItem[];
   mainSection: string; // The dominant section for coloring the accordion header
