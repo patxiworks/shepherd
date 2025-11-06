@@ -191,7 +191,7 @@ export default function HomePage() {
     const sortedGroups = Array.from(groupsMap.values()).sort((a, b) => sortAccordionGroups(a, b, groupBy));
     setAccordionItems(sortedGroups);
 
-  }, [allActivities, massesData, groupBy, selectedPriest, selectedSection, selectedLabor, isLoading]);
+  }, [allActivities, massesData, groupBy, selectedPriest, selectedSection, selectedLabor, isLoading, defaultValue]);
   
   const scrollToAccordion = (accordionId: string) => {
     const accordionElement = document.getElementById(`accordion-group-${accordionId}`);
@@ -267,14 +267,19 @@ export default function HomePage() {
 
   const centres = React.useMemo(() => {
     if (!allActivities) return ["All Centres"];
+    
+    const relevantActivities = selectedSection === 'All Sections' 
+        ? allActivities 
+        : allActivities.filter(activity => activity.section === selectedSection);
+
     const centreSet = new Set<string>();
-    allActivities.forEach(activity => {
+    relevantActivities.forEach(activity => {
         if (activity.centre) {
             centreSet.add(activity.centre);
         }
     });
     return ["All Centres", ...Array.from(centreSet).sort()];
-  }, [allActivities]);
+  }, [allActivities, selectedSection]);
 
 
   const sections = React.useMemo(() => {
