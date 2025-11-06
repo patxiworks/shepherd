@@ -23,6 +23,7 @@ export interface ZoneUser {
   centre: string;
   section: string;
   passcode: string;
+  role?: string;
 }
 
 // A generic structure for an item within an accordion group
@@ -44,3 +45,5 @@ export interface AccordionGroupData {
   items: GroupItem[];
   mainSection: string; // The dominant section for coloring the accordion header
 }
+
+    

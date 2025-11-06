@@ -36,16 +36,21 @@ export default function HomePage() {
   const [defaultValue, setDefaultValue] = React.useState<string | undefined>(undefined);
   const [openAccordionValue, setOpenAccordionValue] = React.useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [userRole, setUserRole] = React.useState<string | undefined>(undefined);
   const { toast } = useToast();
   const router = useRouter();
   const initialLoadHandled = React.useRef(false);
 
   React.useEffect(() => {
+    let user: ZoneUser | null = null;
     if (typeof window !== 'undefined' && window.localStorage) {
-      const user = localStorage.getItem('zoneUser');
-      if (!user) {
+      const userData = localStorage.getItem('zoneUser');
+      if (!userData) {
         router.push('/login');
+        return;
       }
+      user = JSON.parse(userData);
+      setUserRole(user?.role);
     }
   }, [router]);
 
@@ -495,52 +500,54 @@ export default function HomePage() {
               </Select>
             </div>
           </div>
-          <div className="flex flex-row flex-grow gap-2 px-2 sm:px-0">
-            <div className="flex flex-grow">
-              <Select value={selectedSection} onValueChange={setSelectedSection}>
-                <SelectTrigger className="w-full h-10 rounded-lg text-xs sm:shadow-none bg-secondary border-t-1 border-primary/20">
-                    <SelectValue placeholder="Filter by section..." />
-                </SelectTrigger>
-                <SelectContent>
-                    {sections.map(section => (
-                        <SelectItem key={section} value={section}>
-                            <div className="flex items-center gap-2">
-                            {section !== 'All Sections' && (
-                                <div 
-                                className="h-4 w-4 rounded-full"
-                                style={{ backgroundColor: getSectionColor(section) }}
-                                />
-                            )}
-                            <span>{section}</span>
-                            </div>
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-grow">
-              <Select value={selectedLabor} onValueChange={setSelectedLabor}>
+          {userRole === 'sacd' && (
+            <div className="flex flex-row flex-grow gap-2 px-2 sm:px-0">
+              <div className="flex flex-grow">
+                <Select value={selectedSection} onValueChange={setSelectedSection}>
                   <SelectTrigger className="w-full h-10 rounded-lg text-xs sm:shadow-none bg-secondary border-t-1 border-primary/20">
-                      <SelectValue placeholder="Filter by labor..." />
+                      <SelectValue placeholder="Filter by section..." />
                   </SelectTrigger>
                   <SelectContent>
-                      {labors.map(labor => (
-                          <SelectItem key={labor} value={labor}>
+                      {sections.map(section => (
+                          <SelectItem key={section} value={section}>
                               <div className="flex items-center gap-2">
-                              {labor !== 'All Labor' && (
+                              {section !== 'All Sections' && (
                                   <div 
                                   className="h-4 w-4 rounded-full"
-                                  style={{ backgroundColor: getLaborColor(labor) }}
+                                  style={{ backgroundColor: getSectionColor(section) }}
                                   />
                               )}
-                              <span>{labor}</span>
+                              <span>{section}</span>
                               </div>
                           </SelectItem>
                       ))}
                   </SelectContent>
-              </Select>
+                </Select>
+              </div>
+              <div className="flex flex-grow">
+                <Select value={selectedLabor} onValueChange={setSelectedLabor}>
+                    <SelectTrigger className="w-full h-10 rounded-lg text-xs sm:shadow-none bg-secondary border-t-1 border-primary/20">
+                        <SelectValue placeholder="Filter by labor..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {labors.map(labor => (
+                            <SelectItem key={labor} value={labor}>
+                                <div className="flex items-center gap-2">
+                                {labor !== 'All Labor' && (
+                                    <div 
+                                    className="h-4 w-4 rounded-full"
+                                    style={{ backgroundColor: getLaborColor(labor) }}
+                                    />
+                                )}
+                                <span>{labor}</span>
+                                </div>
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -599,3 +606,5 @@ export default function HomePage() {
     </>
   );
 }
+
+    

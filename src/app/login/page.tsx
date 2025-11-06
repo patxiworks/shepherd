@@ -108,7 +108,7 @@ export default function LoginPage() {
       
       toast({
         title: 'Login Successful',
-        description: `Welcome, ${data.user.name}!`,
+        //description: `Welcome, ${data.user.name}!`,
       });
 
       router.push('/');
