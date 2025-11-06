@@ -19,7 +19,7 @@ async function readRemoteActivities(section?: string | null): Promise<ApiActivit
     }
     const data = await response.json();
     // The script returns an object with a "data" property which is the array.
-    return data.data || [];
+    return data || [];
   } catch (error) {
     console.error('Error reading remote activities data:', error);
     return [];
