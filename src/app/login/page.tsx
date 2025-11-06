@@ -48,6 +48,23 @@ export default function LoginPage() {
   });
 
   React.useEffect(() => {
+    // Redirect if already logged in
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const storedData = localStorage.getItem('pastoresData');
+      if (storedData) {
+        try {
+          const parsedData = JSON.parse(storedData);
+          if (parsedData && parsedData.activities && parsedData.activities.length > 0) {
+            router.push('/');
+            return; // Stop further execution in this effect
+          }
+        } catch (e) {
+          // If parsing fails, it's safe to assume login is needed.
+          console.warn("Could not parse cached data, proceeding to login.", e);
+        }
+      }
+    }
+
     const fetchZones = async () => {
       try {
         const response = await fetch('/api/auth/zone-login');
@@ -64,7 +81,7 @@ export default function LoginPage() {
       }
     };
     fetchZones();
-  }, [toast]);
+  }, [router, toast]);
 
   const handleLoginSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
@@ -84,6 +101,9 @@ export default function LoginPage() {
       // On success, save user data to localStorage and redirect
       if (typeof window !== 'undefined' && window.localStorage) {
         localStorage.setItem('zoneUser', JSON.stringify(data.user));
+        // Clear old data to ensure fresh fetch on new login
+        localStorage.removeItem('pastoresData');
+        sessionStorage.removeItem('scrolledToToday');
       }
       
       toast({

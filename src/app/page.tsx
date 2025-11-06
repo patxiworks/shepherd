@@ -68,10 +68,6 @@ export default function HomePage() {
             return;
         }
 
-        if (user && user.centre && !initialLoadHandled.current) {
-            handleGoToCentre(user.centre);
-        }
-
         const cachedData = localStorage.getItem('pastoresData');
         if (cachedData) {
             try {
@@ -79,7 +75,11 @@ export default function HomePage() {
                 if (parsedData.activities && parsedData.masses) {
                     setAllActivities(parsedData.activities || []);
                     setMassesData(parsedData.masses || {});
-                    setIsLoading(false);
+                    if (user && user.centre && !initialLoadHandled.current) {
+                      handleGoToCentre(user.centre);
+                    }
+                    setIsLoading(false); // Use cached data, stop loading
+                    return; // Exit fetch to avoid re-fetching
                 }
             } catch (e) {
                 console.warn("Could not parse cached data, fetching fresh.", e);
@@ -95,12 +95,15 @@ export default function HomePage() {
         }
         const data = await response.json();
         
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && data.activities) {
             localStorage.setItem('pastoresData', JSON.stringify(data));
         }
 
         setAllActivities(data.activities || []);
         setMassesData(data.masses || {});
+        if (user && user.centre && !initialLoadHandled.current) {
+            handleGoToCentre(user.centre);
+        }
         
       } catch (error) {
         console.error("Error fetching activities:", error);
@@ -119,7 +122,7 @@ export default function HomePage() {
   }, [toast, router]);
 
   React.useEffect(() => {
-    if (isLoading || !allActivities) return;
+    if (isLoading || !Array.isArray(allActivities)) return;
 
     let groupsMap = new Map<string, AccordionGroupData>();
 
@@ -302,7 +305,7 @@ export default function HomePage() {
 
 
   const priests = React.useMemo(() => {
-    if (!allActivities) return ["All Priests"];
+    if (!Array.isArray(allActivities)) return ["All Priests"];
     const priestSet = new Set<string>();
     allActivities.forEach(activity => {
         if (activity.priest) {
@@ -313,7 +316,7 @@ export default function HomePage() {
   }, [allActivities]);
 
   const centres = React.useMemo(() => {
-    if (!allActivities) return ["All Centres"];
+    if (!Array.isArray(allActivities)) return ["All Centres"];
     
     const relevantActivities = selectedSection === 'All Sections' 
         ? allActivities 
@@ -330,7 +333,7 @@ export default function HomePage() {
 
 
   const sections = React.useMemo(() => {
-    if (!allActivities) return ["All Sections"];
+    if (!Array.isArray(allActivities)) return ["All Sections"];
     const sectionSet = new Set<string>();
     allActivities.forEach(activity => {
       if (activity.section) {
@@ -341,7 +344,7 @@ export default function HomePage() {
   }, [allActivities]);
 
   const labors = React.useMemo(() => {
-    if (!allActivities) return ["All Labor"];
+    if (!Array.isArray(allActivities)) return ["All Labor"];
     const laborSet = new Set<string>();
     allActivities.forEach(activity => {
       if (activity.labor) {
@@ -398,6 +401,15 @@ export default function HomePage() {
         default: return 'items';
     }
   }
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem('zoneUser');
+      localStorage.removeItem('pastoresData');
+      sessionStorage.removeItem('scrolledToToday');
+    }
+    router.push('/login');
+  };
 
   return (
     <>
@@ -576,6 +588,9 @@ export default function HomePage() {
             <p className="text-xs text-muted-foreground">
               &copy; {new Date().getFullYear()} Activity Scheduler <br className="sm:hidden"/> <a href="mailto:patxiworks@gmail.com" className="text-[10px]">by Telluris</a>.
             </p>
+             <button onClick={handleLogout} className="text-xs text-destructive hover:underline">
+                Logout
+            </button>
           </div>
         </footer>
       </div>
