@@ -48,7 +48,7 @@ export default function HomePage() {
         const data = await response.json();
 
         // Correctly access nested data
-        setAllActivities(data.activities || []);
+        setAllActivities(data.activities.data || []);
         setMassesData(data.masses || {});
         
       } catch (error) {
@@ -215,7 +215,7 @@ export default function HomePage() {
       // Use a timeout to ensure the DOM has updated and the accordion is open before scrolling
       setTimeout(() => {
         scrollToAccordion(value);
-      }, 500);
+      }, 50);
     }
   };
 
@@ -226,6 +226,19 @@ export default function HomePage() {
           scrollToAccordion(defaultValue);
       }, 50); // A small delay to ensure the DOM updates before scrolling
     }
+  };
+
+  const handleGoToCentre = (centreName: string) => {
+    if (!centreName || centreName === 'All Centres') {
+      setFilterQuery('');
+      return;
+    }
+    setGroupBy('centre');
+    setFilterQuery(centreName);
+    setOpenAccordionValue(centreName);
+    setTimeout(() => {
+      scrollToAccordion(centreName);
+    }, 100); 
   };
 
   React.useEffect(() => {
@@ -251,6 +264,18 @@ export default function HomePage() {
     });
     return ["All Priests", ...Array.from(priestSet).sort()];
   }, [allActivities]);
+
+  const centres = React.useMemo(() => {
+    if (!allActivities) return ["All Centres"];
+    const centreSet = new Set<string>();
+    allActivities.forEach(activity => {
+        if (activity.centre) {
+            centreSet.add(activity.centre);
+        }
+    });
+    return ["All Centres", ...Array.from(centreSet).sort()];
+  }, [allActivities]);
+
 
   const sections = React.useMemo(() => {
     if (!allActivities) return ["All Sections"];
@@ -336,14 +361,14 @@ export default function HomePage() {
                 <div className="sub-header mt-0 w-full text-[9px] sm:text-xs text-[#ccc]">Schedule for Pastoral Attention</div>
               </div>
               <div className="flex flex-grow justify-end">
-                <Select value={selectedPriest} onValueChange={setSelectedPriest}>
+                <Select onValueChange={handleGoToCentre}>
                   <SelectTrigger className="sub-header w-auto p-0 text-xs text-white bg-black border-none sm:shadow-none focus:outline-none focus:ring-0 focus:ring-offset-0">
-                      <SelectValue placeholder="Filter by priest..." />
+                      <SelectValue placeholder="Go to centre..." />
                   </SelectTrigger>
                   <SelectContent>
-                      {priests.map(priest => (
-                          <SelectItem key={priest} value={priest}>
-                              {priest}
+                      {centres.map(centre => (
+                          <SelectItem key={centre} value={centre}>
+                              {centre}
                           </SelectItem>
                       ))}
                   </SelectContent>
@@ -498,6 +523,8 @@ export default function HomePage() {
 }
 
   
+
+    
 
     
 
