@@ -215,7 +215,7 @@ export default function HomePage() {
       // Use a timeout to ensure the DOM has updated and the accordion is open before scrolling
       setTimeout(() => {
         scrollToAccordion(value);
-      }, 50);
+      }, 500);
     }
   };
 

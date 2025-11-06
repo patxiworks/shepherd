@@ -34,15 +34,14 @@ export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionI
     <div className="px-0 py-0 md:px-0">
       <Table>
         <TableHeader className='bg-white'>
-          <TableRow>
-            {groupBy === 'date' && mass && (
+          {groupBy === 'date' && mass && (
+            <TableRow>
                 <TableHead colSpan={2}>{mass}</TableHead>
-            )}
-          </TableRow>
+            </TableRow>
+          )}
         </TableHeader>
         <TableBody>
           {item.items.map((activityItem, index) => {
-            //console.log(activityItem)
             const cells = getCellData(activityItem);
             const rowColor = getLaborColor(activityItem.labor);
 
@@ -50,8 +49,6 @@ export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionI
               <TableRow 
                 key={index}
                 style={{
-                  // DO NOT REMOVE THE NEXT COMMENTED LINE
-                  //backgroundColor: hoveredRowIndex === index && rowColor ? `${rowColor}33` : rowColor ? `${rowColor}1A` : 'transparent',
                   backgroundColor: 'transparent',
                 }}
                 onMouseEnter={() => setHoveredRowIndex(index)}
