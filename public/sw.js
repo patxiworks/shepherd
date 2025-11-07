@@ -1,50 +1,73 @@
-// The version of the cache.
-const CACHE_VERSION = 2;
-const CURRENT_CACHE = `main-${CACHE_VERSION}`;
 
-// The files that will be cached when the service worker is installed.
-const cachedFiles = [
+const CACHE_NAME = 'pastores-cache-v1';
+const urlsToCache = [
   '/',
   '/login',
-  '/manifest.json',
-  '/pastores-192-192.png',
-  '/pastores.scale-400.png',
-  '/shepherd-bg.png',
-  '/sj-bg3.png'
+  '/manifest.webmanifest',
+  '/icon-192x192.png',
+  '/icon-512x512.png'
 ];
 
-self.addEventListener('install', (evt) => {
-  evt.waitUntil(
-    caches.open(CURRENT_CACHE).then((cache) => {
-      return cache.addAll(cachedFiles);
-    })
+self.addEventListener('install', event => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        console.log('Opened cache');
+        return cache.addAll(urlsToCache);
+      })
   );
 });
 
-self.addEventListener('activate', (evt) => {
-  evt.waitUntil(
-    caches.keys().then((cacheNames) => {
+self.addEventListener('activate', event => {
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
       return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CURRENT_CACHE) {
+        cacheNames.map(cacheName => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
             return caches.delete(cacheName);
           }
         })
       );
     })
   );
+  return self.clients.claim();
 });
 
-self.addEventListener('fetch', (evt) => {
-  evt.respondWith(
-    caches.open(CURRENT_CACHE).then(async (cache) => {
-      const response = await cache.match(evt.request);
-      // If the request is in the cache, respond with it. Otherwise, fetch it.
-      return response || fetch(evt.request).then((fetchResponse) => {
-        // Add the new response to the cache.
-        cache.put(evt.request, fetchResponse.clone());
-        return fetchResponse;
-      });
-    })
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        // Cache hit - return response
+        if (response) {
+          return response;
+        }
+
+        // Clone the request because it's a one-time-use stream
+        const fetchRequest = event.request.clone();
+
+        return fetch(fetchRequest).then(
+          response => {
+            // Check if we received a valid response
+            if (!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
+            }
+
+            // Clone the response because it's also a one-time-use stream
+            const responseToCache = response.clone();
+
+            caches.open(CACHE_NAME)
+              .then(cache => {
+                // We don't cache API calls
+                if (!event.request.url.includes('/api/')) {
+                    cache.put(event.request, responseToCache);
+                }
+              });
+
+            return response;
+          }
+        );
+      })
   );
 });
