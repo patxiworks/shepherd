@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import {useRouter} from 'next/navigation';
 import {useForm} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
@@ -157,6 +158,13 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-primary/20 px-4">
+      <Image
+        src="/pastores-192-192.png"
+        alt="Pastores Logo"
+        width={128}
+        height={128}
+        className="mb-4 rounded-full"
+      />
       <Card className="w-full max-w-xs">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-headline">Welcome back</CardTitle>

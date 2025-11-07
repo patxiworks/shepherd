@@ -447,7 +447,7 @@ export default function HomePage() {
                 <h1 className="w-[210px] sm:w-full leading-none text-[35px] sm:text-[33px] font-bold text-[#fff]">
                   Pastores
                 </h1>
-                <div className="sub-header mt-0 w-full text-[9px] sm:text-xs text-[#ccc]">Schedule for Pastoral Attention</div>
+                <div className="sub-header mt-0 w-full text-[9px] sm:text-xs text-[#ccc]">Schedule for Pastoral Attention of Centres</div>
               </div>
               <div className="flex flex-grow justify-end">
                 <Select value={selectedCentre} onValueChange={handleGoToCentre}>
