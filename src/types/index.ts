@@ -1,3 +1,4 @@
+
 // The raw data structure from the remote Google Script URL
 export interface ApiActivity {
   unit?: string | null;
@@ -24,6 +25,7 @@ export interface ZoneUser {
   section: string;
   passcode: string;
   role?: string;
+  last_update?: string;
 }
 
 // A generic structure for an item within an accordion group

@@ -59,72 +59,85 @@ export default function HomePage() {
     const fetchAndProcessActivities = async () => {
       setIsLoading(true);
       let user: ZoneUser | null = null;
-      let apiUrl = '/api/collections';
-      const urlParams = new URLSearchParams();
-
+      let zone: string | null = null;
       if (typeof window !== 'undefined' && window.localStorage) {
         const userData = localStorage.getItem('zoneUser');
         if (userData) {
           user = JSON.parse(userData);
-          if (user?.zone) {
-            urlParams.append('zone', user.zone);
-          }
-          if (user?.section && (user.section === 'sf' || user.section === 'sv')) {
-            urlParams.append('section', user.section);
-          }
+          zone = user?.zone || null;
         } else {
-            router.push('/login');
-            return;
-        }
-
-        if (urlParams.toString()) {
-            apiUrl += `?${urlParams.toString()}`;
-        }
-
-        const cachedData = localStorage.getItem('pastoresData');
-        if (cachedData) {
-            try {
-                const parsedData = JSON.parse(cachedData);
-                if (parsedData.activities && parsedData.masses) {
-                    setAllActivities(parsedData.activities || []);
-                    setMassesData(parsedData.masses || {});
-                    if (user && user.centre && !initialLoadHandled.current) {
-                      handleGoToCentre(user.centre);
-                    }
-                    setIsLoading(false); // Use cached data, stop loading
-                    return; // Exit fetch to avoid re-fetching
-                }
-            } catch (e) {
-                console.warn("Could not parse cached data, fetching fresh.", e);
-                localStorage.removeItem('pastoresData');
-            }
+          router.push('/login');
+          return;
         }
       }
 
+      if (!zone) {
+        toast({ title: "Error", description: "User zone not found.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-          throw new Error('Failed to fetch activities');
-        }
-        const data = await response.json();
+        // 1. Check for last update timestamp
+        const lastUpdateUrl = `/api/collections?zone=${zone}&action=lastupdate`;
+        const updateResponse = await fetch(lastUpdateUrl);
+        if (!updateResponse.ok) throw new Error('Could not check for updates.');
+        const updateData = await updateResponse.json();
+        const remoteLastUpdate = updateData.last_update ? new Date(updateData.last_update).getTime() : 0;
+        const localLastUpdate = user?.last_update ? new Date(user.last_update).getTime() : 0;
         
-        if (typeof window !== 'undefined' && data.activities) {
+        const cachedData = localStorage.getItem('pastoresData');
+        
+        // 2. Decide whether to use cache or fetch fresh data
+        if (cachedData && remoteLastUpdate <= localLastUpdate) {
+            console.log("Using cached data, it's up to date.");
+            const parsedData = JSON.parse(cachedData);
+            setAllActivities(parsedData.activities || []);
+            setMassesData(parsedData.masses || {});
+        } else {
+            console.log("Fetching fresh data from server.");
+            const urlParams = new URLSearchParams();
+            if (user?.zone) urlParams.append('zone', user.zone);
+            if (user?.section && (user.section === 'sf' || user.section === 'sv')) {
+                urlParams.append('section', user.section);
+            }
+            
+            const apiUrl = `/api/collections?${urlParams.toString()}`;
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error('Failed to fetch activities');
+            const data = await response.json();
+            
+            // 3. Update cache and local user data with new timestamp
             localStorage.setItem('pastoresData', JSON.stringify(data));
+            if (user && updateData.last_update) {
+                const updatedUser = { ...user, last_update: updateData.last_update };
+                localStorage.setItem('zoneUser', JSON.stringify(updatedUser));
+                setUserRole(updatedUser.role);
+            }
+
+            setAllActivities(data.activities || []);
+            setMassesData(data.masses || {});
         }
 
-        setAllActivities(data.activities || []);
-        setMassesData(data.masses || {});
         if (user && user.centre && !initialLoadHandled.current) {
             handleGoToCentre(user.centre);
         }
-        
+
       } catch (error) {
         console.error("Error fetching activities:", error);
         toast({
           title: "Error",
-          description: "Could not load activities data.",
+          description: "Could not load activities data. Using cached data if available.",
           variant: "destructive",
         });
+        // Fallback to cache if network fails
+        const cachedData = localStorage.getItem('pastoresData');
+        if (cachedData) {
+            const parsedData = JSON.parse(cachedData);
+            setAllActivities(parsedData.activities || []);
+            setMassesData(parsedData.masses || {});
+        }
+
       } finally {
         setIsLoading(false);
         initialLoadHandled.current = true;
