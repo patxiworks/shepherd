@@ -6,7 +6,7 @@ const CURRENT_CACHE = `main-${CACHE_VERSION}`;
 const cachedFiles = [
   '/',
   '/login',
-  '/manifest.webmanifest',
+  '/manifest.json',
   '/pastores-192-192.png',
   '/pastores.scale-400.png',
   '/shepherd-bg.png',
