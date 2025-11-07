@@ -3,15 +3,13 @@ const CACHE_NAME = 'pastores-cache-v1';
 const urlsToCache = [
   '/',
   '/login',
-  '/globals.css',
-  // Note: Add paths to other critical assets like icons or bundled JS files if needed.
-  // Next.js build output names can be dynamic, so this might need adjustment
-  // for production optimization, but it's a solid start for caching the shell.
+  '/manifest.webmanifest',
+  '/icon-192x192.png',
+  '/icon-512x512.png'
 ];
 
-// Install a service worker
 self.addEventListener('install', event => {
-  // Perform install steps
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -21,24 +19,23 @@ self.addEventListener('install', event => {
   );
 });
 
-// Cache and return requests
-self.addEventListener('fetch', event => {
-  // We only want to cache GET requests.
-  if (event.request.method !== 'GET') {
-    return;
-  }
-  
-  // For API calls, always go to the network first.
-  if (event.request.url.includes('/api/')) {
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        // Optional: return a fallback response from cache or a generic error
-        // For now, we just let it fail if offline.
-      })
-    );
-    return;
-  }
+self.addEventListener('activate', event => {
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  return self.clients.claim();
+});
 
+self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
       .then(response => {
@@ -53,37 +50,24 @@ self.addEventListener('fetch', event => {
         return fetch(fetchRequest).then(
           response => {
             // Check if we received a valid response
-            if(!response || response.status !== 200 || response.type !== 'basic') {
+            if (!response || response.status !== 200 || response.type !== 'basic') {
               return response;
             }
 
-            // Clone the response because it's also a stream
+            // Clone the response because it's also a one-time-use stream
             const responseToCache = response.clone();
 
             caches.open(CACHE_NAME)
               .then(cache => {
-                cache.put(event.request, responseToCache);
+                // We don't cache API calls
+                if (!event.request.url.includes('/api/')) {
+                    cache.put(event.request, responseToCache);
+                }
               });
 
             return response;
           }
         );
       })
-    );
-});
-
-// Update a service worker
-self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
   );
 });
