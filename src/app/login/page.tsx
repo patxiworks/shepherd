@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -23,8 +24,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {useToast} from '@/hooks/use-toast';
-import {Loader2, LogIn} from 'lucide-react';
-import {Card, CardContent, CardHeader, CardTitle, CardDescription} from '@/components/ui/card';
+import {Loader2, LogIn, Download} from 'lucide-react';
+import {Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter} from '@/components/ui/card';
 
 const loginFormSchema = z.object({
   zone: z.string().min(1, {message: 'Please select a zone.'}),
@@ -33,9 +34,20 @@ const loginFormSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: Array<string>;
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
+
 export default function LoginPage() {
   const [zones, setZones] = React.useState<string[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [installPromptEvent, setInstallPromptEvent] = React.useState<BeforeInstallPromptEvent | null>(null);
   const router = useRouter();
   const {toast} = useToast();
 
@@ -46,6 +58,20 @@ export default function LoginPage() {
       passcode: '',
     },
   });
+
+  React.useEffect(() => {
+    // Handle PWA installation prompt
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPromptEvent(event as BeforeInstallPromptEvent);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
 
   React.useEffect(() => {
     // Redirect if already logged in
@@ -70,7 +96,6 @@ export default function LoginPage() {
         const response = await fetch('/api/auth/zone-login');
         if (!response.ok) throw new Error('Failed to fetch zones');
         const data = await response.json();
-        console.log(data)
         setZones(data.zones || []);
       } catch (error) {
         toast({
@@ -121,6 +146,12 @@ export default function LoginPage() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleInstallClick = () => {
+    if (installPromptEvent) {
+      installPromptEvent.prompt();
     }
   };
 
@@ -202,6 +233,14 @@ export default function LoginPage() {
             </form>
           </Form>
         </CardContent>
+        {installPromptEvent && (
+            <CardFooter className="flex-col gap-2 pt-4">
+                <Button variant="outline" className="w-full" onClick={handleInstallClick}>
+                    <Download className="mr-2 h-4 w-4"/>
+                    Install App
+                </Button>
+            </CardFooter>
+        )}
       </Card>
     </div>
   );
