@@ -242,7 +242,7 @@ export default function LoginPage() {
           </Form>
         </CardContent>
         {installPromptEvent && (
-            <CardFooter className="flex-col gap-2 pt-4">
+            <CardFooter className="flex-col gap-2 pt-2">
                 <Button variant="outline" className="w-full" onClick={handleInstallClick}>
                     <Download className="mr-2 h-4 w-4"/>
                     Install App

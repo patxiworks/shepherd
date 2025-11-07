@@ -6,6 +6,8 @@
   "display": "standalone",
   "background_color": "#F5F5F5",
   "theme_color": "#025C8C",
+  "orientation": "portrait",
+  "dir": "ltr",
   "description": "Schedule for pastoral attention of Centres in Nigeria.",
   "icons": [
     {
