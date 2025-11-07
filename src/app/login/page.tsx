@@ -159,13 +159,13 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-primary/20 px-4">
       <Image
-        src="/pastores-192-192.png"
+        src="/pastores-144-144.png"
         alt="Pastores Logo"
-        width={128}
-        height={128}
-        className="mb-4 rounded-full"
+        width={96}
+        height={96}
+        className="rounded-full z-10 -mb-12"
       />
-      <Card className="w-full max-w-xs">
+      <Card className="w-full max-w-xs pt-12">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-headline">Welcome back</CardTitle>
           <CardDescription>
