@@ -78,7 +78,6 @@ export default function HomePage() {
       }
 
       try {
-        // 1. Check for last update timestamp
         const lastUpdateUrl = `/api/collections?zone=${zone}&action=lastupdate`;
         const updateResponse = await fetch(lastUpdateUrl);
         if (!updateResponse.ok) throw new Error('Could not check for updates.');
@@ -88,7 +87,6 @@ export default function HomePage() {
         
         const cachedData = localStorage.getItem('pastoresData');
         
-        // 2. Decide whether to use cache or fetch fresh data
         if (cachedData && remoteLastUpdate <= localLastUpdate) {
             console.log("Using cached data, it's up to date.");
             const parsedData = JSON.parse(cachedData);
@@ -107,7 +105,6 @@ export default function HomePage() {
             if (!response.ok) throw new Error('Failed to fetch activities');
             const data = await response.json();
             
-            // 3. Update cache and local user data with new timestamp
             localStorage.setItem('pastoresData', JSON.stringify(data));
             if (user && updateData.last_update) {
                 const updatedUser = { ...user, last_update: updateData.last_update };
@@ -130,7 +127,6 @@ export default function HomePage() {
           description: "Could not load activities data. Using cached data if available.",
           variant: "destructive",
         });
-        // Fallback to cache if network fails
         const cachedData = localStorage.getItem('pastoresData');
         if (cachedData) {
             const parsedData = JSON.parse(cachedData);
@@ -631,3 +627,4 @@ export default function HomePage() {
     
 
     
+
