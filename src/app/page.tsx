@@ -517,7 +517,7 @@ export default function HomePage() {
               </Select>
             </div>
           </div>
-          {userRole === 'sacd' && (
+          {userRole === 'admin' && (
             <div className="flex flex-row flex-grow gap-2 px-2 sm:px-0">
               <div className="flex flex-grow">
                 <Select value={selectedSection} onValueChange={setSelectedSection}>
