@@ -161,6 +161,7 @@ export default function HomePage() {
       
       return {
         title: activity.activity,
+        description: activity.description,
         centre: activity.centre,
         date: activity.date ? formatDate(parse(activity.date, 'yyyy-MM-dd', new Date()), 'EEE, MMM d') : "N/A", 
         priest: activity.priest,

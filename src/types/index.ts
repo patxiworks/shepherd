@@ -15,6 +15,7 @@ export interface ApiActivity {
   duration: string | null; // ISO date string
   mfrequency: number | null;
   priest: string | null;
+  description: string | null;
 }
 
 // User data from the zone login JSON
@@ -31,6 +32,7 @@ export interface ZoneUser {
 // A generic structure for an item within an accordion group
 export interface GroupItem {
   title: string | null; // Will be activity name or centre name depending on grouping
+  description: string | null;
   centre: string | null;
   date: string | null;
   time: string;

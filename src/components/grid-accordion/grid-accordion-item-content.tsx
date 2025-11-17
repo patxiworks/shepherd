@@ -17,14 +17,17 @@ export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionI
     return <p className="text-muted-foreground py-4 text-center">No scheduled items.</p>;
   }
 
+  //const sortedByTime = item.items.sort((a, b) => a.time.localeCompare(b.time))
+  //console.log(sortedByTime)
+
   const getCellData = (activityItem: GroupItem) => {
      switch(groupBy) {
       case 'centre':
-        return [activityItem.title, activityItem.date, activityItem.time, activityItem.priest];
+        return [activityItem.title, activityItem.date, activityItem.time, activityItem.priest, activityItem.description];
       case 'activity':
-        return [activityItem.centre, activityItem.date, activityItem.time, activityItem.priest];
+        return [activityItem.centre, activityItem.date, activityItem.time, activityItem.priest, activityItem.description];
        case 'date':
-        return [activityItem.title, activityItem.centre, activityItem.time, activityItem.priest];
+        return [activityItem.title, activityItem.centre, activityItem.time, activityItem.priest, activityItem.description];
       default:
         return [];
     }
@@ -55,7 +58,7 @@ export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionI
                 onMouseLeave={() => setHoveredRowIndex(null)}
                 className="transition-colors text-sm"
               >
-                <TableCell className="font-medium"><span className="text-lg"><strong>{cells[0] || 'N/A'}</strong></span> <br/> {cells[1]} {cells[2] ? "| "+cells[2] : ''}</TableCell>
+                <TableCell className="font-medium"><span className="text-lg"><strong>{cells[0] || 'N/A'}</strong><span className="text-sm">{cells[4] ? " "+cells[4] : ""}</span></span> <br/> {cells[1]} {cells[2] ? "| "+cells[2] : ''}</TableCell>
                 <TableCell className="text-right text-base"><strong>{cells[3] || ''}</strong></TableCell>
               </TableRow>
             )
