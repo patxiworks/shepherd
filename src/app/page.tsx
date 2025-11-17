@@ -285,7 +285,7 @@ export default function HomePage() {
     if (value) {
       setTimeout(() => {
         scrollToAccordion(value);
-      }, 50);
+      }, 500);
     }
   };
 
