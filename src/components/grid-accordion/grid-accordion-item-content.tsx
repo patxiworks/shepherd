@@ -58,7 +58,7 @@ export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionI
                 onMouseLeave={() => setHoveredRowIndex(null)}
                 className="transition-colors text-sm"
               >
-                <TableCell className="font-medium"><span className="text-lg"><strong>{cells[0] || 'N/A'}</strong><span className="text-sm">{cells[4] ? " "+cells[4] : ""}</span></span> <br/> {cells[1]} {cells[2] ? "| "+cells[2] : ''}</TableCell>
+                <TableCell className="font-medium"><span className="text-lg"><strong>{cells[0] || 'N/A'}</strong><span className="text-base">{cells[4] ? " "+cells[4] : ""}</span></span> <br/> {cells[1]} {cells[2] ? "| "+cells[2] : ''}</TableCell>
                 <TableCell className="text-right text-base"><strong>{cells[3] || ''}</strong></TableCell>
               </TableRow>
             )
