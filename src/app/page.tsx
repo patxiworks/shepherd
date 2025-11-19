@@ -285,15 +285,8 @@ export default function HomePage() {
   };
 
   const handleAccordionValueChange = (value: string | undefined) => {
+    // Only update the open/closed state. Do not change the visibleDateId here.
     setOpenAccordionValue(value);
-    if (groupBy === 'date') {
-      setVisibleDateId(value || null);
-    }
-    if (value) {
-      setTimeout(() => {
-        scrollToAccordion(value);
-      }, 100);
-    }
   };
 
   const handleScrollToToday = () => {
@@ -631,7 +624,7 @@ export default function HomePage() {
         <div className="mt-4 px-2 sm:px-4">
           <div className="flex justify-between items-center mb-4 my-2 sm:px-4">
             <div>
-              {groupBy === 'date' && visibleDateId && (
+              {groupBy === 'date' && (
                 <button
                   onClick={handleScrollToToday}
                   className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
@@ -699,3 +692,5 @@ export default function HomePage() {
     </>
   );
 }
+
+    
