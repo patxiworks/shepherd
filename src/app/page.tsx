@@ -9,7 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, XIcon } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Calendar } from '@/components/ui/calendar';
+import { Loader2, XIcon, CalendarIcon } from 'lucide-react';
 import { parse, parseISO, format as formatDate } from 'date-fns';
 import { format as formatDateFnsTz, toZonedTime } from 'date-fns-tz';
 import { getSectionColor, getLaborColor } from '@/lib/section-colors';
@@ -37,6 +39,7 @@ export default function HomePage() {
   const [openAccordionValue, setOpenAccordionValue] = React.useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = React.useState(true);
   const [userRole, setUserRole] = React.useState<string | undefined>(undefined);
+  const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   const { toast } = useToast();
   const router = useRouter();
   const initialLoadHandled = React.useRef(false);
@@ -315,6 +318,28 @@ export default function HomePage() {
     }, 100); 
   };
 
+  const handleCalendarSelect = (date: Date | undefined) => {
+    if (!date) return;
+    
+    const dateKey = formatDate(date, 'yyyy-MM-dd');
+    const groupExists = accordionItems.some(item => item.id === dateKey);
+
+    if (groupExists) {
+        setGroupBy('date'); // Ensure we are grouping by date
+        setOpenAccordionValue(dateKey);
+        setTimeout(() => {
+            scrollToAccordion(dateKey);
+        }, 50);
+    } else {
+        toast({
+            title: "No Activities",
+            description: `There are no scheduled activities for ${formatDate(date, 'PPP')}.`,
+            variant: "default",
+        });
+    }
+    setIsCalendarOpen(false); // Close the dialog
+  };
+
   React.useEffect(() => {
     if (defaultValue && !isLoading && accordionItems.length > 0) {
         const hasTodayBeenScrolled = sessionStorage.getItem('scrolledToToday');
@@ -583,9 +608,26 @@ export default function HomePage() {
               )}
             </div>
             <div className="mass-count text-right text-sm text-muted-foreground">
-                {filterQuery || selectedPriest !== 'All Priests' || selectedSection !== 'All Sections' || selectedLabor !== 'All Labor'
-                  ? `${filteredAccordionItems.length} of ${accordionItems.length} ${getGroupByName()} found`
-                  : `${accordionItems.length} ${getGroupByName()}`}
+              <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80">
+                    <CalendarIcon className="h-5 w-5" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="w-auto sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Jump to Date</DialogTitle>
+                    <DialogDescription>
+                      Select a date to view its schedule.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Calendar
+                    mode="single"
+                    onSelect={handleCalendarSelect}
+                    className="rounded-md border"
+                  />
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
@@ -624,8 +666,3 @@ export default function HomePage() {
     </>
   );
 }
-
-    
-
-    
-
