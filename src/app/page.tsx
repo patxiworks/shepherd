@@ -35,8 +35,8 @@ export default function HomePage() {
   const [selectedSection, setSelectedSection] = React.useState('All Sections');
   const [selectedLabor, setSelectedLabor] = React.useState('All Labor');
   const [groupBy, setGroupBy] = React.useState<'date' | 'centre' | 'activity'>('date');
-  const [defaultValue, setDefaultValue] = React.useState<string | undefined>(undefined);
   const [openAccordionValue, setOpenAccordionValue] = React.useState<string | undefined>(undefined);
+  const [visibleDateId, setVisibleDateId] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [userRole, setUserRole] = React.useState<string | undefined>(undefined);
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
@@ -236,8 +236,8 @@ export default function HomePage() {
                 }
                 groupsMap.get(dateKey)!.items.push(createGroupItem(activity));
 
-                if (dateKey === todayKey && !defaultValue) {
-                    setDefaultValue(dateKey);
+                if (dateKey === todayKey && !visibleDateId) {
+                    setVisibleDateId(dateKey);
                     setOpenAccordionValue(dateKey); // Also set the controlled value
                 }
             }
@@ -266,7 +266,7 @@ export default function HomePage() {
     const sortedGroups = Array.from(groupsMap.values()).sort((a, b) => sortAccordionGroups(a, b, groupBy));
     setAccordionItems(sortedGroups);
 
-  }, [allActivities, massesData, groupBy, selectedPriest, selectedSection, selectedLabor, isLoading, defaultValue]);
+  }, [allActivities, massesData, groupBy, selectedPriest, selectedSection, selectedLabor, isLoading, visibleDateId]);
   
   const scrollToAccordion = (accordionId: string) => {
     const accordionElement = document.getElementById(`accordion-group-${accordionId}`);
@@ -286,18 +286,23 @@ export default function HomePage() {
 
   const handleAccordionValueChange = (value: string | undefined) => {
     setOpenAccordionValue(value);
+    if (groupBy === 'date') {
+      setVisibleDateId(value || null);
+    }
     if (value) {
       setTimeout(() => {
         scrollToAccordion(value);
-      }, 500);
+      }, 100);
     }
   };
 
   const handleScrollToToday = () => {
-    if (defaultValue) {
-      setOpenAccordionValue(defaultValue); 
+    const todayKey = formatDate(new Date(), "yyyy-MM-dd");
+    if (accordionItems.some(item => item.id === todayKey)) {
+      setVisibleDateId(todayKey);
+      setOpenAccordionValue(todayKey);
       setTimeout(() => {
-          scrollToAccordion(defaultValue);
+          scrollToAccordion(todayKey);
       }, 50); 
     }
   };
@@ -326,6 +331,7 @@ export default function HomePage() {
 
     if (groupExists) {
         setGroupBy('date'); // Ensure we are grouping by date
+        setVisibleDateId(dateKey);
         setOpenAccordionValue(dateKey);
         setTimeout(() => {
             scrollToAccordion(dateKey);
@@ -341,15 +347,16 @@ export default function HomePage() {
   };
 
   React.useEffect(() => {
-    if (defaultValue && !isLoading && accordionItems.length > 0) {
+    const todayKey = formatDate(new Date(), "yyyy-MM-dd");
+    if (visibleDateId && !isLoading && accordionItems.length > 0) {
         const hasTodayBeenScrolled = sessionStorage.getItem('scrolledToToday');
-        if (!hasTodayBeenScrolled) {
+        if (!hasTodayBeenScrolled && visibleDateId === todayKey) {
             handleScrollToToday();
             sessionStorage.setItem('scrolledToToday', 'true');
         }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultValue, isLoading, accordionItems]);
+  }, [visibleDateId, isLoading, accordionItems]);
 
 
   const priests = React.useMemo(() => {
@@ -403,31 +410,42 @@ export default function HomePage() {
   }, [allActivities]);
 
   const filteredAccordionItems = React.useMemo(() => {
-    if (!filterQuery) {
-        return accordionItems;
+    let itemsToDisplay = accordionItems;
+
+    // Highest priority: if searching or not grouping by date, show all applicable items
+    if (filterQuery || groupBy !== 'date') {
+      if (!filterQuery) {
+        return itemsToDisplay;
+      }
+      const lowercasedQuery = filterQuery.toLowerCase();
+      return itemsToDisplay
+          .map(group => {
+              const matchingItems = group.items.filter(item => 
+                  (item.title && item.title.toLowerCase().includes(lowercasedQuery)) ||
+                  (item.centre && item.centre.toLowerCase().includes(lowercasedQuery)) ||
+                  (item.date && item.date.toLowerCase().includes(lowercasedQuery)) ||
+                  (item.priest && item.priest.toLowerCase().includes(lowercasedQuery))
+              );
+
+              if (group.title && group.title.toLowerCase().includes(lowercasedQuery)) {
+                  return group; 
+              }
+              if (matchingItems.length > 0) {
+                  return { ...group, items: matchingItems }; 
+              }
+              return null;
+          })
+          .filter((group): group is AccordionGroupData => group !== null);
     }
     
-    const lowercasedQuery = filterQuery.toLowerCase();
-    return accordionItems
-        .map(group => {
-            const matchingItems = group.items.filter(item => 
-                (item.title && item.title.toLowerCase().includes(lowercasedQuery)) ||
-                (item.centre && item.centre.toLowerCase().includes(lowercasedQuery)) ||
-                (item.date && item.date.toLowerCase().includes(lowercasedQuery)) ||
-                (item.priest && item.priest.toLowerCase().includes(lowercasedQuery))
-            );
+    // If grouping by date and not searching, show only the selected date
+    if (groupBy === 'date' && visibleDateId) {
+      return itemsToDisplay.filter(item => item.id === visibleDateId);
+    }
 
-            if (group.title && group.title.toLowerCase().includes(lowercasedQuery)) {
-                return group; 
-            }
-            if (matchingItems.length > 0) {
-                return { ...group, items: matchingItems }; 
-            }
-            return null;
-        })
-        .filter((group): group is AccordionGroupData => group !== null);
+    return []; // Default to showing nothing if no conditions are met
 
-  }, [accordionItems, filterQuery]);
+  }, [accordionItems, filterQuery, groupBy, visibleDateId]);
 
 
   if (isLoading && !initialLoadHandled.current) {
@@ -458,6 +476,21 @@ export default function HomePage() {
     }
     router.push('/login');
   };
+  
+  const handleGroupByChange = (value: 'date' | 'centre' | 'activity') => {
+    setGroupBy(value);
+    // If switching away from date view, clear the single date visibility
+    if (value !== 'date') {
+      setVisibleDateId(null);
+      setOpenAccordionValue(undefined); // Close any open accordion
+    } else {
+      // If switching back to date, reset to today
+      const todayKey = formatDate(new Date(), "yyyy-MM-dd");
+      setVisibleDateId(todayKey);
+      setOpenAccordionValue(todayKey);
+    }
+  }
+
 
   return (
     <>
@@ -517,7 +550,7 @@ export default function HomePage() {
         <div className="flex sm:flex-row flex-col gap-2 my-2 container mx-auto sm:px-4 sm:border-b-1 sm:shadow-sm">
           <div className="flex flex-row flex-grow gap-2 px-2 sm:px-0">
             <div className="flex flex-grow">
-              <Select value={groupBy} onValueChange={(value) => setGroupBy(value as 'date' | 'centre' | 'activity')}>
+              <Select value={groupBy} onValueChange={(value) => handleGroupByChange(value as 'date' | 'centre' | 'activity')}>
                   <SelectTrigger className="w-full h-10 rounded-lg text-xs sm:shadow-none bg-secondary border-t-1 border-primary/20">
                       <SelectValue placeholder="Group by..." />
                   </SelectTrigger>
@@ -598,7 +631,7 @@ export default function HomePage() {
         <div className="mt-4 px-2 sm:px-4">
           <div className="flex justify-between items-center mb-4 my-2 sm:px-4">
             <div>
-              {groupBy === 'date' && defaultValue && filteredAccordionItems.some(item => item.id === defaultValue) && (
+              {groupBy === 'date' && visibleDateId && (
                 <button
                   onClick={handleScrollToToday}
                   className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
