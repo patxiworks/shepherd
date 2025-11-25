@@ -285,8 +285,17 @@ export default function HomePage() {
     }
   };
 
+  // const handleAccordionValueChange = (value: string | undefined) => {
+  //   setOpenAccordionValue(value);
+  // };
+
   const handleAccordionValueChange = (value: string | undefined) => {
     setOpenAccordionValue(value);
+    if (value) {
+      setTimeout(() => {
+        scrollToAccordion(value);
+      }, 500);
+    }
   };
 
   const handleScrollToToday = () => {
@@ -634,7 +643,7 @@ export default function HomePage() {
 
       <div className="container mx-auto px-0 py-0 min-h-screen">
         <div className="px-2 sm:px-4">
-          <div className="flex justify-between items-center mb-2 mt-2 pl-2 sm:px-4">
+          <div className="flex justify-between items-center mb-0 mt-2 pl-2 sm:px-4">
             <div>
               {groupBy === 'date' && (
                 <div className="flex items-center gap-2">
