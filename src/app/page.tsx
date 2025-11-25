@@ -40,6 +40,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [userRole, setUserRole] = React.useState<string | undefined>(undefined);
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
+  const [showAllDates, setShowAllDates] = React.useState(false);
   const { toast } = useToast();
   const router = useRouter();
   const initialLoadHandled = React.useRef(false);
@@ -286,24 +287,12 @@ export default function HomePage() {
 
   const handleAccordionValueChange = (value: string | undefined) => {
     setOpenAccordionValue(value);
-    if (value) {
-      setTimeout(() => {
-        // We only want to scroll if the item is not already in view after opening
-        const element = document.getElementById(`accordion-group-${value}`);
-        if (element) {
-            const rect = element.getBoundingClientRect();
-            const headerHeight = document.getElementById('filter-header')?.offsetHeight || 0;
-            if (rect.top < headerHeight || rect.bottom > window.innerHeight) {
-                 scrollToAccordion(value);
-            }
-        }
-      }, 300); // Delay to allow accordion to animate open
-    }
   };
 
   const handleScrollToToday = () => {
     const todayKey = formatDate(new Date(), "yyyy-MM-dd");
     if (accordionItems.some(item => item.id === todayKey)) {
+      setShowAllDates(false);
       setVisibleDateId(todayKey);
       setOpenAccordionValue(todayKey);
       setTimeout(() => {
@@ -336,6 +325,7 @@ export default function HomePage() {
 
     if (groupExists) {
         setGroupBy('date'); // Ensure we are grouping by date
+        setShowAllDates(false); // Go back to single date view
         setVisibleDateId(dateKey);
         setOpenAccordionValue(dateKey);
         setTimeout(() => {
@@ -417,8 +407,8 @@ export default function HomePage() {
   const filteredAccordionItems = React.useMemo(() => {
     let itemsToDisplay = accordionItems;
 
-    // Filter by single date if applicable
-    if (groupBy === 'date' && visibleDateId) {
+    // Filter by single date if applicable and not showing all, and not filtering by text
+    if (groupBy === 'date' && visibleDateId && !showAllDates && !filterQuery) {
       itemsToDisplay = itemsToDisplay.filter(item => item.id === visibleDateId);
     }
     
@@ -426,9 +416,13 @@ export default function HomePage() {
     if (filterQuery) {
       const lowercasedQuery = filterQuery.toLowerCase();
       
-      // If we are already showing a single date, filter *within* that group's items.
-      // Otherwise, filter all groups.
-      return itemsToDisplay
+      let sourceItems = accordionItems;
+      // If we are in single-day view, filter only within that day's items.
+      if (groupBy === 'date' && visibleDateId && !showAllDates) {
+          sourceItems = accordionItems.filter(item => item.id === visibleDateId);
+      }
+
+      return sourceItems
         .map(group => {
             const matchingItems = group.items.filter(item => 
                 (item.title && item.title.toLowerCase().includes(lowercasedQuery)) ||
@@ -454,7 +448,7 @@ export default function HomePage() {
 
     return itemsToDisplay;
 
-  }, [accordionItems, filterQuery, groupBy, visibleDateId]);
+  }, [accordionItems, filterQuery, groupBy, visibleDateId, showAllDates]);
 
 
   if (isLoading && !initialLoadHandled.current) {
@@ -491,10 +485,12 @@ export default function HomePage() {
     // If switching away from date view, clear the single date visibility
     if (value !== 'date') {
       setVisibleDateId(null);
+      setShowAllDates(true); // Show all items when not grouped by date
       setOpenAccordionValue(undefined); // Close any open accordion
     } else {
       // If switching back to date, reset to today
       const todayKey = formatDate(new Date(), "yyyy-MM-dd");
+      setShowAllDates(false);
       setVisibleDateId(todayKey);
       setOpenAccordionValue(todayKey);
     }
@@ -641,12 +637,21 @@ export default function HomePage() {
           <div className="flex justify-between items-center mb-0 mt-4 sm:px-4">
             <div>
               {groupBy === 'date' && (
-                <button
-                  onClick={handleScrollToToday}
-                  className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
-                >
-                  Today
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleScrollToToday}
+                        className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
+                    >
+                        Today
+                    </button>
+                    <span className="text-sm text-muted-foreground">|</span>
+                    <button
+                        onClick={() => setShowAllDates(prev => !prev)}
+                        className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
+                    >
+                        {showAllDates ? 'One' : 'All'}
+                    </button>
+                </div>
               )}
             </div>
             <div className="mass-count text-right text-sm text-muted-foreground">
