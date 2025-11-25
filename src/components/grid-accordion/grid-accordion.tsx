@@ -43,7 +43,7 @@ export function GridAccordion({
             id={`accordion-group-${item.id}`}
             value={item.id} 
             key={item.id} 
-            className="border border-border data-[state=open]:border-accent/40 rounded-lg shadow-sm overflow-hidden data-[state=closed]:opacity-40"
+            className={`border border-border data-[state=open]:border-accent/40 rounded-lg shadow-sm overflow-hidden ${groupBy === 'date' ? "data-[state=closed]:opacity-40" : ""}`}
             style={{ backgroundColor: headerColor ? `${headerColor}33` : 'hsl(var(--secondary)/0.5)' }}
           >
             <AccordionPrimitive.Header className="flex items-center group">

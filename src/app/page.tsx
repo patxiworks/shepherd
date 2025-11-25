@@ -634,7 +634,7 @@ export default function HomePage() {
 
       <div className="container mx-auto px-0 py-0 min-h-screen">
         <div className="px-2 sm:px-4">
-          <div className="flex justify-between items-center mb-0 mt-4 sm:px-4">
+          <div className="flex justify-between items-center mb-2 mt-2 pl-2 sm:px-4">
             <div>
               {groupBy === 'date' && (
                 <div className="flex items-center gap-2">
@@ -649,32 +649,34 @@ export default function HomePage() {
                         onClick={() => setShowAllDates(prev => !prev)}
                         className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
                     >
-                        {showAllDates ? 'One' : 'All'}
+                        {showAllDates ? 'Single' : 'All'}
                     </button>
                 </div>
               )}
             </div>
             <div className="mass-count text-right text-sm text-muted-foreground">
-              <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-accent/20">
-                    <CalendarIcon className="h-5 w-5" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="w-auto sm:max-w-md rounded-xl">
-                  <DialogHeader>
-                    <DialogTitle>Jump to Date</DialogTitle>
-                    <DialogDescription>
-                      Select a date to view its schedule.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <Calendar
-                    mode="single"
-                    onSelect={handleCalendarSelect}
-                    className="rounded-md border"
-                  />
-                </DialogContent>
-              </Dialog>
+              {groupBy === 'date' && (
+                <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-accent/20">
+                      <CalendarIcon className="h-5 w-5" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="w-auto sm:max-w-md rounded-xl">
+                    <DialogHeader>
+                      <DialogTitle>Jump to Date</DialogTitle>
+                      <DialogDescription>
+                        Select a date to view its schedule.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Calendar
+                      mode="single"
+                      onSelect={handleCalendarSelect}
+                      className="rounded-md border"
+                    />
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
           </div>
 
