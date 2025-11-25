@@ -39,7 +39,7 @@ export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionI
         <TableHeader className='bg-white'>
           {groupBy === 'date' && mass && (
             <TableRow>
-                <TableHead colSpan={2}>{mass}</TableHead>
+                <TableHead colSpan={2} className="py-4 text-xs">{mass}</TableHead>
             </TableRow>
           )}
         </TableHeader>

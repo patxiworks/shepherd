@@ -275,7 +275,7 @@ export default function HomePage() {
     if (accordionElement && headerElement) {
         const headerHeight = headerElement.offsetHeight;
         const elementPosition = accordionElement.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 10; // 10px padding
+        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 30; // 50px padding to accommodate the calendar icon
       
         window.scrollTo({
             top: offsetPosition,
@@ -285,8 +285,20 @@ export default function HomePage() {
   };
 
   const handleAccordionValueChange = (value: string | undefined) => {
-    // Only update the open/closed state. Do not change the visibleDateId here.
     setOpenAccordionValue(value);
+    if (value) {
+      setTimeout(() => {
+        // We only want to scroll if the item is not already in view after opening
+        const element = document.getElementById(`accordion-group-${value}`);
+        if (element) {
+            const rect = element.getBoundingClientRect();
+            const headerHeight = document.getElementById('filter-header')?.offsetHeight || 0;
+            if (rect.top < headerHeight || rect.bottom > window.innerHeight) {
+                 scrollToAccordion(value);
+            }
+        }
+      }, 300); // Delay to allow accordion to animate open
+    }
   };
 
   const handleScrollToToday = () => {
@@ -405,38 +417,42 @@ export default function HomePage() {
   const filteredAccordionItems = React.useMemo(() => {
     let itemsToDisplay = accordionItems;
 
-    // Highest priority: if searching or not grouping by date, show all applicable items
-    if (filterQuery || groupBy !== 'date') {
-      if (!filterQuery) {
-        return itemsToDisplay;
-      }
-      const lowercasedQuery = filterQuery.toLowerCase();
-      return itemsToDisplay
-          .map(group => {
-              const matchingItems = group.items.filter(item => 
-                  (item.title && item.title.toLowerCase().includes(lowercasedQuery)) ||
-                  (item.centre && item.centre.toLowerCase().includes(lowercasedQuery)) ||
-                  (item.date && item.date.toLowerCase().includes(lowercasedQuery)) ||
-                  (item.priest && item.priest.toLowerCase().includes(lowercasedQuery))
-              );
-
-              if (group.title && group.title.toLowerCase().includes(lowercasedQuery)) {
-                  return group; 
-              }
-              if (matchingItems.length > 0) {
-                  return { ...group, items: matchingItems }; 
-              }
-              return null;
-          })
-          .filter((group): group is AccordionGroupData => group !== null);
+    // Filter by single date if applicable
+    if (groupBy === 'date' && visibleDateId) {
+      itemsToDisplay = itemsToDisplay.filter(item => item.id === visibleDateId);
     }
     
-    // If grouping by date and not searching, show only the selected date
-    if (groupBy === 'date' && visibleDateId) {
-      return itemsToDisplay.filter(item => item.id === visibleDateId);
+    // Apply search query if it exists
+    if (filterQuery) {
+      const lowercasedQuery = filterQuery.toLowerCase();
+      
+      // If we are already showing a single date, filter *within* that group's items.
+      // Otherwise, filter all groups.
+      return itemsToDisplay
+        .map(group => {
+            const matchingItems = group.items.filter(item => 
+                (item.title && item.title.toLowerCase().includes(lowercasedQuery)) ||
+                (item.centre && item.centre.toLowerCase().includes(lowercasedQuery)) ||
+                (item.date && item.date.toLowerCase().includes(lowercasedQuery)) ||
+                (item.priest && item.priest.toLowerCase().includes(lowercasedQuery))
+            );
+
+            // If the group title itself matches, show all its items
+            if (group.title && group.title.toLowerCase().includes(lowercasedQuery) && groupBy !== 'date') {
+                return group; 
+            }
+            
+            // If there are matching items within the group, show the group with only those items
+            if (matchingItems.length > 0) {
+                return { ...group, items: matchingItems }; 
+            }
+            
+            return null;
+        })
+        .filter((group): group is AccordionGroupData => group !== null);
     }
 
-    return []; // Default to showing nothing if no conditions are met
+    return itemsToDisplay;
 
   }, [accordionItems, filterQuery, groupBy, visibleDateId]);
 
@@ -621,26 +637,26 @@ export default function HomePage() {
       </div>
 
       <div className="container mx-auto px-0 py-0 min-h-screen">
-        <div className="mt-4 px-2 sm:px-4">
-          <div className="flex justify-between items-center mb-4 my-2 sm:px-4">
+        <div className="px-2 sm:px-4">
+          <div className="flex justify-between items-center mb-0 mt-4 sm:px-4">
             <div>
               {groupBy === 'date' && (
                 <button
                   onClick={handleScrollToToday}
                   className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
                 >
-                  Jump to today
+                  Today
                 </button>
               )}
             </div>
             <div className="mass-count text-right text-sm text-muted-foreground">
               <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80">
+                  <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-accent/20">
                     <CalendarIcon className="h-5 w-5" />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="w-auto sm:max-w-md">
+                <DialogContent className="w-auto sm:max-w-md rounded-xl">
                   <DialogHeader>
                     <DialogTitle>Jump to Date</DialogTitle>
                     <DialogDescription>
@@ -692,5 +708,3 @@ export default function HomePage() {
     </>
   );
 }
-
-    
