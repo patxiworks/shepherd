@@ -285,10 +285,6 @@ export default function HomePage() {
     }
   };
 
-  // const handleAccordionValueChange = (value: string | undefined) => {
-  //   setOpenAccordionValue(value);
-  // };
-
   const handleAccordionValueChange = (value: string | undefined) => {
     setOpenAccordionValue(value);
     if (value) {
@@ -505,6 +501,10 @@ export default function HomePage() {
     }
   }
 
+  // Memoize the selected date for the calendar
+  const selectedCalendarDate = React.useMemo(() => {
+    return visibleDateId ? parse(visibleDateId, 'yyyy-MM-dd', new Date()) : undefined;
+  }, [visibleDateId]);
 
   return (
     <>
@@ -680,8 +680,13 @@ export default function HomePage() {
                     </DialogHeader>
                     <Calendar
                       mode="single"
+                      selected={selectedCalendarDate}
                       onSelect={handleCalendarSelect}
                       className="rounded-md border"
+                      modifiers={{ today: new Date() }}
+                      modifiersClassNames={{
+                        today: 'bg-accent/50 text-accent-foreground rounded-full'
+                      }}
                     />
                   </DialogContent>
                 </Dialog>
