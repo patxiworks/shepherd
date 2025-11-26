@@ -45,6 +45,11 @@ export default function HomePage() {
   const router = useRouter();
   const initialLoadHandled = React.useRef(false);
 
+  // Memoize the selected date for the calendar - moved to top level
+  const selectedCalendarDate = React.useMemo(() => {
+    return visibleDateId ? parse(visibleDateId, 'yyyy-MM-dd', new Date()) : undefined;
+  }, [visibleDateId]);
+
   React.useEffect(() => {
     let user: ZoneUser | null = null;
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -287,11 +292,6 @@ export default function HomePage() {
 
   const handleAccordionValueChange = (value: string | undefined) => {
     setOpenAccordionValue(value);
-    if (value) {
-      setTimeout(() => {
-        scrollToAccordion(value);
-      }, 500);
-    }
   };
 
   const handleScrollToToday = () => {
@@ -500,11 +500,6 @@ export default function HomePage() {
       setOpenAccordionValue(todayKey);
     }
   }
-
-  // Memoize the selected date for the calendar
-  const selectedCalendarDate = React.useMemo(() => {
-    return visibleDateId ? parse(visibleDateId, 'yyyy-MM-dd', new Date()) : undefined;
-  }, [visibleDateId]);
 
   return (
     <>
