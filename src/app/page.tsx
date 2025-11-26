@@ -290,8 +290,17 @@ export default function HomePage() {
     }
   };
 
+  // const handleAccordionValueChange = (value: string | undefined) => {
+  //   setOpenAccordionValue(value);
+  // };
+
   const handleAccordionValueChange = (value: string | undefined) => {
     setOpenAccordionValue(value);
+    if (value) {
+      setTimeout(() => {
+        scrollToAccordion(value);
+      }, 500);
+    }
   };
 
   const handleScrollToToday = () => {
