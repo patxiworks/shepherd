@@ -41,13 +41,13 @@ export default function HomePage() {
   const [userRole, setUserRole] = React.useState<string | undefined>(undefined);
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   const [showAllDates, setShowAllDates] = React.useState(false);
+  const [calendarMonth, setCalendarMonth] = React.useState<Date | undefined>(undefined);
   const { toast } = useToast();
   const router = useRouter();
   const initialLoadHandled = React.useRef(false);
 
-  // Memoize the selected date for the calendar - moved to top level
   const selectedCalendarDate = React.useMemo(() => {
-    return visibleDateId ? parse(visibleDateId, 'yyyy-MM-dd', new Date()) : undefined;
+    return visibleDateId ? parse(visibleDateId, 'yyyy-MM-dd', new Date()) : new Date();
   }, [visibleDateId]);
 
   React.useEffect(() => {
@@ -662,7 +662,12 @@ export default function HomePage() {
             </div>
             <div className="mass-count text-right text-sm text-muted-foreground">
               {groupBy === 'date' && (
-                <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                <Dialog open={isCalendarOpen} onOpenChange={(open) => {
+                    setIsCalendarOpen(open);
+                    if(open) {
+                        setCalendarMonth(selectedCalendarDate);
+                    }
+                }}>
                   <DialogTrigger asChild>
                     <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-accent/20">
                       <CalendarIcon className="h-5 w-5" />
@@ -679,7 +684,8 @@ export default function HomePage() {
                       mode="single"
                       selected={selectedCalendarDate}
                       onSelect={handleCalendarSelect}
-                      month={selectedCalendarDate}
+                      month={calendarMonth}
+                      onMonthChange={setCalendarMonth}
                       className="rounded-md border"
                       modifiers={{ today: new Date() }}
                       modifiersClassNames={{
@@ -727,3 +733,5 @@ export default function HomePage() {
     </>
   );
 }
+
+    
