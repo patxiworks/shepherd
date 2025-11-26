@@ -456,15 +456,17 @@ export default function HomePage() {
   }, [accordionItems, filterQuery, groupBy, visibleDateId, showAllDates]);
 
 
-  if (isLoading && !initialLoadHandled.current) {
-    return (
-      <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
+  const getLoadingComponent = () => (
+    <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
         <p className="text-lg text-muted-foreground">
-          Loading Schedule...
+            Loading Schedule...
         </p>
-      </div>
-    );
+    </div>
+  );
+
+  if (isLoading && !initialLoadHandled.current) {
+    return getLoadingComponent();
   }
   
   const getGroupByName = () => {
@@ -677,6 +679,7 @@ export default function HomePage() {
                       mode="single"
                       selected={selectedCalendarDate}
                       onSelect={handleCalendarSelect}
+                      month={selectedCalendarDate}
                       className="rounded-md border"
                       modifiers={{ today: new Date() }}
                       modifiersClassNames={{
