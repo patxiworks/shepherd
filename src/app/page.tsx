@@ -281,7 +281,7 @@ export default function HomePage() {
     if (accordionElement && headerElement) {
         const headerHeight = headerElement.offsetHeight;
         const elementPosition = accordionElement.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 30; // 50px padding to accommodate the calendar icon
+        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 40; // 50px padding to accommodate the calendar icon
       
         window.scrollTo({
             top: offsetPosition,
@@ -503,6 +503,24 @@ export default function HomePage() {
     }
   }
 
+  const handleToggleShowAllDates = () => {
+    const newShowAllDates = !showAllDates;
+    setShowAllDates(newShowAllDates);
+    // If we are switching to single view (showAllDates will be false)
+    if (!newShowAllDates) {
+      if(visibleDateId) {
+        setOpenAccordionValue(visibleDateId); // Open the currently visible single date
+      }
+    } else {
+      // If we are switching to All view, scroll to the currently open item if there is one
+      if (openAccordionValue) {
+        setTimeout(() => {
+          scrollToAccordion(openAccordionValue);
+        }, 50);
+      }
+    }
+  };
+
   return (
     <>
       <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-md border-b border-[#bbb] bg-primary">
@@ -652,7 +670,7 @@ export default function HomePage() {
                     </button>
                     <span className="text-sm text-muted-foreground">|</span>
                     <button
-                        onClick={() => setShowAllDates(prev => !prev)}
+                        onClick={handleToggleShowAllDates}
                         className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
                     >
                         {showAllDates ? 'Single' : 'All'}
