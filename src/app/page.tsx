@@ -689,7 +689,7 @@ export default function HomePage() {
                       className="rounded-md border"
                       modifiers={{ today: new Date() }}
                       modifiersClassNames={{
-                        today: 'bg-accent/50 text-accent-foreground rounded-full'
+                        today: 'border border-accent rounded-full'
                       }}
                     />
                   </DialogContent>
