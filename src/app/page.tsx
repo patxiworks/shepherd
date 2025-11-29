@@ -533,230 +533,222 @@ export default function HomePage() {
 
   return (
     <>
-      <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-md border-b border-[#bbb] bg-primary">
-        <div className="main-header border-b border-t-2 border-black bg-background">
-          <header className="relative mx-auto container pt-4 pb-2 px-4 text-left">
-            <div className="flex flex-row items-center justify-between">
-              <div>
-                <h1 className="w-[210px] sm:w-full leading-none text-[35px] sm:text-[33px] font-bold text-[#fff]">
-                  Pastores
-                </h1>
-                <div className="sub-header mt-0 w-full text-[9px] sm:text-xs text-[#ccc]">Schedule for Pastoral Attention of Centres</div>
-              </div>
-              <div className="flex flex-grow justify-end">
-                <Select value={selectedCentre} onValueChange={handleGoToCentre}>
-                  <SelectTrigger className="sub-header w-auto p-0 text-xs text-white bg-black border-none sm:shadow-none focus:outline-none focus:ring-0 focus:ring-offset-0">
-                      <SelectValue placeholder="Go to centre..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                      {centres.map(centre => (
-                          <SelectItem key={centre} value={centre}>
-                              {centre}
-                          </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </header>
-        </div>
-        <div className="container mx-auto mb-1 sm:px-4 sm:py-3 sm:border-b-1 border-[#000] sm:shadow-sm">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-grow flex justify-center items-center">
-                <Input
-                  type="text"
-                  placeholder="Filter by centre, activity, date, or priest..."
-                  value={filterQuery}
-                  onChange={(e) => setFilterQuery(e.target.value)}
-                  className="w-full h-10 px-4 py-4 text-xs rounded-none border-x-0 border-t-0 shadow-sm sm:border-0 sm:shadow-none pr-10 placeholder:text-primary/80"
-                />
-                {filterQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setFilterQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
-                    aria-label="Clear filter"
-                  >
-                    <XIcon className="h-4 w-4" />
-                  </Button>
-                )}
-            </div>
-            
-          </div>
-        </div>
-
-        <div className="flex sm:flex-row flex-col gap-2 my-2 container mx-auto sm:px-4 sm:border-b-1 sm:shadow-sm">
-          <div className="flex flex-row flex-grow gap-2 px-2 sm:px-0">
-            <div className="flex flex-grow">
-              <Select value={groupBy} onValueChange={(value) => handleGroupByChange(value as 'date' | 'centre' | 'activity')}>
-                  <SelectTrigger className="w-full h-10 rounded-lg text-xs sm:shadow-none bg-secondary border-t-1 border-primary/20">
-                      <SelectValue placeholder="Group by..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                      <SelectItem value="date">Group by Date</SelectItem>
-                      <SelectItem value="centre">Group by Centre</SelectItem>
-                      <SelectItem value="activity">Group by Activity</SelectItem>
-                  </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-grow">
-              <Select value={selectedPriest} onValueChange={setSelectedPriest}>
-                <SelectTrigger className="w-full h-10 rounded-lg text-xs  sm:shadow-none bg-secondary border-t-1 border-primary/20">
-                    <SelectValue placeholder="Filter by priest..." />
-                </SelectTrigger>
-                <SelectContent>
-                    {priests.map(priest => (
-                        <SelectItem key={priest} value={priest}>
-                            {priest}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          {userRole === 'admin' && (
-            <div className="flex flex-row flex-grow gap-2 px-2 sm:px-0">
-              <div className="flex flex-grow">
-                <Select value={selectedSection} onValueChange={setSelectedSection}>
-                  <SelectTrigger className="w-full h-10 rounded-lg text-xs sm:shadow-none bg-secondary border-t-1 border-primary/20">
-                      <SelectValue placeholder="Filter by section..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                      {sections.map(section => (
-                          <SelectItem key={section} value={section}>
-                              <div className="flex items-center gap-2">
-                              {section !== 'All Sections' && (
-                                  <div 
-                                  className="h-4 w-4 rounded-full"
-                                  style={{ backgroundColor: getSectionColor(section) }}
-                                  />
-                              )}
-                              <span>{section}</span>
-                              </div>
-                          </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-grow">
-                <Select value={selectedLabor} onValueChange={setSelectedLabor}>
-                    <SelectTrigger className="w-full h-10 rounded-lg text-xs sm:shadow-none bg-secondary border-t-1 border-primary/20">
-                        <SelectValue placeholder="Filter by labor..." />
+      {isLoading && getLoadingComponent()}
+      <div style={{ visibility: isLoading ? 'hidden' : 'visible' }}>
+        <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-md border-b border-[#bbb] bg-primary">
+          <div className="main-header border-b border-t-2 border-black bg-background">
+            <header className="relative mx-auto container pt-4 pb-2 px-4 text-left">
+              <div className="flex flex-row items-center justify-between">
+                <div>
+                  <h1 className="w-[210px] sm:w-full leading-none text-[35px] sm:text-[33px] font-bold text-[#fff]">
+                    Pastores
+                  </h1>
+                  <div className="sub-header mt-0 w-full text-[9px] sm:text-xs text-[#ccc]">Schedule for Pastoral Attention of Centres</div>
+                </div>
+                <div className="flex flex-grow justify-end">
+                  <Select value={selectedCentre} onValueChange={handleGoToCentre}>
+                    <SelectTrigger className="sub-header w-auto p-0 text-xs text-white bg-black border-none sm:shadow-none focus:outline-none focus:ring-0 focus:ring-offset-0">
+                        <SelectValue placeholder="Go to centre..." />
                     </SelectTrigger>
                     <SelectContent>
-                        {labors.map(labor => (
-                            <SelectItem key={labor} value={labor}>
+                        {centres.map(centre => (
+                            <SelectItem key={centre} value={centre}>
+                                {centre}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </header>
+          </div>
+          <div className="container mx-auto mb-1 sm:px-4 sm:py-3 sm:border-b-1 border-[#000] sm:shadow-sm">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-grow flex justify-center items-center">
+                  <Input
+                    type="text"
+                    placeholder="Filter by centre, activity, date, or priest..."
+                    value={filterQuery}
+                    onChange={(e) => setFilterQuery(e.target.value)}
+                    className="w-full h-10 px-4 py-4 text-xs rounded-none border-x-0 border-t-0 shadow-sm sm:border-0 sm:shadow-none pr-10 placeholder:text-primary/80"
+                  />
+                  {filterQuery && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setFilterQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                      aria-label="Clear filter"
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </Button>
+                  )}
+              </div>
+              
+            </div>
+          </div>
+
+          <div className="flex sm:flex-row flex-col gap-2 my-2 container mx-auto sm:px-4 sm:border-b-1 sm:shadow-sm">
+            <div className="flex flex-row flex-grow gap-2 px-2 sm:px-0">
+              <div className="flex flex-grow">
+                <Select value={groupBy} onValueChange={(value) => handleGroupByChange(value as 'date' | 'centre' | 'activity')}>
+                    <SelectTrigger className="w-full h-10 rounded-lg text-xs sm:shadow-none bg-secondary border-t-1 border-primary/20">
+                        <SelectValue placeholder="Group by..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="date">Group by Date</SelectItem>
+                        <SelectItem value="centre">Group by Centre</SelectItem>
+                        <SelectItem value="activity">Group by Activity</SelectItem>
+                    </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-grow">
+                <Select value={selectedPriest} onValueChange={setSelectedPriest}>
+                  <SelectTrigger className="w-full h-10 rounded-lg text-xs  sm:shadow-none bg-secondary border-t-1 border-primary/20">
+                      <SelectValue placeholder="Filter by priest..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {priests.map(priest => (
+                          <SelectItem key={priest} value={priest}>
+                              {priest}
+                          </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {userRole === 'admin' && (
+              <div className="flex flex-row flex-grow gap-2 px-2 sm:px-0">
+                <div className="flex flex-grow">
+                  <Select value={selectedSection} onValueChange={setSelectedSection}>
+                    <SelectTrigger className="w-full h-10 rounded-lg text-xs sm:shadow-none bg-secondary border-t-1 border-primary/20">
+                        <SelectValue placeholder="Filter by section..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {sections.map(section => (
+                            <SelectItem key={section} value={section}>
                                 <div className="flex items-center gap-2">
-                                {labor !== 'All Labor' && (
+                                {section !== 'All Sections' && (
                                     <div 
                                     className="h-4 w-4 rounded-full"
-                                    style={{ backgroundColor: getLaborColor(labor) }}
+                                    style={{ backgroundColor: getSectionColor(section) }}
                                     />
                                 )}
-                                <span>{labor}</span>
+                                <span>{section}</span>
                                 </div>
                             </SelectItem>
                         ))}
                     </SelectContent>
-                </Select>
+                  </Select>
+                </div>
+                <div className="flex flex-grow">
+                  <Select value={selectedLabor} onValueChange={setSelectedLabor}>
+                      <SelectTrigger className="w-full h-10 rounded-lg text-xs sm:shadow-none bg-secondary border-t-1 border-primary/20">
+                          <SelectValue placeholder="Filter by labor..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {labors.map(labor => (
+                              <SelectItem key={labor} value={labor}>
+                                  <div className="flex items-center gap-2">
+                                  {labor !== 'All Labor' && (
+                                      <div 
+                                      className="h-4 w-4 rounded-full"
+                                      style={{ backgroundColor: getLaborColor(labor) }}
+                                      />
+                                  )}
+                                  <span>{labor}</span>
+                                  </div>
+                              </SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="container mx-auto px-0 py-0 min-h-screen">
+          <div className="px-2 sm:px-4">
+            <div className="flex justify-between items-center mb-0 mt-2 pl-2 sm:px-4">
+              <div>
+                {groupBy === 'date' && (
+                  <div className="flex items-center gap-2">
+                      <button
+                          onClick={handleScrollToToday}
+                          className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
+                      >
+                          Today
+                      </button>
+                      <span className="text-sm text-muted-foreground">|</span>
+                      <button
+                          onClick={handleToggleShowAllDates}
+                          className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
+                      >
+                          {showAllDates ? 'Single' : 'All'}
+                      </button>
+                  </div>
+                )}
+              </div>
+              <div className="mass-count text-right text-sm text-muted-foreground">
+                {groupBy === 'date' && (
+                  <Dialog open={isCalendarOpen} onOpenChange={(open) => {
+                      setIsCalendarOpen(open);
+                      if(open) {
+                          setCalendarMonth(selectedCalendarDate);
+                      }
+                  }}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-accent/20">
+                        <CalendarIcon className="h-5 w-5" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="w-auto sm:max-w-md rounded-xl">
+                      <DialogHeader>
+                        <DialogTitle>Jump to Date</DialogTitle>
+                        <DialogDescription>
+                          Select a date to view its schedule.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <Calendar
+                        mode="single"
+                        selected={selectedCalendarDate}
+                        onSelect={handleCalendarSelect}
+                        month={calendarMonth}
+                        onMonthChange={setCalendarMonth}
+                        className="rounded-md border"
+                        modifiers={{ today: new Date() }}
+                        modifiersClassNames={{
+                          today: 'border border-accent rounded-full'
+                        }}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
             </div>
-          )}
-        </div>
-      </div>
-
-      <div className="container mx-auto px-0 py-0 min-h-screen">
-        <div className="px-2 sm:px-4">
-          <div className="flex justify-between items-center mb-0 mt-2 pl-2 sm:px-4">
-            <div>
-              {groupBy === 'date' && (
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={handleScrollToToday}
-                        className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
-                    >
-                        Today
-                    </button>
-                    <span className="text-sm text-muted-foreground">|</span>
-                    <button
-                        onClick={handleToggleShowAllDates}
-                        className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
-                    >
-                        {showAllDates ? 'Single' : 'All'}
-                    </button>
-                </div>
-              )}
-            </div>
-            <div className="mass-count text-right text-sm text-muted-foreground">
-              {groupBy === 'date' && (
-                <Dialog open={isCalendarOpen} onOpenChange={(open) => {
-                    setIsCalendarOpen(open);
-                    if(open) {
-                        setCalendarMonth(selectedCalendarDate);
-                    }
-                }}>
-                  <DialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-accent/20">
-                      <CalendarIcon className="h-5 w-5" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="w-auto sm:max-w-md rounded-xl">
-                    <DialogHeader>
-                      <DialogTitle>Jump to Date</DialogTitle>
-                      <DialogDescription>
-                        Select a date to view its schedule.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <Calendar
-                      mode="single"
-                      selected={selectedCalendarDate}
-                      onSelect={handleCalendarSelect}
-                      month={calendarMonth}
-                      onMonthChange={setCalendarMonth}
-                      className="rounded-md border"
-                      modifiers={{ today: new Date() }}
-                      modifiersClassNames={{
-                        today: 'border border-accent rounded-full'
-                      }}
-                    />
-                  </DialogContent>
-                </Dialog>
-              )}
-            </div>
+              <GridAccordion 
+                  items={filteredAccordionItems}
+                  masses={massesData}
+                  groupBy={groupBy}
+                  value={openAccordionValue}
+                  onValueChange={handleAccordionValueChange}
+              />
           </div>
-
-          {isLoading && initialLoadHandled.current ? (
-             <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
-                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                <p className="text-lg text-muted-foreground">
-                    Filtering schedule...
-                </p>
+          
+          <footer className="text-center mt-12 py-6 border-t border-border">
+            <div className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4">
+              <p className="text-xs text-muted-foreground">
+                &copy; {new Date().getFullYear()} Pastores <br className="sm:hidden"/> <a href="mailto:patxiworks@gmail.com" className="text-[10px]">Schedule for pastoral attention</a>
+              </p>
+              <div>
+              <button onClick={handleLogout} className="text-xs text-destructive hover:underline">Logout</button>
+              <span className="text-xs"> | </span>
+              <a href="mailto:patxiworks@gmail.com" className="text-xs">Ask for help</a>
+              </div>
             </div>
-          ) : (
-            <GridAccordion 
-                items={filteredAccordionItems}
-                masses={massesData}
-                groupBy={groupBy}
-                value={openAccordionValue}
-                onValueChange={handleAccordionValueChange}
-            />
-          )}
-
+          </footer>
         </div>
-        
-        <footer className="text-center mt-12 py-6 border-t border-border">
-          <div className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4">
-            <p className="text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} Pastores <br className="sm:hidden"/> <a href="mailto:patxiworks@gmail.com" className="text-[10px]">Schedule for pastoral attention</a>
-            </p>
-            <div>
-            <button onClick={handleLogout} className="text-xs text-destructive hover:underline">Logout</button>
-            <span className="text-xs"> | </span>
-            <a href="mailto:patxiworks@gmail.com" className="text-xs">Ask for help</a>
-            </div>
-          </div>
-        </footer>
       </div>
     </>
   );
