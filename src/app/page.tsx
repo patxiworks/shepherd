@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
-import { Loader2, XIcon, CalendarIcon } from 'lucide-react';
+import { Loader2, XIcon, CalendarIcon, RefreshCw } from 'lucide-react';
 import { parse, parseISO, format as formatDate } from 'date-fns';
 import { format as formatDateFnsTz, toZonedTime } from 'date-fns-tz';
 import { getSectionColor, getLaborColor } from '@/lib/section-colors';
@@ -42,7 +42,7 @@ export default function HomePage() {
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   const [showAllDates, setShowAllDates] = React.useState(false);
   const [calendarMonth, setCalendarMonth] = React.useState<Date | undefined>(undefined);
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const router = useRouter();
   const initialLoadHandled = React.useRef(false);
 
@@ -50,107 +50,116 @@ export default function HomePage() {
     return visibleDateId ? parse(visibleDateId, 'yyyy-MM-dd', new Date()) : new Date();
   }, [visibleDateId]);
 
-  React.useEffect(() => {
-    let user: ZoneUser | null = null;
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const userData = localStorage.getItem('zoneUser');
-      if (!userData) {
-        router.push('/login');
-        return;
-      }
-      user = JSON.parse(userData);
-      setUserRole(user?.role);
-    }
-  }, [router]);
-
-
-  React.useEffect(() => {
-    const fetchAndProcessActivities = async () => {
-      setIsLoading(true);
-      let user: ZoneUser | null = null;
-      let zone: string | null = null;
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const userData = localStorage.getItem('zoneUser');
-        if (userData) {
-          user = JSON.parse(userData);
-          zone = user?.zone || null;
-        } else {
-          router.push('/login');
-          return;
+  const fetchFreshData = React.useCallback(async (user: ZoneUser, showLoading: boolean = true) => {
+    if (showLoading) setIsLoading(true);
+    try {
+        const urlParams = new URLSearchParams();
+        if (user?.zone) urlParams.append('zone', user.zone);
+        if (user?.section && (user.section === 'sf' || user.section === 'sv')) {
+            urlParams.append('section', user.section);
         }
-      }
+        
+        const apiUrl = `/api/collections?${urlParams.toString()}`;
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error('Failed to fetch activities');
+        const data = await response.json();
+        
+        localStorage.setItem('pastoresData', JSON.stringify(data));
+        
+        const updateResponse = await fetch(`/api/collections?zone=${user.zone}&action=lastupdate`);
+        const updateData = await updateResponse.json();
+        if (user && updateData.last_update) {
+            const updatedUser = { ...user, last_update: updateData.last_update };
+            localStorage.setItem('zoneUser', JSON.stringify(updatedUser));
+            setUserRole(updatedUser.role);
+        }
 
-      if (!zone) {
-        toast({ title: "Error", description: "User zone not found.", variant: "destructive" });
-        setIsLoading(false);
-        return;
-      }
+        setAllActivities(data.activities || []);
+        setMassesData(data.masses || {});
+        
+        toast({ title: "Schedule Updated", description: "You have the latest data." });
+        dismiss(); // Dismiss any pending update toasts
+
+    } catch (error) {
+        console.error("Error fetching fresh data:", error);
+        toast({
+            title: "Update Failed",
+            description: "Could not fetch new data. Please try again later.",
+            variant: "destructive",
+        });
+    } finally {
+        if (showLoading) setIsLoading(false);
+    }
+}, [toast, dismiss]);
+
+  React.useEffect(() => {
+    if (initialLoadHandled.current) return;
+    initialLoadHandled.current = true;
+
+    let user: ZoneUser | null = null;
+    let zone: string | null = null;
+    
+    // --- 1. Synchronously load from cache if available ---
+    const userData = localStorage.getItem('zoneUser');
+    if (!userData) {
+      router.push('/login');
+      return;
+    }
+    
+    user = JSON.parse(userData);
+    zone = user?.zone || null;
+    setUserRole(user?.role);
+
+    const cachedData = localStorage.getItem('pastoresData');
+    if (cachedData) {
+      console.log("Using cached data for initial render.");
+      const parsedData = JSON.parse(cachedData);
+      setAllActivities(parsedData.activities || []);
+      setMassesData(parsedData.masses || {});
+    }
+    
+    setIsLoading(false); // Stop initial loading spinner
+
+    // --- 2. Asynchronously check for updates ---
+    const checkForUpdates = async () => {
+      if (!zone || !user) return;
 
       try {
         const lastUpdateUrl = `/api/collections?zone=${zone}&action=lastupdate`;
         const updateResponse = await fetch(lastUpdateUrl);
         if (!updateResponse.ok) throw new Error('Could not check for updates.');
         const updateData = await updateResponse.json();
+
         const remoteLastUpdate = updateData.last_update ? new Date(updateData.last_update).getTime() : 0;
-        const localLastUpdate = user?.last_update ? new Date(user.last_update).getTime() : 0;
-        
-        const cachedData = localStorage.getItem('pastoresData');
-        
-        if (cachedData && remoteLastUpdate <= localLastUpdate) {
-            console.log("Using cached data, it's up to date.");
-            const parsedData = JSON.parse(cachedData);
-            setAllActivities(parsedData.activities || []);
-            setMassesData(parsedData.masses || {});
+        const localLastUpdate = user.last_update ? new Date(user.last_update).getTime() : 0;
+
+        if (remoteLastUpdate > localLastUpdate) {
+            console.log("New data available. Prompting user to update.");
+            const finalUser = user;
+            toast({
+                title: "Update Available",
+                description: "New schedule information is available.",
+                duration: Infinity, // Keep toast until user interacts
+                action: (
+                    <Button onClick={() => fetchFreshData(finalUser)}>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Update
+                    </Button>
+                ),
+            });
         } else {
-            console.log("Fetching fresh data from server.");
-            const urlParams = new URLSearchParams();
-            if (user?.zone) urlParams.append('zone', user.zone);
-            if (user?.section && (user.section === 'sf' || user.section === 'sv')) {
-                urlParams.append('section', user.section);
-            }
-            
-            const apiUrl = `/api/collections?${urlParams.toString()}`;
-            const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error('Failed to fetch activities');
-            const data = await response.json();
-            
-            localStorage.setItem('pastoresData', JSON.stringify(data));
-            if (user && updateData.last_update) {
-                const updatedUser = { ...user, last_update: updateData.last_update };
-                localStorage.setItem('zoneUser', JSON.stringify(updatedUser));
-                setUserRole(updatedUser.role);
-            }
-
-            setAllActivities(data.activities || []);
-            setMassesData(data.masses || {});
+            console.log("Cached data is up to date.");
         }
-
-        if (user && user.centre && !initialLoadHandled.current) {
-            handleGoToCentre(user.centre);
-        }
-
       } catch (error) {
-        console.error("Error fetching activities:", error);
-        toast({
-          title: "Error",
-          description: "Could not load activities data. Using cached data if available.",
-          variant: "destructive",
-        });
-        const cachedData = localStorage.getItem('pastoresData');
-        if (cachedData) {
-            const parsedData = JSON.parse(cachedData);
-            setAllActivities(parsedData.activities || []);
-            setMassesData(parsedData.masses || {});
-        }
-
-      } finally {
-        setIsLoading(false);
-        initialLoadHandled.current = true;
+        console.error("Error checking for updates:", error);
+        // Silently fail, user can continue with cached data.
       }
     };
-    fetchAndProcessActivities();
+    
+    checkForUpdates();
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast, router]);
+  }, []);
 
   React.useEffect(() => {
     if (isLoading || !Array.isArray(allActivities)) return;
@@ -290,16 +299,12 @@ export default function HomePage() {
     }
   };
 
-  // const handleAccordionValueChange = (value: string | undefined) => {
-  //   setOpenAccordionValue(value);
-  // };
-
   const handleAccordionValueChange = (value: string | undefined) => {
     setOpenAccordionValue(value);
-    if (value) {
+    if (groupBy === 'date' && value) {
       setTimeout(() => {
         scrollToAccordion(value);
-      }, 500);
+      }, 100);
     }
   };
 
@@ -492,6 +497,7 @@ export default function HomePage() {
       localStorage.removeItem('zoneUser');
       localStorage.removeItem('pastoresData');
       sessionStorage.removeItem('scrolledToToday');
+      dismiss(); // Clear any update toasts on logout
     }
     router.push('/login');
   };
@@ -760,5 +766,3 @@ export default function HomePage() {
     </>
   );
 }
-
-    
