@@ -301,11 +301,6 @@ export default function HomePage() {
 
   const handleAccordionValueChange = (value: string | undefined) => {
     setOpenAccordionValue(value);
-    if (groupBy === 'date' && value) {
-      setTimeout(() => {
-        scrollToAccordion(value);
-      }, 100);
-    }
   };
 
   const handleScrollToToday = () => {
