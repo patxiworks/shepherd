@@ -193,7 +193,7 @@ export default function HomePage() {
         title: activity.activity,
         description: activity.description,
         centre: activity.centre,
-        date: activity.date ? formatDate(parse(activity.date, 'yyyy-MM-dd', new Date()), 'EEE, MMM d') : "N/A", 
+        date: activity.date && typeof activity.date === 'string' ? formatDate(parse(activity.date, 'yyyy-MM-dd', new Date()), 'EEE, MMM d') : "N/A", 
         priest: activity.priest,
         time: fromTime && toTime ? `${fromTime}` : fromTime ? `${fromTime}` : '',
         section: activity.section || 'default',
@@ -248,7 +248,7 @@ export default function HomePage() {
     } else { // Group by date
         const todayKey = formatDate(new Date(), "yyyy-MM-dd");
         filteredActivities.forEach(activity => {
-            if (activity.date) {
+            if (activity.date && typeof activity.date === 'string') {
                 const activityDate = parse(activity.date, 'yyyy-MM-dd', new Date());
                 const dateKey = formatDate(activityDate, 'yyyy-MM-dd'); 
                 const formattedDate = formatDate(activityDate, "EEEE, MMMM d, yyyy");
@@ -778,3 +778,5 @@ export default function HomePage() {
       </div>
   );
 }
+
+    
