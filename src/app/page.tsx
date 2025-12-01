@@ -755,7 +755,7 @@ export default function HomePage() {
                     )}
                 </button>
                 <span className="text-xs mx-2">|</span>
-                <a href="mailto:patxiworks@gmail.com" className="text-xs">Ask for help</a>
+                <a href="https://wa.me/2348137243046" target="_blank" rel="noopener noreferrer" className="text-xs">Ask for help</a>
               </div>
             </div>
           </footer>
@@ -763,3 +763,5 @@ export default function HomePage() {
       </div>
   );
 }
+
+    
