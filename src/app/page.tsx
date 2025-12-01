@@ -770,7 +770,7 @@ export default function HomePage() {
                     )}
                 </button>
                 <span className="text-xs mx-2">|</span>
-                <a href="https://wa.me/2348137243046" target="_blank" rel="noopener noreferrer" className="text-xs">Get help</a>
+                <a href="https://wa.me/2348137245046" target="_blank" rel="noopener noreferrer" className="text-xs">Get help</a>
               </div>
             </div>
           </footer>
