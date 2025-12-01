@@ -685,7 +685,7 @@ export default function HomePage() {
                           onClick={handleToggleShowAllDates}
                           className="text-sm font-semibold text-primary hover:text-primary/80 focus:outline-0 focus:ring-0"
                       >
-                          {showAllDates ? 'Single' : 'All'}
+                          {showAllDates ? 'Single day' : 'All days'}
                       </button>
                   </div>
                 )}

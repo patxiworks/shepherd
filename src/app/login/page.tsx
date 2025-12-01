@@ -159,7 +159,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-primary/20 px-4">
       <Image
-        src="/pastores-192-192.png"
+        src="/pastores-192x192.png"
         alt="Pastores Logo"
         width={96}
         height={96}
