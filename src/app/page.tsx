@@ -42,6 +42,7 @@ export default function HomePage() {
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   const [showAllDates, setShowAllDates] = React.useState(false);
   const [calendarMonth, setCalendarMonth] = React.useState<Date | undefined>(undefined);
+  const [isCheckingForUpdate, setIsCheckingForUpdate] = React.useState(false);
   const { toast, dismiss } = useToast();
   const router = useRouter();
   const initialLoadHandled = React.useRef(false);
@@ -92,22 +93,54 @@ export default function HomePage() {
     }
 }, [toast, dismiss]);
 
+  const handleCheckForUpdates = React.useCallback(async (manualTrigger = false) => {
+    if (manualTrigger) setIsCheckingForUpdate(true);
+    try {
+        const userData = localStorage.getItem('zoneUser');
+        if (!userData) return;
+        const user: ZoneUser = JSON.parse(userData);
+
+        if (!user.zone) return;
+
+        const lastUpdateUrl = `/api/collections?zone=${user.zone}&action=lastupdate`;
+        const updateResponse = await fetch(lastUpdateUrl);
+        if (!updateResponse.ok) throw new Error('Could not check for updates.');
+        
+        const updateData = await updateResponse.json();
+        const remoteLastUpdate = updateData.last_update ? new Date(updateData.last_update).getTime() : 0;
+        const localLastUpdate = user.last_update ? new Date(user.last_update).getTime() : 0;
+
+        if (remoteLastUpdate > localLastUpdate) {
+            toast({
+                title: "Update Available",
+                description: "New schedule information is available.",
+                duration: Infinity,
+                action: (
+                    <Button onClick={() => fetchFreshData(user)}>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Update Now
+                    </Button>
+                ),
+            });
+        }
+    } catch (error) {
+        console.error("Error checking for updates:", error);
+    } finally {
+        if (manualTrigger) setIsCheckingForUpdate(false);
+    }
+  }, [toast, fetchFreshData]);
+
   React.useEffect(() => {
     if (initialLoadHandled.current) return;
     initialLoadHandled.current = true;
 
-    let user: ZoneUser | null = null;
-    let zone: string | null = null;
-    
-    // --- 1. Synchronously load from cache if available ---
     const userData = localStorage.getItem('zoneUser');
     if (!userData) {
       router.push('/login');
       return;
     }
     
-    user = JSON.parse(userData);
-    zone = user?.zone || null;
+    const user: ZoneUser = JSON.parse(userData);
     setUserRole(user?.role);
 
     const cachedData = localStorage.getItem('pastoresData');
@@ -118,45 +151,9 @@ export default function HomePage() {
       setMassesData(parsedData.masses || {});
     }
     
-    setIsLoading(false); // Stop initial loading spinner
+    setIsLoading(false); 
 
-    // --- 2. Asynchronously check for updates ---
-    const checkForUpdates = async () => {
-      if (!zone || !user) return;
-
-      try {
-        const lastUpdateUrl = `/api/collections?zone=${zone}&action=lastupdate`;
-        const updateResponse = await fetch(lastUpdateUrl);
-        if (!updateResponse.ok) throw new Error('Could not check for updates.');
-        const updateData = await updateResponse.json();
-
-        const remoteLastUpdate = updateData.last_update ? new Date(updateData.last_update).getTime() : 0;
-        const localLastUpdate = user.last_update ? new Date(user.last_update).getTime() : 0;
-
-        if (remoteLastUpdate > localLastUpdate) {
-            console.log("New data available. Prompting user to update.");
-            const finalUser = user;
-            toast({
-                title: "Update Available",
-                description: "New schedule information is available.",
-                duration: Infinity, // Keep toast until user interacts
-                action: (
-                    <Button onClick={() => fetchFreshData(finalUser)}>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Update
-                    </Button>
-                ),
-            });
-        } else {
-            console.log("Cached data is up to date.");
-        }
-      } catch (error) {
-        console.error("Error checking for updates:", error);
-        // Silently fail, user can continue with cached data.
-      }
-    };
-    
-    checkForUpdates();
+    handleCheckForUpdates();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -301,6 +298,11 @@ export default function HomePage() {
 
   const handleAccordionValueChange = (value: string | undefined) => {
     setOpenAccordionValue(value);
+    if (value) {
+      setTimeout(() => {
+        scrollToAccordion(value);
+      }, 500);
+    }
   };
 
   const handleScrollToToday = () => {
@@ -421,9 +423,9 @@ export default function HomePage() {
   const filteredAccordionItems = React.useMemo(() => {
     let itemsToDisplay = accordionItems;
 
-    // Filter by single date if applicable and not showing all, and not filtering by text
+    // If we are in single-day view, and not searching, show only that day
     if (groupBy === 'date' && visibleDateId && !showAllDates && !filterQuery) {
-      itemsToDisplay = itemsToDisplay.filter(item => item.id === visibleDateId);
+        itemsToDisplay = itemsToDisplay.filter(item => item.id === visibleDateId);
     }
     
     // Apply search query if it exists
@@ -474,7 +476,7 @@ export default function HomePage() {
     </div>
   );
 
-  if (isLoading && !initialLoadHandled.current) {
+  if (isLoading) {
     return getLoadingComponent();
   }
   
@@ -532,18 +534,16 @@ export default function HomePage() {
   };
 
   return (
-    <>
-      {isLoading && getLoadingComponent()}
-      <div style={{ visibility: isLoading ? 'hidden' : 'visible' }}>
+    <div>
         <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-md border-b border-[#bbb] bg-primary">
           <div className="main-header border-b border-t-2 border-black bg-background">
             <header className="relative mx-auto container pt-4 pb-2 px-4 text-left">
               <div className="flex flex-row items-center justify-between">
                 <div>
-                  <h1 className="w-[210px] sm:w-full leading-none text-[35px] sm:text-[33px] font-bold text-[#fff]">
+                  <h1 className="w-[210px] sm:w-full leading-none text-[30px] sm:text-[33px] font-bold text-[#fff]">
                     Pastores
                   </h1>
-                  <div className="sub-header mt-0 w-full text-[9px] sm:text-xs text-[#ccc]">Schedule for Pastoral Attention of Centres</div>
+                  <div className="sub-header mt-0 w-full text-[9px] sm:text-xs text-[#ccc]">Schedule for Pastoral Attention</div>
                 </div>
                 <div className="flex flex-grow justify-end">
                   <Select value={selectedCentre} onValueChange={handleGoToCentre}>
@@ -739,17 +739,27 @@ export default function HomePage() {
           <footer className="text-center mt-12 py-6 border-t border-border">
             <div className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4">
               <p className="text-xs text-muted-foreground">
-                &copy; {new Date().getFullYear()} Pastores <br className="sm:hidden"/> <a href="mailto:patxiworks@gmail.com" className="text-[10px]">Schedule for pastoral attention</a>
+                &copy; {new Date().getFullYear()} Pastores <br className="sm:hidden"/> <a href="mailto:patxiworks@gmail.com" className="text-[10px]">Schedule for pastoral attention of Centres</a>
               </p>
-              <div>
-              <button onClick={handleLogout} className="text-xs text-destructive hover:underline">Logout</button>
-              <span className="text-xs"> | </span>
-              <a href="mailto:patxiworks@gmail.com" className="text-xs">Ask for help</a>
+              <div className="flex items-center">
+                <button onClick={handleLogout} className="text-xs text-destructive hover:underline">Logout</button>
+                <span className="text-xs mx-2">|</span>
+                <button onClick={() => handleCheckForUpdates(true)} className="text-xs text-primary hover:underline flex items-center" disabled={isCheckingForUpdate}>
+                    {isCheckingForUpdate ? (
+                        <>
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            Checking...
+                        </>
+                    ) : (
+                        "Update"
+                    )}
+                </button>
+                <span className="text-xs mx-2">|</span>
+                <a href="mailto:patxiworks@gmail.com" className="text-xs">Ask for help</a>
               </div>
             </div>
           </footer>
         </div>
       </div>
-    </>
   );
 }
