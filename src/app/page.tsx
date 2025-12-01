@@ -127,7 +127,7 @@ export default function HomePage() {
         } else if (manualTrigger) {
           toast({
               title: "No Updates",
-              description: "Your schedule is already up to date.",
+              description: "The schedule is already up to date.",
           });
         }
     } catch (error) {
