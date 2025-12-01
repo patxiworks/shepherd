@@ -78,7 +78,9 @@ export default function HomePage() {
         setAllActivities(data.activities || []);
         setMassesData(data.masses || {});
         
-        toast({ title: "Schedule Updated", description: "You have the latest data." });
+        if (showLoading) { // Only show toast if it was a manual update
+          toast({ title: "Schedule Updated", description: "You have the latest data." });
+        }
         dismiss(); // Dismiss any pending update toasts
 
     } catch (error) {
@@ -91,7 +93,7 @@ export default function HomePage() {
     } finally {
         if (showLoading) setIsLoading(false);
     }
-}, [toast, dismiss]);
+  }, [toast, dismiss]);
 
   const handleCheckForUpdates = React.useCallback(async (manualTrigger = false) => {
     if (manualTrigger) setIsCheckingForUpdate(true);
@@ -116,15 +118,27 @@ export default function HomePage() {
                 description: "New schedule information is available.",
                 duration: Infinity,
                 action: (
-                    <Button onClick={() => fetchFreshData(user)}>
+                    <Button onClick={() => fetchFreshData(user, true)}>
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Update Now
                     </Button>
                 ),
             });
+        } else if (manualTrigger) {
+          toast({
+              title: "No Updates",
+              description: "Your schedule is already up to date.",
+          });
         }
     } catch (error) {
         console.error("Error checking for updates:", error);
+        if (manualTrigger) {
+            toast({
+                title: "Error",
+                description: "Could not check for updates.",
+                variant: "destructive",
+            });
+        }
     } finally {
         if (manualTrigger) setIsCheckingForUpdate(false);
     }
@@ -149,11 +163,12 @@ export default function HomePage() {
       const parsedData = JSON.parse(cachedData);
       setAllActivities(parsedData.activities || []);
       setMassesData(parsedData.masses || {});
+      setIsLoading(false); 
+      handleCheckForUpdates(); // Check for updates in the background
+    } else {
+      console.log("No cached data found, fetching from server.");
+      fetchFreshData(user, true); // Fetch fresh data and show loader
     }
-    
-    setIsLoading(false); 
-
-    handleCheckForUpdates();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -763,5 +778,3 @@ export default function HomePage() {
       </div>
   );
 }
-
-    
