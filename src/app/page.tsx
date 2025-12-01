@@ -189,11 +189,20 @@ export default function HomePage() {
         ? formatDateFnsTz(toZonedTime(parseISO(activity.to), timeZone), "h:mm a", { timeZone })
         : activity.to;
       
+      let formattedActivityDate = "N/A";
+      if (activity.date && typeof activity.date === 'string' && activity.date.trim()) {
+        try {
+            formattedActivityDate = formatDate(parse(activity.date, 'yyyy-MM-dd', new Date()), 'EEE, MMM d');
+        } catch (e) {
+            console.warn(`Could not parse date "${activity.date}" for activity:`, activity);
+        }
+      }
+
       return {
         title: activity.activity,
         description: activity.description,
         centre: activity.centre,
-        date: activity.date && typeof activity.date === 'string' ? formatDate(parse(activity.date, 'yyyy-MM-dd', new Date()), 'EEE, MMM d') : "N/A", 
+        date: formattedActivityDate, 
         priest: activity.priest,
         time: fromTime && toTime ? `${fromTime}` : fromTime ? `${fromTime}` : '',
         section: activity.section || 'default',
@@ -248,7 +257,8 @@ export default function HomePage() {
     } else { // Group by date
         const todayKey = formatDate(new Date(), "yyyy-MM-dd");
         filteredActivities.forEach(activity => {
-            if (activity.date && typeof activity.date === 'string') {
+            if (activity.date && typeof activity.date === 'string' && activity.date.trim()) {
+              try {
                 const activityDate = parse(activity.date, 'yyyy-MM-dd', new Date());
                 const dateKey = formatDate(activityDate, 'yyyy-MM-dd'); 
                 const formattedDate = formatDate(activityDate, "EEEE, MMMM d, yyyy");
@@ -267,6 +277,9 @@ export default function HomePage() {
                     setVisibleDateId(dateKey);
                     setOpenAccordionValue(dateKey); // Also set the controlled value
                 }
+              } catch(e) {
+                console.warn(`Could not process activity due to invalid date "${activity.date}":`, activity);
+              }
             }
         });
     }
@@ -778,5 +791,7 @@ export default function HomePage() {
       </div>
   );
 }
+
+    
 
     
