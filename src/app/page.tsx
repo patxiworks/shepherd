@@ -115,7 +115,9 @@ export default function HomePage() {
 
   const handleCheckForUpdates = React.useCallback(async (manualTrigger = false) => {
     if (!isOnline) {
-      toast({ title: "Offline", description: "You are offline. Cannot check for updates.", variant: "destructive" });
+      if (manualTrigger) {
+        toast({ title: "Offline", description: "You are offline. Cannot check for updates.", variant: "destructive" });
+      }
       return;
     }
     if (manualTrigger) setIsCheckingForUpdate(true);
@@ -811,7 +813,7 @@ export default function HomePage() {
                     )}
                 </button>
                 <span className="text-xs mx-2">|</span>
-                <a href="https://wa.me/2348137245046" target="_blank" rel="noopener noreferrer" className="text-xs">Get help</a>
+                <a href="https://wa.me/2348137243046" target="_blank" rel="noopener noreferrer" className="text-xs">Get help</a>
               </div>
             </div>
           </footer>
