@@ -114,7 +114,8 @@ export default function HomePage() {
   }, [toast, dismiss]);
 
   const handleCheckForUpdates = React.useCallback(async (manualTrigger = false) => {
-    if (!isOnline) {
+    // Direct check to prevent race condition on load
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
       if (manualTrigger) {
         toast({ title: "Offline", description: "You are offline. Cannot check for updates.", variant: "destructive" });
       }
@@ -821,3 +822,5 @@ export default function HomePage() {
       </div>
   );
 }
+
+    
