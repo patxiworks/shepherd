@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
-import { Loader2, XIcon, CalendarIcon, RefreshCw } from 'lucide-react';
+import { Loader2, XIcon, CalendarIcon, RefreshCw, WifiOff } from 'lucide-react';
 import { parse, parseISO, format as formatDate } from 'date-fns';
 import { format as formatDateFnsTz, toZonedTime } from 'date-fns-tz';
 import { getSectionColor, getLaborColor } from '@/lib/section-colors';
@@ -43,6 +43,7 @@ export default function HomePage() {
   const [showAllDates, setShowAllDates] = React.useState(false);
   const [calendarMonth, setCalendarMonth] = React.useState<Date | undefined>(undefined);
   const [isCheckingForUpdate, setIsCheckingForUpdate] = React.useState(false);
+  const [isOnline, setIsOnline] = React.useState(true);
   const { toast, dismiss } = useToast();
   const router = useRouter();
   const initialLoadHandled = React.useRef(false);
@@ -50,6 +51,23 @@ export default function HomePage() {
   const selectedCalendarDate = React.useMemo(() => {
     return visibleDateId ? parse(visibleDateId, 'yyyy-MM-dd', new Date()) : new Date();
   }, [visibleDateId]);
+
+  React.useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    if (typeof window !== 'undefined' && typeof window.navigator.onLine !== 'undefined') {
+        setIsOnline(window.navigator.onLine);
+    }
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const fetchFreshData = React.useCallback(async (user: ZoneUser, showLoading: boolean = true) => {
     if (showLoading) setIsLoading(true);
@@ -96,6 +114,10 @@ export default function HomePage() {
   }, [toast, dismiss]);
 
   const handleCheckForUpdates = React.useCallback(async (manualTrigger = false) => {
+    if (!isOnline) {
+      toast({ title: "Offline", description: "You are offline. Cannot check for updates.", variant: "destructive" });
+      return;
+    }
     if (manualTrigger) setIsCheckingForUpdate(true);
     try {
         const userData = localStorage.getItem('zoneUser');
@@ -118,7 +140,7 @@ export default function HomePage() {
                 description: "New schedule information is available.",
                 duration: Infinity,
                 action: (
-                    <Button onClick={() => fetchFreshData(user, true)}>
+                    <Button onClick={() => fetchFreshData(user, true)} disabled={!isOnline}>
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Update Now
                     </Button>
@@ -142,7 +164,7 @@ export default function HomePage() {
     } finally {
         if (manualTrigger) setIsCheckingForUpdate(false);
     }
-  }, [toast, fetchFreshData]);
+  }, [isOnline, toast, fetchFreshData]);
 
   React.useEffect(() => {
     if (initialLoadHandled.current) return;
@@ -573,7 +595,13 @@ export default function HomePage() {
                   </h1>
                   <div className="sub-header mt-0 w-full text-[9px] sm:text-xs text-[#ccc]">Schedule for Pastoral Attention</div>
                 </div>
-                <div className="flex flex-grow justify-end">
+                <div className="flex flex-grow justify-end items-center gap-2">
+                  {!isOnline && (
+                      <div className="flex items-center gap-1 bg-destructive text-destructive-foreground px-2 py-1 rounded-md">
+                          <WifiOff className="h-4 w-4" />
+                          <span className="text-xs font-semibold">Offline</span>
+                      </div>
+                  )}
                   <Select value={selectedCentre} onValueChange={handleGoToCentre}>
                     <SelectTrigger className="sub-header w-auto p-0 text-xs text-white bg-black border-none sm:shadow-none focus:outline-none focus:ring-0 focus:ring-offset-0">
                         <SelectValue placeholder="Go to centre..." />
@@ -772,7 +800,7 @@ export default function HomePage() {
               <div className="flex items-center">
                 <button onClick={handleLogout} className="text-xs text-destructive hover:underline">Logout</button>
                 <span className="text-xs mx-2">|</span>
-                <button onClick={() => handleCheckForUpdates(true)} className="text-xs text-primary hover:underline flex items-center" disabled={isCheckingForUpdate}>
+                <button onClick={() => handleCheckForUpdates(true)} className="text-xs text-primary hover:underline flex items-center" disabled={isCheckingForUpdate || !isOnline}>
                     {isCheckingForUpdate ? (
                         <>
                             <Loader2 className="mr-2 h-3 w-3 animate-spin" />
@@ -791,7 +819,3 @@ export default function HomePage() {
       </div>
   );
 }
-
-    
-
-    
