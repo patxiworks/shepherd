@@ -602,7 +602,7 @@ export default function HomePage() {
                   {!isOnline && (
                       <div className="flex items-center gap-1 bg-destructive text-destructive-foreground px-2 py-1 rounded-md">
                           <WifiOff className="h-4 w-4" />
-                          <span className="text-xs font-semibold">Offline</span>
+                          <span className="text-xs font-semibold"></span>
                       </div>
                   )}
                   <Select value={selectedCentre} onValueChange={handleGoToCentre}>
