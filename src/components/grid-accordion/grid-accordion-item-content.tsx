@@ -18,9 +18,6 @@ export function GridAccordionItemContent({ item, groupBy, mass, userRole }: Grid
     return <p className="text-muted-foreground py-4 text-center">No scheduled items.</p>;
   }
 
-  //const sortedByTime = item.items.sort((a, b) => a.time.localeCompare(b.time))
-  //console.log(sortedByTime)
-
   const getCellData = (activityItem: GroupItem) => {
      switch(groupBy) {
       case 'centre':
@@ -40,7 +37,7 @@ export function GridAccordionItemContent({ item, groupBy, mass, userRole }: Grid
         <TableHeader className='bg-white'>
           {groupBy === 'date' && mass && (
             <TableRow>
-                <TableHead colSpan={2} className="py-4 text-xs">{mass}</TableHead>
+                <TableHead colSpan={userRole === 'sacd' || userRole === 'ctr' ? 2 : 5} className="py-4 text-xs">{mass}</TableHead>
             </TableRow>
           )}
         </TableHeader>
@@ -59,10 +56,27 @@ export function GridAccordionItemContent({ item, groupBy, mass, userRole }: Grid
                 onMouseLeave={() => setHoveredRowIndex(null)}
                 className="transition-colors text-sm"
               >
-                {/*userRole === 'sacd' && (*/}
-                  <TableCell className="text-left text-base py-3"><strong>{cells[3] || ''}</strong></TableCell>
-                  <TableCell className="font-medium text-right py-3"><span className="text-lg"><strong>{cells[0] || ''}</strong><span className="text-base">{cells[4] ? " "+cells[4] : ""}</span></span> {cells[1] ? "| "+cells[1] : ""} {cells[2] ? "| "+cells[2] : ''}</TableCell>
-                {/*)*/}
+                {userRole === 'sacd' && (
+                  <>
+                    <TableCell className="text-left text-base py-3"><strong>{cells[3] || ''}</strong></TableCell>
+                    <TableCell className="font-medium text-right py-3"><span className="text-lg"><strong>{cells[0] || ''}</strong><span className="text-base">{cells[4] ? " "+cells[4] : ""}</span></span> {cells[1] ? "| "+cells[1] : ""} {cells[2] ? "| "+cells[2] : ''}</TableCell>
+                  </>
+                )}
+                {userRole === 'ctr' && (
+                  <>
+                    <TableCell className="font-medium text-right py-3"><span className="text-lg"><strong>{cells[0] || ''}</strong><span className="text-base">{cells[4] ? " "+cells[4] : ""}</span></span> {cells[1] ? "| "+cells[1] : ""} {cells[2] ? "| "+cells[2] : ''}</TableCell>
+                    <TableCell className="text-left text-base py-3"><strong>{cells[3] || ''}</strong></TableCell>
+                  </>
+                )}
+                {userRole !== 'sacd' && userRole !== 'ctr' && (
+                  <>
+                    <TableCell className="font-medium">{cells[0]}</TableCell>
+                    <TableCell>{cells[1]}</TableCell>
+                    <TableCell>{cells[2]}</TableCell>
+                    <TableCell>{cells[3]}</TableCell>
+                    <TableCell className="text-right">{cells[4]}</TableCell>
+                  </>
+                )}
               </TableRow>
             )
           })}
