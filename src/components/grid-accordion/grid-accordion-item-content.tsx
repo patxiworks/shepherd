@@ -8,9 +8,10 @@ interface GridAccordionItemContentProps {
   item: AccordionGroupData;
   groupBy: 'centre' | 'activity' | 'date';
   mass: string;
+  userRole?: string;
 }
 
-export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionItemContentProps) {
+export function GridAccordionItemContent({ item, groupBy, mass, userRole }: GridAccordionItemContentProps) {
   const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
 
   if (!item.items || item.items.length === 0) {
@@ -58,8 +59,10 @@ export function GridAccordionItemContent({ item, groupBy, mass }: GridAccordionI
                 onMouseLeave={() => setHoveredRowIndex(null)}
                 className="transition-colors text-sm"
               >
-                <TableCell className="font-medium"><span className="text-lg"><strong>{cells[0] || 'N/A'}</strong><span className="text-base">{cells[4] ? " "+cells[4] : ""}</span></span> <br/> {cells[1]} {cells[2] ? "| "+cells[2] : ''}</TableCell>
-                <TableCell className="text-right text-base"><strong>{cells[3] || ''}</strong></TableCell>
+                {/*userRole === 'sacd' && (*/}
+                  <TableCell className="text-left text-base py-3"><strong>{cells[3] || ''}</strong></TableCell>
+                  <TableCell className="font-medium text-right py-3"><span className="text-lg"><strong>{cells[0] || ''}</strong><span className="text-base">{cells[4] ? " "+cells[4] : ""}</span></span> {cells[1] ? "| "+cells[1] : ""} {cells[2] ? "| "+cells[2] : ''}</TableCell>
+                {/*)*/}
               </TableRow>
             )
           })}

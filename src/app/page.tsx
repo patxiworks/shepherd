@@ -589,7 +589,7 @@ export default function HomePage() {
   return (
     <div>
         <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-md border-b border-[#bbb] bg-primary">
-          <div className="main-header border-b border-t-2 border-black bg-background">
+          <div className="main-header border-b border-t-2 border-[black] bg-background">
             <header className="relative mx-auto container pt-4 pb-2 px-4 text-left">
               <div className="flex flex-row items-center justify-between">
                 <div>
@@ -792,6 +792,7 @@ export default function HomePage() {
                   groupBy={groupBy}
                   value={openAccordionValue}
                   onValueChange={handleAccordionValueChange}
+                  userRole={userRole}
               />
           </div>
           
@@ -822,5 +823,3 @@ export default function HomePage() {
       </div>
   );
 }
-
-    

@@ -15,6 +15,7 @@ interface GridAccordionProps {
   groupBy: 'centre' | 'activity' | 'date';
   value?: string;
   onValueChange?: (value: string) => void;
+  userRole?: string;
 }
 
 export function GridAccordion({ 
@@ -22,7 +23,8 @@ export function GridAccordion({
   masses,
   groupBy,
   value,
-  onValueChange
+  onValueChange,
+  userRole
 }: GridAccordionProps) {
   if (!items || items.length === 0) {
     return <p className="text-center text-muted-foreground py-10">No items to display.</p>;
@@ -66,6 +68,7 @@ export function GridAccordion({
                 item={item} 
                 groupBy={groupBy}
                 mass={groupBy === 'date' && masses[item.id] ? `${masses[item.id].Class ? '('+masses[item.id].Class+')' : ''} ${masses[item.id].Mass}` : ""}
+                userRole={userRole}
               />
             </AccordionContent>
           </AccordionItem>

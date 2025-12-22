@@ -9,7 +9,7 @@ header {
   background-size: 200px;
   background-position: right -20px top -55px;
   background-repeat: no-repeat;
-  background-color: #000;
+  background-color: #0a68eb;
   /*background-attachment: fixed;*/
   font-family: "Petit Formal Script", cursive;
 }
@@ -45,13 +45,13 @@ body {
     --primary: 200 99% 42%; /*246 97% 42% - dark blue; /*262 52% 47% - purple; /* #673AB7 Deep purple */
     --primary-foreground: 0 0% 100%; /* White text on primary */
 
-    --secondary: 262 60% 92%; /* Lighter purple for secondary elements */
+    --secondary: 360 0% 100%; /* 262 60% 92%; /* Lighter purple for secondary elements */
     --secondary-foreground: 262 52% 30%; /* Darker purple text on secondary */
 
     --muted: 0 0% 90%; /* Lighter gray for muted elements */
     --muted-foreground: 0 0% 40%; /* Medium gray for muted text */
 
-    --accent: 340 82% 52%; /* #E91E63 Soft pink */
+    --accent: 200 99% 42%; /*340 82% 52%; /* #E91E63 Soft pink */
     --accent-foreground: 0 0% 100%; /* White text on accent */
 
     --destructive: 0 84.2% 60.2%;
