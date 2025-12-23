@@ -590,7 +590,7 @@ export default function HomePage() {
     <div>
         <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-md border-b border-[#bbb] bg-primary">
           <div className="border-b border-t-2 border-header bg-headery">
-            <header className="relative mx-auto container pt-4 pb-2 px-4 text-left">
+            <header className="relative mx-auto container pt-4 pb-2 px-4 text-left bg-black-background">
               <div className="flex flex-row items-center justify-between">
                 <div>
                   <h1 className="w-[210px] sm:w-full leading-none text-[30px] sm:text-[33px] font-bold text-[#fff]">
@@ -606,7 +606,7 @@ export default function HomePage() {
                       </div>
                   )}
                   <Select value={selectedCentre} onValueChange={handleGoToCentre}>
-                    <SelectTrigger className="sub-header w-auto p-0 text-xs text-white bg-black border-none sm:shadow-none focus:outline-none focus:ring-0 focus:ring-offset-0">
+                    <SelectTrigger className="sub-header w-auto p-0 text-xs text-white bg-transparent border-none sm:shadow-none focus:outline-none focus:ring-0 focus:ring-offset-0">
                         <SelectValue placeholder="Go to centre..." />
                     </SelectTrigger>
                     <SelectContent>
