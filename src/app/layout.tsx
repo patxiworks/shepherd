@@ -33,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" dir="ltr" className="dark">
+    <html lang="en" dir="ltr" className="">
       <head>
         <meta name="theme-color" content="#673AB7" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

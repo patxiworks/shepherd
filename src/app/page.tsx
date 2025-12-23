@@ -589,7 +589,7 @@ export default function HomePage() {
   return (
     <div>
         <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-md border-b border-[#bbb] bg-primary">
-          <div className="main-header border-b border-t-2 border-[black] bg-background">
+          <div className="border-b border-t-2 border-header bg-headery">
             <header className="relative mx-auto container pt-4 pb-2 px-4 text-left">
               <div className="flex flex-row items-center justify-between">
                 <div>
@@ -758,7 +758,7 @@ export default function HomePage() {
                       }
                   }}>
                     <DialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-bluish/20">
+                      <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-accent/20">
                         <CalendarIcon className="h-5 w-5" />
                       </Button>
                     </DialogTrigger>
@@ -778,7 +778,7 @@ export default function HomePage() {
                         className="rounded-md border"
                         modifiers={{ today: new Date() }}
                         modifiersClassNames={{
-                          today: 'border border-bluish rounded-full'
+                          today: 'border border-accent rounded-full'
                         }}
                       />
                     </DialogContent>
