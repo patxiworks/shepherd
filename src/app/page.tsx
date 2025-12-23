@@ -758,7 +758,7 @@ export default function HomePage() {
                       }
                   }}>
                     <DialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-accent/20">
+                      <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-bluish/20">
                         <CalendarIcon className="h-5 w-5" />
                       </Button>
                     </DialogTrigger>
@@ -778,7 +778,7 @@ export default function HomePage() {
                         className="rounded-md border"
                         modifiers={{ today: new Date() }}
                         modifiersClassNames={{
-                          today: 'border border-accent rounded-full'
+                          today: 'border border-bluish rounded-full'
                         }}
                       />
                     </DialogContent>

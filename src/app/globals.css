@@ -51,8 +51,11 @@ body {
     --muted: 0 0% 90%; /* Lighter gray for muted elements */
     --muted-foreground: 0 0% 40%; /* Medium gray for muted text */
 
-    --accent: 200 99% 42%; /*340 82% 52%; /* #E91E63 Soft pink */
+    --accent: 340 82% 52%; /* #E91E63 Soft pink */
     --accent-foreground: 0 0% 100%; /* White text on accent */
+
+    --bluish: 200 99% 42%; /*340 82% 52%; /* #E91E63 Soft pink */
+    --bluish-foreground: 0 0% 100%; /* White text on accent */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
