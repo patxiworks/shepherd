@@ -35,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en" dir="ltr" className="sv">
       <head>
-        <meta name="theme-color" content="#673AB7" />
+        <meta name="theme-color" content="#025C8C" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
