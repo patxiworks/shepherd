@@ -49,7 +49,7 @@ export default {
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         header: 'hsl(var(--header))',
-        headery: 'hsl(var(--headery) / <alpha-value>)',
+        //headery: 'hsl(var(--headery) / <alpha-value>)',
         chart: {
           '1': 'hsl(var(--chart-1))',
           '2': 'hsl(var(--chart-2))',

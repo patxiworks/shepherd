@@ -589,7 +589,7 @@ export default function HomePage() {
   return (
     <div>
         <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-md border-b border-[#bbb] bg-primary">
-          <div className="border-b border-t-2 border-header bg-header">
+          <div className="border-b-0 border-t-0 border-header bg-header">
             <div className="logo relative mx-auto container pt-4 pb-2 px-4 text-left bg-header">
               <div className="flex flex-row items-center justify-between">
                 <div>
