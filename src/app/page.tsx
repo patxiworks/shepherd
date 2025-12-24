@@ -590,7 +590,7 @@ export default function HomePage() {
     <div>
         <div id="filter-header" className="sticky top-0 z-50 bg-[#ececec] shadow-md border-b border-[#bbb] bg-primary">
           <div className="border-b border-t-2 border-header bg-headery">
-            <header className="relative mx-auto container pt-4 pb-2 px-4 text-left bg-black-background">
+            <div className="logo relative mx-auto container pt-4 pb-2 px-4 text-left bg-headery">
               <div className="flex flex-row items-center justify-between">
                 <div>
                   <h1 className="w-[210px] sm:w-full leading-none text-[30px] sm:text-[33px] font-bold text-[#fff]">
@@ -619,7 +619,7 @@ export default function HomePage() {
                   </Select>
                 </div>
               </div>
-            </header>
+            </div>
           </div>
           <div className="container mx-auto mb-1 sm:px-4 sm:py-3 sm:border-b-1 border-[#000] sm:shadow-sm">
             <div className="flex flex-col sm:flex-row gap-2">
