@@ -1,71 +1,90 @@
-// This is the service worker file.
-
 const CACHE_NAME = 'pastores-cache-v1';
+const urlsToCache = [
+  '/',
+  '/login',
+  '/manifest.webmanifest',
+  '/pastores-192x192.png',
+];
 
-// This is the "install" event that fires when the service worker is first installed.
+// Install the service worker and cache the app shell
 self.addEventListener('install', (event) => {
-  // The service worker is installing.
-  console.log('Service Worker: Installing...');
-  // We don't pre-cache any assets here, but we could.
-  // Caching will happen on demand as the user navigates the app.
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log('Opened cache');
+        return cache.addAll(urlsToCache);
+      })
+  );
 });
 
-// This is the "activate" event. It's a good place to clean up old caches.
+// Clean up old caches on activation
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker: Activating...');
+  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log('Service Worker: Clearing old cache:', cache);
-            return caches.delete(cache);
+        cacheNames.map((cacheName) => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
           }
         })
       );
     })
   );
-  return self.clients.claim();
 });
 
-// The "fetch" event intercepts all network requests made by the app.
+// Serve cached content when offline
 self.addEventListener('fetch', (event) => {
   // We only want to cache GET requests.
   if (event.request.method !== 'GET') {
     return;
   }
 
-  // We are using a "cache-first" strategy.
-  // The service worker will first check if a response for the request is in the cache.
-  // If it is, it serves the cached response.
-  // If not, it fetches the resource from the network, serves it, and also saves a copy in the cache for next time.
+  // For API calls, use a network-first strategy.
+  if (event.request.url.includes('/api/')) {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        // A simple fallback for API could be a generic JSON response
+        // but for this app, just failing is okay since data is cached in localStorage.
+        return new Response(JSON.stringify({ error: 'You are offline' }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
+    return;
+  }
+
+  // For all other requests, use a cache-first strategy.
   event.respondWith(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.match(event.request).then((response) => {
-        // If the resource is in the cache, return it.
+    caches.match(event.request)
+      .then((response) => {
+        // Cache hit - return response
         if (response) {
           return response;
         }
 
-        // If not in cache, fetch from the network.
-        return fetch(event.request).then((networkResponse) => {
-          // Clone the response because it's a stream and can only be consumed once.
-          const responseToCache = networkResponse.clone();
-          
-          // Don't cache opaque responses (from third-party CDNs without CORS) or non-ok responses.
-          if (networkResponse.type === 'opaque' || !networkResponse.ok) {
-            return networkResponse;
-          }
+        // Not in cache - fetch from network, then cache it
+        return fetch(event.request).then(
+          (response) => {
+            // Check if we received a valid response
+            if (!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
+            }
 
-          // Save the network response to the cache for future requests.
-          cache.put(event.request, responseToCache);
-          
-          return networkResponse;
-        });
-      }).catch(() => {
-        // If both cache and network fail (e.g., offline and not cached),
-        // you could return a fallback offline page here.
-      });
-    })
+            // IMPORTANT: Clone the response. A response is a stream
+            // and because we want the browser to consume the response
+            // as well as the cache consuming the response, we need
+            // to clone it so we have two streams.
+            const responseToCache = response.clone();
+
+            caches.open(CACHE_NAME)
+              .then((cache) => {
+                cache.put(event.request, responseToCache);
+              });
+
+            return response;
+          }
+        );
+      })
   );
 });
