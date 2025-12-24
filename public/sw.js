@@ -1,73 +1,71 @@
-// public/sw.js
+// This is the service worker file.
 
-const CACHE_VERSION = 'v2';
-const CACHE_NAME = `pastores-cache-${CACHE_VERSION}`;
-const urlsToCache = [
-  '/',
-  '/login',
-  '/manifest.webmanifest',
-  '/pastores-192-192.png',
-  // Add other critical assets here
-];
+const CACHE_NAME = 'pastores-cache-v1';
 
-// Install a service worker
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
+// This is the "install" event that fires when the service worker is first installed.
+self.addEventListener('install', (event) => {
+  // The service worker is installing.
+  console.log('Service Worker: Installing...');
+  // We don't pre-cache any assets here, but we could.
+  // Caching will happen on demand as the user navigates the app.
 });
 
-// Cache and return requests
-self.addEventListener('fetch', event => {
+// This is the "activate" event. It's a good place to clean up old caches.
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker: Activating...');
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            console.log('Service Worker: Clearing old cache:', cache);
+            return caches.delete(cache);
+          }
+        })
+      );
+    })
+  );
+  return self.clients.claim();
+});
+
+// The "fetch" event intercepts all network requests made by the app.
+self.addEventListener('fetch', (event) => {
+  // We only want to cache GET requests.
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // We are using a "cache-first" strategy.
+  // The service worker will first check if a response for the request is in the cache.
+  // If it is, it serves the cached response.
+  // If not, it fetches the resource from the network, serves it, and also saves a copy in the cache for next time.
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.match(event.request).then((response) => {
+        // If the resource is in the cache, return it.
         if (response) {
           return response;
         }
 
-        // Clone the request to use it both for the cache and for the browser
-        const fetchRequest = event.request.clone();
-
-        return fetch(fetchRequest).then(
-          response => {
-            // Check if we received a valid response
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-
-            const responseToCache = response.clone();
-
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(event.request, responseToCache);
-              });
-
-            return response;
+        // If not in cache, fetch from the network.
+        return fetch(event.request).then((networkResponse) => {
+          // Clone the response because it's a stream and can only be consumed once.
+          const responseToCache = networkResponse.clone();
+          
+          // Don't cache opaque responses (from third-party CDNs without CORS) or non-ok responses.
+          if (networkResponse.type === 'opaque' || !networkResponse.ok) {
+            return networkResponse;
           }
-        );
-      })
-  );
-});
 
-
-// Update a service worker
-self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
+          // Save the network response to the cache for future requests.
+          cache.put(event.request, responseToCache);
+          
+          return networkResponse;
+        });
+      }).catch(() => {
+        // If both cache and network fail (e.g., offline and not cached),
+        // you could return a fallback offline page here.
+      });
     })
   );
 });
