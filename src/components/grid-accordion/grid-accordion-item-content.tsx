@@ -58,8 +58,8 @@ export function GridAccordionItemContent({ item, groupBy, mass, userRole }: Grid
               >
                 {userRole === 'sacd' && (
                   <>
-                    <TableCell className="min-w-[100px] text-left text-sm py-3"><strong>{cells[3] || ''}</strong></TableCell>
-                    <TableCell className="text-left text-sm py-3"><span className="text-sm"><strong>{cells[0] || ''}</strong><span className="text-sm">{cells[4] ? " "+cells[4] : ""}</span></span> {cells[1] ? "| "+cells[1] : ""} {cells[2] ? "| "+cells[2] : ''}</TableCell>
+                    <TableCell className="min-w-[100px] text-left text-base py-3"><strong>{cells[3] || ''}</strong></TableCell>
+                    <TableCell className="text-left text-sm py-3"><span className="text-base"><strong>{cells[0] || ''}</strong><span className="text-sm">{cells[4] ? " "+cells[4] : ""}</span></span> {cells[1] ? "| "+cells[1] : ""} {cells[2] ? "| "+cells[2] : ''}</TableCell>
                   </>
                 )}
                 {userRole === 'ctr' && (
