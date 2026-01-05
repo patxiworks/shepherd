@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const zone = searchParams.get('zone');
     const section = searchParams.get('section');
+    const centre = searchParams.get('centre');
     const action = searchParams.get('action');
 
     const url = new URL(REMOTE_ACTIVITIES_URL);
@@ -39,6 +40,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (section) url.searchParams.append('section', section);
+
+    if (centre) url.searchParams.append('centre', centre);
 
     const [activitiesResult, massesResult] = await Promise.all([
       readRemoteData(url.toString()),

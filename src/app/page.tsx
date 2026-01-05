@@ -606,6 +606,7 @@ export default function HomePage() {
                           <span className="text-xs font-semibold"></span>
                       </div>
                   )}
+                  {userRole !== 'ctr' && (
                   <Select value={selectedCentre} onValueChange={handleGoToCentre}>
                     <SelectTrigger className="sub-header w-auto p-0 text-xs text-white bg-transparent border-none sm:shadow-none focus:outline-none focus:ring-0 focus:ring-offset-0">
                         <SelectValue placeholder="Go to centre..." />
@@ -618,6 +619,7 @@ export default function HomePage() {
                         ))}
                     </SelectContent>
                   </Select>
+                  )}
                 </div>
               </div>
             </div>
@@ -657,7 +659,9 @@ export default function HomePage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="date">Group by Date</SelectItem>
-                        <SelectItem value="centre">Group by Centre</SelectItem>
+                        {userRole !== 'ctr' && (
+                          <SelectItem value="centre">Group by Centre</SelectItem>
+                        )}
                         <SelectItem value="activity">Group by Activity</SelectItem>
                     </SelectContent>
                 </Select>
