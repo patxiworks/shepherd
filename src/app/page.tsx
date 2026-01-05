@@ -74,6 +74,7 @@ export default function HomePage() {
     try {
         const urlParams = new URLSearchParams();
         if (user?.zone) urlParams.append('zone', user.zone);
+        if (user?.centre) urlParams.append('centre', user.centre);
         if (user?.section && (user.section === 'sf' || user.section === 'sv')) {
             urlParams.append('section', user.section);
         }

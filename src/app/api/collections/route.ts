@@ -4,7 +4,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import type { ApiActivity } from '@/types';
 
-let REMOTE_ACTIVITIES_URL = 'https://script.google.com/macros/s/AKfycbxZBLt27YMsTidz7QpcSkoK9wdAuD7drn8Ns58dskxWEVIIisRAJQwGrKd9utyDJBhz/exec';
+//let REMOTE_ACTIVITIES_URL = 'https://script.google.com/macros/s/AKfycbxZBLt27YMsTidz7QpcSkoK9wdAuD7drn8Ns58dskxWEVIIisRAJQwGrKd9utyDJBhz/exec';
+let REMOTE_ACTIVITIES_URL = 'https://script.google.com/macros/s/AKfycbwRoGXp8hU-e8vlTntOlAwlqofP9mQ3PqTSBy7b4WdbhZyTE9P5M2OSmfIqZn0s0RnN/exec';
 const REMOTE_MASSES_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLiHOCjJ0S2XNOHXVk3AEesA4qe5dMyuZTqCK9wtU-_MRXFZj6000SRLROk0fd9R4DImOeusBE4_pb1i4iRUr8b6ow2cSMAGRk2KNWQZ_uKAhtVq6Jt3wU3GYMSAGCBHvzahEsYHKhlJXaSITrCVq4RAWWanNLDLnGiTt-eJcUzM7qgZWI9WiOtkFN2zYnTvvdy7PI78fW7k4-noDdwTuiWf-sXHO81SpLA6ty-pTpMcjjr7WBDzmO4j8tZRcHPiT4rKyUHpugSodFl_hiFgjxbmLGP8zvCcVyDMI1ogir8Iz-rHt8c&lib=Myn6iEwL8dqLg0i8ztc1Qms6Fh59HncaP';
 
 async function readRemoteData(url: string): Promise<any> {
