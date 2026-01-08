@@ -163,7 +163,7 @@ export default function LoginPage() {
         alt="Pastores Logo"
         width={96}
         height={96}
-        className="rounded-full z-10 -mb-8"
+        className="rounded-full z-10 mb-2"
         priority
       />
       <Card className="w-full max-w-xs pt-2">
