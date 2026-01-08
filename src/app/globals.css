@@ -5,13 +5,20 @@
 
 .logo {
   /* font-family is now primarily handled by the font-body class in layout.tsx */
-  /*background-image: url('/shepherd-bg.png'); /* URL of the image you provided */
-  background-size: 200px;
-  background-position: right -20px top -55px;
+  background-image: url('/pastores-144x144.png'); /* URL of the image you provided */
+  background-size: 130px;
   background-repeat: no-repeat;
   background-color: #013859;
-  /*background-attachment: fixed;*/
+  /*background-attachment: fixed;
   font-family: "Petit Formal Script", cursive;
+  font-family: "Klee One", cursive;*/
+  font-family: "Carter One", system-ui;
+}
+.logo-center {
+  background-position: center -15px;
+}
+.logo-right {
+  background-position: right -15px;
 }
 .main-header {
   background-image: url('/sj-bg3.png');
