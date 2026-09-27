@@ -66,14 +66,17 @@ function mday_label_position(array $e): array
 }
 
 // Flags every slot where two entries at the same centre genuinely overlap in
-// time, within the entries already loaded for this zone/year. Returns a set
-// of "entryId|y-m-d|slotIdx" keys and the count of distinct entries involved.
+// time, within the entries already loaded for this zone/year. Grouped by
+// zone_id+centre (not centre name alone), since "All zones" can otherwise
+// mix up two different zones that happen to reuse the same centre name.
+// Returns a set of "entryId|y-m-d|slotIdx" keys and the count of distinct
+// entries involved.
 function mday_find_clashes(array $entries): array
 {
     $byCentre = [];
     foreach ($entries as $e) {
         if ($e['centre'] === null || $e['centre'] === '') continue;
-        $byCentre[$e['centre']][] = $e;
+        $byCentre[$e['zone_id'] . '|' . $e['centre']][] = $e;
     }
     $clashKeys = [];
     $clashedIds = [];
@@ -113,10 +116,14 @@ function mday_section_fill(?string $section): string
     return '#D5D0C8';
 }
 
-// ── Zone / year / centre selection ──────────────────────────────────────
+// ── Zone / year / filter selection ──────────────────────────────────────
+// No ?zone= at all (or an empty value, e.g. picking "All zones" in the
+// select) means "All zones" for a super admin; a zone-scoped admin is always
+// locked to their own and has no "All zones" option.
 if ($admin['role'] === 'super') {
     $zones = $pdo->query('SELECT * FROM zones ORDER BY name')->fetchAll();
-    $zoneId = isset($_GET['zone']) ? (int) $_GET['zone'] : ($zones[0]['id'] ?? 0);
+    $zoneParam = $_GET['zone'] ?? '';
+    $zoneId = $zoneParam !== '' ? (int) $zoneParam : null;
 } else {
     $zones = $pdo->prepare('SELECT * FROM zones WHERE id = ?');
     $zones->execute([$admin['zone_id']]);
@@ -126,13 +133,22 @@ if ($admin['role'] === 'super') {
 $year = isset($_GET['year']) ? (int) $_GET['year'] : (int) date('Y');
 if ($year < 2000 || $year > 2100) $year = (int) date('Y');
 $centreFilter = trim($_GET['centre'] ?? '');
+$activityFilter = trim($_GET['activity'] ?? '');
+$groupFilter = trim($_GET['group'] ?? '');
+$sectionFilter = trim($_GET['section'] ?? '');
+
+$where = ['m.start_date <= ?', 'm.end_date >= ?'];
+$params = ["$year-12-31", "$year-01-01"];
+if ($zoneId !== null) { $where[] = 'm.zone_id = ?'; $params[] = $zoneId; }
+if ($centreFilter !== '') { $where[] = 'm.centre = ?'; $params[] = $centreFilter; }
+if ($activityFilter !== '') { $where[] = 'm.activity = ?'; $params[] = $activityFilter; }
+if ($groupFilter !== '') { $where[] = 'm.labor = ?'; $params[] = $groupFilter; }
+if ($sectionFilter !== '') { $where[] = 'm.section = ?'; $params[] = $sectionFilter; }
 
 $stmt = $pdo->prepare(
-    'SELECT * FROM multiday_activities WHERE zone_id = ? AND start_date <= ? AND end_date >= ?' .
-    ($centreFilter !== '' ? ' AND centre = ?' : '') . ' ORDER BY centre, start_date'
+    'SELECT m.*, z.name AS zone_name FROM multiday_activities m JOIN zones z ON z.id = m.zone_id
+     WHERE ' . implode(' AND ', $where) . ' ORDER BY m.centre, m.start_date'
 );
-$params = [$zoneId, "$year-12-31", "$year-01-01"];
-if ($centreFilter !== '') $params[] = $centreFilter;
 $stmt->execute($params);
 $entries = $stmt->fetchAll();
 foreach ($entries as &$e) {
@@ -141,24 +157,53 @@ foreach ($entries as &$e) {
 }
 unset($e);
 
-$allCentresInZone = $pdo->prepare('SELECT name FROM centres WHERE zone_id = ? ORDER BY name');
-$allCentresInZone->execute([$zoneId]);
-$allCentresInZone = $allCentresInZone->fetchAll(PDO::FETCH_COLUMN);
+// Centre/venue filter options: all centres in the selected zone, or across
+// every zone (with the zone name shown alongside) when viewing "All zones".
+if ($zoneId !== null) {
+    $centreOptStmt = $pdo->prepare('SELECT c.name, z.name AS zone_name FROM centres c JOIN zones z ON z.id = c.zone_id WHERE c.zone_id = ? ORDER BY c.name');
+    $centreOptStmt->execute([$zoneId]);
+} else {
+    $centreOptStmt = $pdo->query('SELECT c.name, z.name AS zone_name FROM centres c JOIN zones z ON z.id = c.zone_id ORDER BY c.name');
+}
+$allCentresInZone = $centreOptStmt->fetchAll();
 
-$centreList = $centreFilter !== '' ? [$centreFilter] : array_values(array_unique(array_column($entries, 'centre')));
-sort($centreList);
+$activityOptions = $pdo->query("SELECT name FROM activity_types WHERE is_multiday = 1 ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
+$sectionOptions = lookup_names($pdo, 'sections');
+$groupOptions = lookup_names($pdo, 'labors');
+
+// Venues to render: grouped by zone_id+centre (not centre name alone), so
+// "All zones" never silently merges two different zones' same-named centre
+// into one swimlane. $venue['label'] adds the zone name when relevant.
+$centreList = [];
+$seenVenue = [];
+foreach ($entries as $e) {
+    if ($e['centre'] === null || $e['centre'] === '') continue;
+    $key = $e['zone_id'] . '|' . $e['centre'];
+    if (isset($seenVenue[$key])) continue;
+    $seenVenue[$key] = true;
+    $centreList[] = [
+        'key' => $key,
+        'centre' => $e['centre'],
+        'label' => $zoneId === null ? $e['centre'] . ' — ' . $e['zone_name'] : $e['centre'],
+    ];
+}
+if (!$centreList && $centreFilter !== '' && $zoneId !== null) {
+    // Show the specifically filtered venue's (empty) row even with no matches this year.
+    $centreList[] = ['key' => $zoneId . '|' . $centreFilter, 'centre' => $centreFilter, 'label' => $centreFilter];
+}
+usort($centreList, fn($a, $b) => strcmp($a['label'], $b['label']));
 
 $entriesByCentre = [];
 foreach ($entries as $e) {
-    if ($e['centre'] !== null && $e['centre'] !== '') $entriesByCentre[$e['centre']][] = $e;
+    if ($e['centre'] !== null && $e['centre'] !== '') $entriesByCentre[$e['zone_id'] . '|' . $e['centre']][] = $e;
 }
 
 [$clashKeys, $clashedCount] = mday_find_clashes($entries);
 
-$labelPositions = []; // "$centre|$dayIso" => ['slot' => n, 'entry' => e]
+$labelPositions = []; // "$zoneId|$centre|$dayIso" => ['slot' => n, 'entry' => e]
 foreach ($entries as $e) {
     [$midIso, $slot] = mday_label_position($e);
-    $labelPositions[$e['centre'] . '|' . $midIso] = ['slot' => $slot, 'entry' => $e];
+    $labelPositions[$e['zone_id'] . '|' . $e['centre'] . '|' . $midIso] = ['slot' => $slot, 'entry' => $e];
 }
 
 $today = date('Y-m-d');
@@ -179,6 +224,7 @@ require __DIR__ . '/../includes/layout_top.php';
     <div>
       <label for="zone">Zone</label>
       <select id="zone" name="zone" onchange="this.form.submit()">
+        <option value="" <?= $zoneId === null ? 'selected' : '' ?>>All zones</option>
         <?php foreach ($zones as $zone): ?>
           <option value="<?= (int) $zone['id'] ?>" <?= $zoneId === (int) $zone['id'] ? 'selected' : '' ?>><?= e($zone['name']) ?></option>
         <?php endforeach; ?>
@@ -194,7 +240,36 @@ require __DIR__ . '/../includes/layout_top.php';
       <select id="centre" name="centre">
         <option value="">All centres</option>
         <?php foreach ($allCentresInZone as $c): ?>
-          <option value="<?= e($c) ?>" <?= $centreFilter === $c ? 'selected' : '' ?>><?= e($c) ?></option>
+          <option value="<?= e($c['name']) ?>" <?= $centreFilter === $c['name'] ? 'selected' : '' ?>>
+            <?= $zoneId === null ? e($c['name'] . ' — ' . $c['zone_name']) : e($c['name']) ?>
+          </option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <div>
+      <label for="activity">Activity</label>
+      <select id="activity" name="activity">
+        <option value="">All activities</option>
+        <?php foreach ($activityOptions as $a): ?>
+          <option value="<?= e($a) ?>" <?= $activityFilter === $a ? 'selected' : '' ?>><?= e($a) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <div>
+      <label for="group">Group</label>
+      <select id="group" name="group">
+        <option value="">All groups</option>
+        <?php foreach ($groupOptions as $g): ?>
+          <option value="<?= e($g) ?>" <?= $groupFilter === $g ? 'selected' : '' ?>><?= e($g) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <div>
+      <label for="section">Section</label>
+      <select id="section" name="section">
+        <option value="">All sections</option>
+        <?php foreach ($sectionOptions as $s): ?>
+          <option value="<?= e($s) ?>" <?= $sectionFilter === $s ? 'selected' : '' ?>><?= e($s) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
@@ -262,8 +337,8 @@ require __DIR__ . '/../includes/layout_top.php';
         <?php endif; ?>
       <?php endfor; ?>
 
-      <?php foreach ($centreList as $centre): ?>
-        <div class="mday-venue"><?= e($centre) ?></div>
+      <?php foreach ($centreList as $venue): ?>
+        <div class="mday-venue"><?= e($venue['label']) ?></div>
         <?php for ($d = 1; $d <= 31; $d++): ?>
           <?php if ($d > $daysInM): ?>
             <div class="mday-cell inactive"></div>
@@ -271,8 +346,8 @@ require __DIR__ . '/../includes/layout_top.php';
             $dayIso = sprintf('%04d-%02d-%02d', $year, $m, $d);
             $dow = (int) date('w', strtotime($dayIso));
             $isWeekend = $dow === 0 || $dow === 6;
-            $active = array_filter($entriesByCentre[$centre] ?? [], fn($e) => $dayIso >= $e['start_date'] && $dayIso <= $e['end_date']);
-            $label = $labelPositions[$centre . '|' . $dayIso] ?? null;
+            $active = array_filter($entriesByCentre[$venue['key']] ?? [], fn($e) => $dayIso >= $e['start_date'] && $dayIso <= $e['end_date']);
+            $label = $labelPositions[$venue['key'] . '|' . $dayIso] ?? null;
           ?>
             <div class="mday-cell<?= $isWeekend ? ' weekend' : '' ?>">
               <div class="mday-inner">
