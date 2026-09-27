@@ -186,15 +186,70 @@ CREATE TABLE IF NOT EXISTS labors (
 
 -- activity_types: the list behind the Activity dropdown (Mass, Conf, ...).
 -- activities.activity stores the name, like priest/section/labor.
+-- is_multiday: marks a type as an inherently multi-day venue programme
+-- (retreat, course, camp — see multiday_activities below) rather than a
+-- regular single-day activity. It's a flag on the type, not derived from
+-- the name at read time.
 CREATE TABLE IF NOT EXISTS activity_types (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL UNIQUE,
+  is_multiday TINYINT(1) NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Keep in sync with src/lib/section-colors.ts in the Next.js app.
 INSERT IGNORE INTO sections (name) VALUES ('sf'), ('sv'), ('c-m'), ('c-w'), ('p-m'), ('p-w');
 INSERT IGNORE INTO labors (name) VALUES ('sm'), ('sg'), ('sr'), ('sm agd'), ('sr club'), ('seminarians'), ('priests');
+
+-- Multi-day activity types, ported from the standalone "Painted Calendar"
+-- venue-booking tool (see migrate/015_multiday_activities.sql).
+INSERT INTO activity_types (name, is_multiday) VALUES
+  ('crt', 1),
+  ('ca', 1),
+  ('cv', 1),
+  ('cve', 1),
+  ('cv Univ', 1),
+  ('UNIV-cv', 1),
+  ('cv-sem', 1),
+  ('cv-stgr', 1),
+  ('cv-egr', 1),
+  ('cv sacd n', 1),
+  ('Easter-cv', 1),
+  ('Holiday programme: Administration Clubs', 1),
+  ('Mass St. Josemaria', 1)
+ON DUPLICATE KEY UPDATE is_multiday = 1;
+
+-- ---------------------------------------------------------------------
+-- multiday_activities: multi-day venue programmes (formerly the standalone
+-- "Painted Calendar" tool's Backend Log) — retreats, courses and camps that
+-- run across several days at a centre/venue. centre / activity / section /
+-- labor are text, same convention as activities: they store the *name*, not
+-- an id, so renaming an entry in the admin cascades to existing rows. Kept
+-- as its own table (rather than adding start/end columns to `activities`)
+-- so the day-to-day Activities view never needs to filter these out; they
+-- get their own admin view (a venue/date-range calendar) instead.
+-- start_date/start_time and end_date/end_time are picked freely per entry,
+-- unlike activities.from_time/to_time which describe a single day.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS multiday_activities (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  zone_id INT UNSIGNED NOT NULL,
+  centre VARCHAR(150) NULL,
+  activity VARCHAR(255) NULL,
+  section VARCHAR(20) NULL,
+  labor VARCHAR(30) NULL,
+  start_date DATE NOT NULL,
+  start_time TIME NULL,
+  end_date DATE NOT NULL,
+  end_time TIME NULL,
+  description TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_multiday_activities_zone FOREIGN KEY (zone_id) REFERENCES zones(id) ON DELETE CASCADE,
+  INDEX idx_multiday_activities_zone_start (zone_id, start_date),
+  INDEX idx_multiday_activities_centre (centre),
+  INDEX idx_multiday_activities_section (section)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------------
 -- settings: admin-editable options (Admin > Settings).
