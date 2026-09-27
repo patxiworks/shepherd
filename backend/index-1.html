@@ -1,0 +1,94 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>Unknown </title></head><body>
+<h1 id="pastores-backend-php-mysql">Pastores backend (PHP + MySQL)</h1>
+<p>Replaces the Google Sheets / Apps Script datasource with a MySQL database
+and a small PHP admin panel, while keeping the exact JSON contract the
+Next.js frontend already expects.</p>
+<h2 id="layout">Layout</h2>
+<p><code>backend/
+  schema.sql            MySQL schema
+  config.sample.php     copy to config.php and fill in DB credentials
+  includes/              shared PHP helpers (db connection, auth, formatting)
+  api/                   public JSON endpoints, called by the Next.js server
+    activities.php        GET  ?zone=&amp;section=&amp;centre=&amp;action=lastupdate
+    masses.php             GET  ?zone= (optional)
+    zones.php               GET  -&gt; { zones: [...] }
+    login.php               POST { zone, passcode } -&gt; { success, user }
+  admin/                 browser-based admin panel (session login required)
+  migrate/migrate.php    one-time import from the current Google Sheets data</code></p>
+<h2 id="deploying-to-sharedcpanel-hosting">Deploying to shared/cPanel hosting</h2>
+<ol>
+<li>Create a MySQL database and user in cPanel, then import <code>schema.sql</code>
+   (phpMyAdmin "Import" tab, or <code>mysql -u USER -p DBNAME &lt; schema.sql</code>).</li>
+<li>Upload the <code>backend/</code> folder to your hosting account (e.g. as a
+   subdomain like <code>api.yourdomain.com</code>, or a subfolder such as
+   <code>public_html/pastores-api/</code>).</li>
+<li>Copy <code>config.sample.php</code> to <code>config.php</code> next to it and fill in the DB
+   host/name/user/password cPanel gave you. <code>config.php</code> is gitignored —
+   never commit real credentials.</li>
+<li>Create your first admin login:
+   <code>bash
+   php -r "echo password_hash('choose-a-real-password', PASSWORD_DEFAULT), PHP_EOL;"</code>
+   then insert it:
+   <code>sql
+   INSERT INTO admin_users (username, password_hash) VALUES ('admin', '&lt;hash&gt;');</code></li>
+<li>Visit <code>https://your-host/backend/admin/login.php</code> and log in. Add at
+   least one zone, then centres/users/activities/masses as needed.</li>
+<li>Confirm the API responds: <code>https://your-host/backend/api/zones.php</code>
+   should return <code>{"zones": [...]}</code>.</li>
+</ol>
+<h2 id="one-time-data-migration">One-time data migration</h2>
+<p><code>migrate/migrate.php</code> pulls the current data straight from the live Google
+Apps Script endpoints (same URLs the Next.js app calls today) and imports
+it into MySQL. Run it <strong>locally</strong>, pointed at your new database (set up
+<code>config.php</code> first, same as above):</p>
+<p><code>bash
+php migrate/migrate.php</code></p>
+<p>It's idempotent for zones/users (matched by name) but will duplicate
+activities/masses if you run it twice — truncate those tables first if you
+need a clean re-import. Review the imported data in the admin panel before
+cutting the frontend over.</p>
+<h2 id="cutting-the-nextjs-frontend-over">Cutting the Next.js frontend over</h2>
+<p>The frontend never talks to Google Sheets or this PHP API directly — it
+only calls its own two route handlers:</p>
+<ul>
+<li><code>src/app/api/collections/route.ts</code></li>
+<li><code>src/app/api/auth/zone-login/route.ts</code></li>
+</ul>
+<p>Once this backend is deployed and the data migrated, those two files need
+small edits (only the parts that build the remote URL / do the credential
+check — the request/response shape stays the same, so <code>page.tsx</code> and
+<code>login/page.tsx</code> don't need to change):</p>
+<ul>
+<li><strong><code>collections/route.ts</code></strong>: replace <code>REMOTE_ACTIVITIES_URL</code> and
+  <code>REMOTE_MASSES_URL</code> with <code>https://your-host/backend/api/activities.php</code>
+  and <code>https://your-host/backend/api/masses.php</code> (move these into env vars
+  rather than hardcoding, e.g. <code>PASTORES_API_BASE</code>).</li>
+<li><strong><code>auth/zone-login/route.ts</code></strong>:</li>
+<li><code>GET</code> — instead of fetching all users and computing distinct zones,
+    fetch <code>api/zones.php</code> and return its JSON as-is.</li>
+<li><code>POST</code> — instead of fetching all users and comparing passcodes in
+    Next.js, <code>POST</code> the <code>{zone, passcode}</code> body straight to
+    <code>api/login.php</code> and relay its JSON/status code. This also fixes the
+    current security gap where all zone passcodes are fetched to the
+    Next.js server on every login/zone-list request.</li>
+</ul>
+<p>Keep the old Google Sheets URLs around (or in git history) until you've
+verified the new backend in production, so you can flip back quickly if
+something's wrong.</p>
+<h2 id="notes-deliberate-deviations-from-the-old-sheets-behaviour">Notes / deliberate deviations from the old Sheets behaviour</h2>
+<ul>
+<li>Passcodes are hashed (<code>password_hash</code>/<code>password_verify</code>), not stored or
+  compared in plaintext. Case-insensitivity is preserved by lower-casing
+  before hashing and before verifying.</li>
+<li><code>api/login.php</code>'s success response omits the <code>passcode</code> field that the
+  old Apps Script response included — nothing in the frontend reads
+  <code>user.passcode</code> after login, so this was safe to drop.</li>
+<li><code>zones.last_update</code> is bumped by every admin write (<code>touch_zone()</code> in
+  <code>includes/functions.php</code>) so the frontend's "check for updates" polling
+  keeps working.</li>
+<li><code>activities.from</code> / <code>.to</code> / <code>.duration</code> are re-encoded back into the
+  same odd <code>"1899-12-30THH:MM:00.000Z"</code> shape Google Sheets exported, so
+  the existing frontend time-formatting code in <code>src/app/page.tsx</code> keeps
+  working unchanged.</li>
+</ul>
+</body></html>

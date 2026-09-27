@@ -1,0 +1,261 @@
+#-----------------------------------------------------------------------
+#
+#	@(#)ROMCAL fixed.dat 6.1 02/12/06 17:23:56
+#
+#	Copyright (C) 1993,1995 Kenneth G. Bath
+#	Permission to use and modify this software and its
+#	documentation for any purpose other than its incorporation
+#	into a commercial product is hereby granted without fee.
+#
+#	Permission to copy and distribute this software and its
+#	documentation only for non-commercial use is also granted
+#	without fee, provided, however, that the above copyright
+#	notice appear in all copies, that both that copyright
+#	notice and this permission notice appear in supporting
+#	documentation. The author makes no representations about
+#	the suitability of this software for any purpose. It is
+#	provided "as is" without express or implied warranty.
+#
+#-------------------- Software Unit Description ------------------------
+#
+#	This file is the input to the 'mkfix' program included with
+#	the ROMCAL package.  This file contains the dates, ranks,
+#	and colors of the fixed date celebrations of the General
+#	Roman Calendar.  The fields of this file are separated by
+#	one or more spaces.  The first field is the name of the month.
+#	The second field is the day of the month.  The third
+#	field is the rank (O: Optional Memorial, M: Memorial,
+#	F: Feast, L: Feast of the Lord, S: Solemnity).  The fourth
+#	field is proper color of the celebration (W: white, R: red,
+#	P: purple, G: green, -: Use color of season).  Anything after
+#	the fourth field up to the newline is the celebration.
+#
+#	To add celbrations to the 'romcal' program, edit this file
+#	and provide the necessary info.  Then type "make".  Be careful
+#	that the name of the month is spelled correctly.
+#
+#	Comments have a '#' in Column 1; blank lines are ignored.
+#
+#---------------------- Software Unit History --------------------------
+#
+#	16Mar93 : created, kgb
+#	19Dec93 : updated for 1994, kgb
+#	05Feb95 : changed first field from month number to name of
+#		  month, kgb
+#	17Feb95 : updated for 1995, kgb
+#	05Mar95 : minor corrections, kgb
+#	11Feb98 : raised the rank of the Dedication of St. John Latern
+#		  (Nov. 9) and All Souls (Nov. 2) to "Feast of the
+#		  Lord", so that when it falls on Sunday, it will take
+#		  presidence, kgb
+#
+#-----------------------------------------------------------------------
+
+JANUARY  1 S W Mary, Mother of God	A 	So Ex 	Adoration of Child Jesus	
+JANUARY  2 M W Saints Basil the Great and Gregory Nazianzen, Bishops, Doctors
+JANUARY  3 O W Most Holy Name of Jesus	C	Adoration of Child Jesus
+JANUARY  9 F W Birthday of St Josemaria	A 	So Ex 	Adoration of Child Jesus	Veneration of Relic
+JANUARY 13 O W Saint Hilary, Bishop, Doctor
+JANUARY 17 M W Saint Anthony, Abbot
+JANUARY 18 V W Mass for the Unity of Christians		1st day of the Octave of the Unity of Christians
+JANUARY 20 F W Blessed C.M. Iwene Tansi	Proper Readings		3rd day of the Octave of the Unity of Christians
+JANUARY 21 M R Saint Agnes, Virgin, Martyr		4th day of the Octave of the Unity of Christians
+JANUARY 22 O R Saint Vincent, Deacon, Martyr		5th day of the Octave of the Unity of Christians
+JANUARY 23 F W The Father's Election. Mass of Jesus Christ Eternal High Priest	B 	Si Ex	Te Deum		6th day of the Octave of the Unity of Christians
+JANUARY 24 M W Our Lady of Peace. Mass of Saint Francis de Sales, Bishop, Doctor	C		7th day of the Octave of the Unity of Christians
+JANUARY 25 F W The Conversion of St. Paul	D
+JANUARY 26 M W Saints Timothy and Titus, Bishops
+JANUARY 27 O W Saint Angela Merici, Virgin
+JANUARY 28 M W Saint Thomas Aquinas, Priest
+JANUARY 31 M W Saint John Bosco, Priest
+FEBRUARY  2 L W Presentation of the Lord	C
+FEBRUARY  3 O R Saint Blaise, Bishop, Martyr
+FEBRUARY  5 M R Saint Agatha, Virgin, Martyr
+FEBRUARY  6 M R Saints Paul Miki and his Companions, Martyrs
+FEBRUARY  8 O W Saint Josephine Bakhita, Virgin
+FEBRUARY 10 M W Saint Scholastica, Virgin
+FEBRUARY 11 O W Our Lady of Lourdes 	D
+FEBRUARY 13 M W Saints Cyril, Monk, and Methodius, Bishop
+FEBRUARY 14 F W Anniversary of the sf and sss+.	Mass of our Lady of Fair Love.	Proper Readings.	A 	So Ex	Te Deum 	Plenary Indulgence
+FEBRUARY 17 O W Seven Holy Founders of the Servite Order
+FEBRUARY 21 O W Saint Peter Damian, Bishop, Doctor
+FEBRUARY 22 F W Chair of St. Peter	D
+FEBRUARY 24 M W Annv. Decretum Laudis	Mass of Thanksgiving	D
+FEBRUARY 26 O W Saint Alexander of Alexandria, Bishop
+FEBRUARY 27 O W Saint Gregory of Narek, Abbot, Doctor
+MARCH 4 O W Saint Casmir 
+MARCH 8 O W Saint John of God, Religious
+MARCH 13 F W Annv. Pope's Election.	Mass for the Pope	B 	Si Ex
+MARCH 17 F W Saint Patrick, 2nd Patron of Nigeria	Proper Readings	
+MARCH 19 S W Saint Joseph, Husband of Mary	A 	So Ex	Grandfather's Saint's Day. 	Plenary Indulgence
+MARCH 24 O W Family Feast	D
+MARCH 25 S W The Annunciation of the Lord	A 	So Ex
+MARCH 28 F W St Josemaria's Priestly Ordination	Mass of the day	B 	Si Ex	Veneration of Relic	(Prayer for the holiness of priests)
+APRIL 11 M R Saint Stanislaus, Bishop, Martyr
+APRIL 13 O R Saint Martin I, Pope, Martyr
+APRIL 23 O R Saint George, Martyr		St Josemaria's First Communion	B 	Si Ex
+APRIL 24 O R Saint Fidelis of Sigmaringen, Priest, Martyr
+APRIL 25 F R Saint Mark, Evangelist	C
+APRIL 27 M W Our Lady of Montserrat	Mass proper	D	(Our Father's healing)
+APRIL 28 O R Saint Peter Chanel, Priest, Martyr
+APRIL 29 M W Saint Catherine of Siena, Virgin, Doctor	C
+APRIL 30 F W Our Lady, Mother of Africa	Proper Readings	C	
+MAY  1 O W Saint Joseph the Worker	Proper Readings	C
+MAY  2 F W Dedication of the Prelatic Church.	Common of the Dedication of a Church.	Proper Readings	C
+MAY  3 F R Saints Philip & James, Apostles	C
+MAY  4 M W Saint Athanasius, Bishop, Doctor
+MAY 11 O R Saints Nereus and Achilleus, Martyrs
+MAY 12 M W Blessed Alvaro	Proper Readings	B 	Si Ex
+MAY 13 M W Our Lady of Fatima	D
+MAY 14 F R Saint Matthias, Apostle	C
+MAY 17 M W Saint Josemaria's Beatification.	Mass of St. Josemaria	D
+MAY 18 O W Blessed Guadalupe	C
+MAY 21 O R Saint Christopher Magallanes and his Companions, Martyrs
+MAY 22 O W Saint Rita of Cascia
+MAY 24 O W The Blessed Virgin Mary, Help of Christians	D
+MAY 25 O W Saint Mary Magdalen de’ Pazzi, Virgin
+MAY 26 M W Saint Philip Neri, Priest
+MAY 27 O W Saint Augustine of Canterbury, Bishop
+MAY 29 O W Saint Paul VI, Pope
+MAY 30 M W Saint Ferdinand.	Father's Saint's day.	Common of Saints	B 	Si Ex
+MAY 31 F W Visitation of the Blessed Virgin	C
+JUNE  1 M R Saint Justin, Martyr
+JUNE  2 O R Saints Marcellinus and Peter, Martyrs
+JUNE  3 M R Saints Charles Lwanga and his Companions, Martyrs
+JUNE  5 M R Saint Boniface, Bishop, Martyr
+JUNE  6 O W Saint Norbert, Bishop
+JUNE  9 O W Saint Ephrem, Deacon
+JUNE 11 M R Saint Barnabas, Apostle	C
+JUNE 13 M W Saint Anthony of Padua, Priest, Doctor
+JUNE 16 M W Definitive Approval of the Work, 1950.	Mass of Thanksgiving	C
+JUNE 19 O W Saint Romuald, Abbot
+JUNE 21 M W Saint Aloysius Gonzaga, Religious
+JUNE 22 M R Saints John Fisher, Bishop, and Thomas More, Martyrs	C
+JUNE 24 S W Birth of John the Baptist	B 	Si Ex
+JUNE 25 M W Ordination of first three priests.	Mass of Jesus Christ, Eternal High Priest	C	(Prayer for holiness priests)
+JUNE 26 S W Saint Josemaria	A 	So Ex	Veneration of Relic
+JUNE 27 O W Saint Cyril of Alexandria, Bishop, Doctor
+JUNE 28 M R Saint Irenaeus, Bishop, Doctor, Martyr
+JUNE 29 S R Saints Peter and Paul. 	B 	Si Ex	Plenary Indulgence
+JUNE 30 O R First Martyrs of the Church of Rome
+JULY  3 F R Saint Thomas	C
+JULY  4 O W Saint Elizabeth of Portugal
+JULY  5 O W Saint Antony Mary Zaccaria, Priest
+JULY  6 O R Saint Maria Goretti, Virgin, Martyr
+JULY  9 O R Saint Augustine Zhao Rong and his Companions, Martyrs
+JULY 11 M W Saint Benedict, Abbot
+JULY 13 O W Saint Henry
+JULY 14 O W Saint Camillus de Lellis, Priest
+JULY 15 M W Saint Bonaventure, Bishop, Doctor
+JULY 16 O W Our Lady of Mount Carmel	C	(Auntie Carmen's Saint's Day)		Plenary Indulgence
+JULY 20 O R Saint Apollinaris, Bishop, Martyr
+JULY 21 O W Saint Lawrence of Brindisi, Priest and Doctor
+JULY 22 F W Saint Mary Magdalene	C
+JULY 23 O W Saint Bridget of Sweden, Religious
+JULY 24 O W Saint Charbel Makhlouf, Priest
+JULY 25 F R Saint James, Apostle	C
+JULY 26 M W Saints Joachim and Ann, Parents of the Virgin Mary		Proper Readings 	D	
+JULY 29 M W Saints Martha, Mary, and Lazarus
+JULY 30 O W Saint Peter Chrysologus, Bishop, Doctor
+JULY 31 M W Saint Ignatius Loyola, Priest
+AUGUST  1 M W Saint Alphonsus Mary de' Liguori, Bishop, Doctor
+AUGUST  2 M W Our Lady of the Angels	D
+AUGUST  4 M W Saint John Vianney, Priest	C	(Prayer for the holiness of priests)
+AUGUST  5 O W Dedication of the Basilica St. Mary Major	C
+AUGUST  6 L W Transfiguration of the Lord	C
+AUGUST  7 O R Saints Sixtus II, Pope, and his Companions, Martyrs
+AUGUST  8 M W Saint Dominic, Priest
+AUGUST  9 O R Saint Teresa Benedicta of the Cross (Edith Stein), Virgin, Martyr
+AUGUST 10 F R Saint Lawrence, Deacon, Martyr
+AUGUST 11 M W Saint Clare, V.
+AUGUST 12 O W Saint Jane Frances de Chantal, Religious
+AUGUST 13 O R Saints Pontian, Pope, and Hippolytus, Priest, Martyrs
+AUGUST 14 M R Saint Maximilian Kolbe, Priest, Martyr
+AUGUST 15 S W Assumption of the Blessed Virgin		A 	So Ex	Consecration to the Sweet Heart of Mary	Annv. of the Father's Ordination
+AUGUST 16 O W Saint Stephen of Hungary
+AUGUST 19 O W Saint John Eudes, Priest
+AUGUST 20 M W Saint Bernard, Abbot, Doctor
+AUGUST 21 M W Saint Pius X, Pope	C
+AUGUST 22 M W Queenship of Mary	C
+AUGUST 23 O W Saint Rose of Lima, Virgin.	Announcement of Personal Prelature	D
+AUGUST 24 F R Saint Bartholomew, Apostle	C
+AUGUST 25 O W Saint Louis of France
+AUGUST 27 M W Saint Monica
+AUGUST 28 M W Saint Augustine, Bishop, Doctor
+AUGUST 29 M R The Beheading of John the Baptist
+SEPTEMBER  3 M W Saint Gregory the Great, Pope, Doctor
+SEPTEMBER  7 M W Annv. of the Father's Whistling.	Mass of Jesus Christ Eternal High Priest	D
+SEPTEMBER  8 F W Birthday of Blessed Virgin Mary	C
+SEPTEMBER  9 O W Saint Peter Claver
+SEPTEMBER 12 O W Most Holy Name of Mary	C
+SEPTEMBER 13 M W Saint John Chrysostom, Bishop, Doctor
+SEPTEMBER 14 L R The Exaltation of the Cross	B 	Si Ex	Plenary Indulgence
+SEPTEMBER 15 M W Our Lady of Sorrows	Proper Readings	C 
+SEPTEMBER 16 M R Saints Cornelius, Pope, and Cyprian, Bishop, Martyrs
+SEPTEMBER 17 O W Saint Robert Bellarmine, Bishop, Doctor
+SEPTEMBER 19 O R Saint Januarius, Bishop, Martyr
+SEPTEMBER 20 M R Saints Andrew Kim Taegon, Priest, and Paul Chong Hasang, and their Companions, Martyrs
+SEPTEMBER 21 F R Saint Matthew, Apostle 	C
+SEPTEMBER 23 M W Saint Pius of Pietrelcina (Padre Pio), Priest
+SEPTEMBER 24 M W Our Lady of Ransom	D
+SEPTEMBER 26 O R Saints Cosmas and Damian, Martyrs
+SEPTEMBER 27 M W Saint Vincent de Paul, Priest
+SEPTEMBER 28 O R Saint Wenceslaus, Martyr
+SEPTEMBER 29 F W Saints Michael, Gabriel, and Raphael, Archangels	B 	Si Ex	Plenary Indulgence
+SEPTEMBER 30 M W Saint Jerome, Priest, Doctor
+OCTOBER  1 S W Our Lady, Queen and Patroness of Nigeria		C	Plenary Indulgence
+OCTOBER  2 S W The Holy Guardian Angels - Foundation of Opus Dei	A 	So Ex	Te Deum 	Plenary Indulgence
+OCTOBER  3 M W Saint Thérèse of the Child Jesus, Virgin, Doctor
+OCTOBER  4 M W Saint Francis of Assisi
+OCTOBER  5 O W Saint Faustina Kowalska, Religious
+OCTOBER  6 F W Canonization of St Josemaria	A 	So Ex	Veneration of Relic
+OCTOBER  7 M W Our Lady of the Rosary	C
+OCTOBER  9 O R Saints Denis, Bishop, and his Companions, Martyrs
+OCTOBER 11 O W Saint John XXIII, Pope 	Annv. appositio manuum	 D
+OCTOBER 12 M W Our Lady of the Pillar	 D
+OCTOBER 14 O R Saint Callistus, Pope, Martyr
+OCTOBER 15 M W Saint Teresa of Ávila, Virgin, Doctor	Plenary Indulgence
+OCTOBER 16 O W Saint Margaret Mary Alacoque, Virgin
+OCTOBER 17 M R Saint Ignatius of Antioch, Bishop, Martyr
+OCTOBER 18 F R Saint Luke, Evangelist	C
+OCTOBER 19 O R Saint Paul of the Cross, Priest
+OCTOBER 22 O W Saint John Paul II, Pope	C
+OCTOBER 23 O W Saint John of Capistrano, Priest
+OCTOBER 24 O W Saint Anthony Mary Claret, Bishop	 (Family Feast)	D
+OCTOBER 27 F W The Father's Birthday	Mass of Jesus Christ Eternal High Priest		B 	Si Ex
+OCTOBER 28 F R Saints Simon and Jude, Apostles	C
+NOVEMBER  1 S W All Saints	B 	Si Ex
+NOVEMBER  2 L P All Souls
+NOVEMBER  3 O W Saint Martin de Porres, Religious		Mass for the dead of the Region
+NOVEMBER  4 M W Saint Charles Borromeo, Bishop		Mass for the members who had died since last 2 November
+NOVEMBER  8 M R Saint Severinus	Common of Martyrs	D		Mass for dead members of the Work
+NOVEMBER  9 L W Dedication of the Lateran Basilica		Mass for dead members of the Work
+NOVEMBER 10 M W Saint Leo the Great, Pope, Doctor		Mass for dead members of the Work
+NOVEMBER 11 M W Saint Martin of Tours, Bishop		Mass for dead members of the Work
+NOVEMBER 12 M R Saint Josaphat, Bishop, Martyr		Mass for dead members of the Work
+NOVEMBER 15 O W Saint Albert the Great, Bishop, Doctor		Mass for dead members of the Work
+NOVEMBER 16 O W Saint Margaret of Scotland		Mass for dead members of the Work
+NOVEMBER 17 M W Saint Elizabeth of Hungary, Religious		Mass for dead members of the Work
+NOVEMBER 18 O W Dedication of the Basilicas of Saints Peter and Paul, Apostles		Mass for dead members of the Work
+NOVEMBER 21 M W The Presentation of the Blessed Virgin Mary	C		Mass for dead members of the Work
+NOVEMBER 22 M R Saint Cecilia, Virgin, Martyr		Mass for dead members of the Work
+NOVEMBER 23 O R Saint Clement I, Pope, Martyr		For dead Cooperators, Ecclesiastical Assistants and Benefactors
+NOVEMBER 24 M R Saints Andrew Dũng-Lạc and his Companions, Martyrs		For dead parents of all the members of the Work
+NOVEMBER 25 O R Saint Catherine of Alexandria, Virgin, Martyr		
+NOVEMBER 27 O W Our Lady of the Miraculous Medal	BVM	D	(Grandfather's Death)		
+NOVEMBER 28 F W Erection of Personal Prelature	Mass of Thanksgiving	Proper Readings	A 	So Ex	Te Deum
+NOVEMBER 30 F R Saint Andrew, Apostle	C		1st day of the Novena to the Immaculate Conception
+DECEMBER  3 M W Saint Francis Xavier, Priest		4th day of the Novena to the Immaculate Conception
+DECEMBER  4 O W Saint John Damascene, Priest, Doctor		5th day of the Novena to the Immaculate Conception
+DECEMBER  6 O W Saint Nicholas, Bishop	C		7th day of the Novena to the Immaculate Conception
+DECEMBER  7 M W Saint Ambrose, Bishop, Doctor		8th day of the Novena to the Immaculate Conception
+DECEMBER  8 S W Immaculate Conception of the Blessed Virgin Mary	A 	So Ex
+DECEMBER  9 O W Saint Juan Diego Cuauhtlatoatzin
+DECEMBER 10 O W Our Lady of Loreto	D
+DECEMBER 12 O W Our Lady of Guadalupe	D
+DECEMBER 13 M R Saint Lucy, Virgin, Martyr
+DECEMBER 14 M W Saint John of the Cross, Priest, Doctor	Plenary Indulgence
+DECEMBER 25 S W Christmas		A	Urbi et Orbi	Adoration of Child Jesus
+DECEMBER 26 F R Saint Stephen, the First Martyr	D	Adoration of Child Jesus
+DECEMBER 27 F W Saint John, Apostle, Evangelist	B	Si Ex	Adoration of Child Jesus	Plenary Indulgence
+DECEMBER 28 F R The Holy Innocents, Martyrs	D

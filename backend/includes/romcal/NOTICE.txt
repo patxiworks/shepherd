@@ -1,0 +1,23 @@
+Romcal.php and fixed.dat in this directory are a PHP port of, and data for,
+ROMCAL, the General Roman Calendar generator originally written in C by
+Kenneth G. Bath (http://www.romcal.net). The original notice follows and
+applies to this port and to the data file. Use is restricted to
+non-commercial applications.
+
+ ************************************************************************
+ *                                                                      *
+ *      Copyright (C) 1993-2003 Kenneth G. Bath                         *
+ *      Permission to use and modify this software and its              *
+ *      documentation for any purpose other than its incorporation      *
+ *      into a commercial product is hereby granted without fee.        *
+ *                                                                      *
+ *      Permission to copy and distribute this software and its         *
+ *      documentation only for non-commercial use is also granted       *
+ *      without fee, provided, however, that the above copyright        *
+ *      notice appear in all copies, that both that copyright           *
+ *      notice and this permission notice appear in supporting          *
+ *      documentation. The author makes no representations about        *
+ *      the suitability of this software for any purpose. It is         *
+ *      provided "as is" without express or implied warranty.           *
+ *                                                                      *
+ ************************************************************************
