@@ -538,6 +538,39 @@ their own zone's rows; a super admin picks the zone. Notes:
   frontend reads it yet. The Activities page checks against it — see
   "Absent priests" above.
 
+**Multi-day Activities** ([`backend/admin/multiday_activities/index.php`](backend/admin/multiday_activities/index.php)
+for the list/CRUD, [`calendar.php`](backend/admin/multiday_activities/calendar.php) for the
+painted venue view; super and zone admins; migration
+`backend/migrate/015_multiday_activities.sql`): retreats, courses and camps
+that run across several days at a centre, ported from a standalone
+"Painted Calendar" HTML tool that had no backend of its own. Kept in its own
+table (`multiday_activities`), not `activities`, so the day-to-day Activities
+view never needs to filter these out.
+
+- Fields: zone, centre, activity, section, labor ("group" in the original
+  tool), start date/time, end date/time. Centre and activity are free text
+  (same convention as `activities`); the Activity dropdown only offers
+  `activity_types` rows with `is_multiday = 1`. Start/end time are freeform,
+  not tied to a fixed slot.
+- The end (date, and time if both are on the same day) must not be before the
+  start. A zone admin only sees and edits their own zone's rows; a super
+  admin picks the zone, same as Absences.
+- **Calendar view** (`calendar.php`): a read-only month-by-month grid, one
+  swimlane per centre, for a chosen zone/year(/centre). Each entry is painted
+  as a band across the days it occupies, coloured by section (`sf` pink,
+  `sv` blue), with a thick border on its start/end day and a centred
+  activity–group label at the midpoint of its run. Since the underlying time
+  is freeform, painting still uses three bands per day (Morning/Afternoon/
+  Evening); a blank start/end time is treated as an evening arrival / morning
+  departure respectively (`mday_slot()`), matching the pattern actually used
+  by these venues. Entries at the same centre with genuinely overlapping
+  bands are outlined and counted in a banner at the top
+  (`mday_find_clashes()`).
+- Not served by the API and does not bump `zones.last_update`; nothing in the
+  frontend reads it yet. The original tool's CSV/XLSX import, roll-forward-to-
+  next-year, and inline spreadsheet-style editing were not ported — data
+  entry here goes through the List tab's form instead.
+
 ### Liturgical calendar
 
 A table with one row per day of the General Roman Calendar (celebration,

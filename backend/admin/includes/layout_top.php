@@ -73,6 +73,7 @@
     <?php if (in_array($navRole, ['super', 'zone'], true)): ?>
       <a href="/admin/masses/index.php">Masses</a>
       <a href="/admin/absences/index.php">Absences</a>
+      <a href="/admin/multiday_activities/index.php">Multi-day Activities</a>
     <?php endif; ?>
     <?php if ($navRole === 'super'): ?>
       <a href="/admin/priests/index.php">Priests</a>

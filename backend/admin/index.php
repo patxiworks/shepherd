@@ -2,10 +2,12 @@
 require __DIR__ . '/../includes/db.php';
 require __DIR__ . '/../includes/functions.php';
 require __DIR__ . '/../includes/auth.php';
+require __DIR__ . '/../includes/multiday_activities.php';
 $admin = admin_require_login();
 
 $pdo = pastores_db();
 $scopeLabel = null;
+$mdayAvailable = multiday_activities_available($pdo); // migration 015 may not be applied yet
 
 if ($admin['role'] === 'super') {
     $counts = [
@@ -16,6 +18,9 @@ if ($admin['role'] === 'super') {
         'Source' => $pdo->query('SELECT COUNT(*) FROM source')->fetchColumn(),
         'Masses' => $pdo->query('SELECT COUNT(*) FROM masses')->fetchColumn(),
     ];
+    if ($mdayAvailable) {
+        $counts['Multi-day Activities'] = $pdo->query('SELECT COUNT(*) FROM multiday_activities')->fetchColumn();
+    }
 } elseif ($admin['role'] === 'zone') {
     $zoneName = $pdo->prepare('SELECT name FROM zones WHERE id = ?');
     $zoneName->execute([$admin['zone_id']]);
@@ -33,6 +38,11 @@ if ($admin['role'] === 'super') {
         'Activities' => $activities->fetchColumn(),
         'Masses' => $masses->fetchColumn(),
     ];
+    if ($mdayAvailable) {
+        $multiday = $pdo->prepare('SELECT COUNT(*) FROM multiday_activities WHERE zone_id = ?');
+        $multiday->execute([$admin['zone_id']]);
+        $counts['Multi-day Activities'] = $multiday->fetchColumn();
+    }
 } else { // centre
     $centreName = admin_centre_name($pdo, $admin);
     $scopeLabel = 'Centre: ' . ($centreName ?? 'Unknown');
