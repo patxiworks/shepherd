@@ -68,7 +68,9 @@ function mday_label_position(array $e): array
 // Flags every slot where two entries at the same centre genuinely overlap in
 // time, within the entries already loaded for this zone/year. Grouped by
 // zone_id+centre (not centre name alone), since "All zones" can otherwise
-// mix up two different zones that happen to reuse the same centre name.
+// mix up two different zones that happen to reuse the same centre name —
+// the venues just aren't labelled with their zone, to keep the display
+// simple, since that collision doesn't currently happen in practice.
 // Returns a set of "entryId|y-m-d|slotIdx" keys and the count of distinct
 // entries involved.
 function mday_find_clashes(array $entries): array
@@ -116,12 +118,67 @@ function mday_section_fill(?string $section): string
     return '#D5D0C8';
 }
 
+// Reads a checkbox-array GET param (e.g. ?venue[]=A&venue[]=B) into a clean
+// list of distinct, non-empty strings. Missing/empty means "no filter",
+// same as the original tool's multiselect (nothing checked = show all).
+function mday_ms_param(string $key): array
+{
+    $raw = $_GET[$key] ?? [];
+    if (!is_array($raw)) return [];
+    $out = [];
+    foreach ($raw as $v) {
+        $v = trim((string) $v);
+        if ($v !== '') $out[] = $v;
+    }
+    return array_values(array_unique($out));
+}
+
+// Appends "$col IN (?,?,...)" to $where/$params when $values isn't empty.
+function mday_in_clause(string $col, array $values, array &$where, array &$params): void
+{
+    if (!$values) return;
+    $where[] = "$col IN (" . implode(',', array_fill(0, count($values), '?')) . ')';
+    foreach ($values as $v) $params[] = $v;
+}
+
+// Renders one tick-box dropdown filter (trigger button + checkbox panel),
+// matching the original Painted Calendar tool's venue/activity/group/section
+// multiselects. Submitting the form (Apply) is what actually applies it;
+// the trigger/panel behaviour itself is wired up by the <script> below.
+function mday_render_multiselect(string $name, string $noun, array $options, array $selected): void
+{
+    $selectedSet = array_flip($selected);
+    ?>
+    <div class="mday-ms" data-noun="<?= e($noun) ?>">
+      <div class="mday-ms-trigger" tabindex="0" role="button">
+        <span class="mday-ms-label">All <?= e($noun) ?></span><span>▾</span>
+      </div>
+      <div class="mday-ms-panel">
+        <?php foreach ($options as $opt): ?>
+          <label class="mday-ms-option">
+            <input type="checkbox" name="<?= e($name) ?>[]" value="<?= e($opt) ?>" <?= isset($selectedSet[$opt]) ? 'checked' : '' ?>>
+            <span><?= e($opt) ?></span>
+          </label>
+        <?php endforeach; ?>
+        <?php if (!$options): ?><div style="font-size:11px;color:#888;padding:4px 6px;">None yet</div><?php endif; ?>
+        <div class="mday-ms-actions">
+          <button type="button" data-ms-all>All</button>
+          <button type="button" data-ms-none>None</button>
+        </div>
+      </div>
+    </div>
+    <?php
+}
+
 // ── Zone / year / filter selection ──────────────────────────────────────
 // No ?zone= at all (or an empty value, e.g. picking "All zones" in the
 // select) means "All zones" for a super admin; a zone-scoped admin is always
-// locked to their own and has no "All zones" option.
+// locked to their own and has no "All zones" option. The dropdown only
+// lists zones that actually have multi-day activities.
 if ($admin['role'] === 'super') {
-    $zones = $pdo->query('SELECT * FROM zones ORDER BY name')->fetchAll();
+    $zones = $pdo->query(
+        'SELECT DISTINCT z.* FROM zones z JOIN multiday_activities m ON m.zone_id = z.id ORDER BY z.name'
+    )->fetchAll();
     $zoneParam = $_GET['zone'] ?? '';
     $zoneId = $zoneParam !== '' ? (int) $zoneParam : null;
 } else {
@@ -132,23 +189,20 @@ if ($admin['role'] === 'super') {
 }
 $year = isset($_GET['year']) ? (int) $_GET['year'] : (int) date('Y');
 if ($year < 2000 || $year > 2100) $year = (int) date('Y');
-$centreFilter = trim($_GET['centre'] ?? '');
-$activityFilter = trim($_GET['activity'] ?? '');
-$groupFilter = trim($_GET['group'] ?? '');
-$sectionFilter = trim($_GET['section'] ?? '');
+$venueFilter = mday_ms_param('venue');
+$activityFilter = mday_ms_param('activity');
+$groupFilter = mday_ms_param('group');
+$sectionFilter = mday_ms_param('section');
 
 $where = ['m.start_date <= ?', 'm.end_date >= ?'];
 $params = ["$year-12-31", "$year-01-01"];
 if ($zoneId !== null) { $where[] = 'm.zone_id = ?'; $params[] = $zoneId; }
-if ($centreFilter !== '') { $where[] = 'm.centre = ?'; $params[] = $centreFilter; }
-if ($activityFilter !== '') { $where[] = 'm.activity = ?'; $params[] = $activityFilter; }
-if ($groupFilter !== '') { $where[] = 'm.labor = ?'; $params[] = $groupFilter; }
-if ($sectionFilter !== '') { $where[] = 'm.section = ?'; $params[] = $sectionFilter; }
+mday_in_clause('m.centre', $venueFilter, $where, $params);
+mday_in_clause('m.activity', $activityFilter, $where, $params);
+mday_in_clause('m.labor', $groupFilter, $where, $params);
+mday_in_clause('m.section', $sectionFilter, $where, $params);
 
-$stmt = $pdo->prepare(
-    'SELECT m.*, z.name AS zone_name FROM multiday_activities m JOIN zones z ON z.id = m.zone_id
-     WHERE ' . implode(' AND ', $where) . ' ORDER BY m.centre, m.start_date'
-);
+$stmt = $pdo->prepare('SELECT * FROM multiday_activities m WHERE ' . implode(' AND ', $where) . ' ORDER BY m.centre, m.start_date');
 $stmt->execute($params);
 $entries = $stmt->fetchAll();
 foreach ($entries as &$e) {
@@ -157,23 +211,22 @@ foreach ($entries as &$e) {
 }
 unset($e);
 
-// Centre/venue filter options: all centres in the selected zone, or across
-// every zone (with the zone name shown alongside) when viewing "All zones".
+// Filter option lists. Venue is scoped to the selected zone (or every
+// centre, across zones, when viewing "All zones"); Activity/Group/Section
+// come from the same lookup tables the CRUD form uses.
 if ($zoneId !== null) {
-    $centreOptStmt = $pdo->prepare('SELECT c.name, z.name AS zone_name FROM centres c JOIN zones z ON z.id = c.zone_id WHERE c.zone_id = ? ORDER BY c.name');
-    $centreOptStmt->execute([$zoneId]);
+    $venueOptStmt = $pdo->prepare('SELECT name FROM centres WHERE zone_id = ? ORDER BY name');
+    $venueOptStmt->execute([$zoneId]);
 } else {
-    $centreOptStmt = $pdo->query('SELECT c.name, z.name AS zone_name FROM centres c JOIN zones z ON z.id = c.zone_id ORDER BY c.name');
+    $venueOptStmt = $pdo->query('SELECT DISTINCT name FROM centres ORDER BY name');
 }
-$allCentresInZone = $centreOptStmt->fetchAll();
-
+$venueOptions = $venueOptStmt->fetchAll(PDO::FETCH_COLUMN);
 $activityOptions = $pdo->query("SELECT name FROM activity_types WHERE is_multiday = 1 ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
 $sectionOptions = lookup_names($pdo, 'sections');
 $groupOptions = lookup_names($pdo, 'labors');
 
-// Venues to render: grouped by zone_id+centre (not centre name alone), so
-// "All zones" never silently merges two different zones' same-named centre
-// into one swimlane. $venue['label'] adds the zone name when relevant.
+// Venues to render, grouped by zone_id+centre internally (see
+// mday_find_clashes above) but labelled by centre name alone.
 $centreList = [];
 $seenVenue = [];
 foreach ($entries as $e) {
@@ -181,15 +234,13 @@ foreach ($entries as $e) {
     $key = $e['zone_id'] . '|' . $e['centre'];
     if (isset($seenVenue[$key])) continue;
     $seenVenue[$key] = true;
-    $centreList[] = [
-        'key' => $key,
-        'centre' => $e['centre'],
-        'label' => $zoneId === null ? $e['centre'] . ' — ' . $e['zone_name'] : $e['centre'],
-    ];
+    $centreList[] = ['key' => $key, 'centre' => $e['centre'], 'label' => $e['centre']];
 }
-if (!$centreList && $centreFilter !== '' && $zoneId !== null) {
-    // Show the specifically filtered venue's (empty) row even with no matches this year.
-    $centreList[] = ['key' => $zoneId . '|' . $centreFilter, 'centre' => $centreFilter, 'label' => $centreFilter];
+if (!$centreList && $venueFilter && $zoneId !== null) {
+    // Show the specifically filtered venue(s) as an (empty) row even with no matches this year.
+    foreach ($venueFilter as $v) {
+        $centreList[] = ['key' => $zoneId . '|' . $v, 'centre' => $v, 'label' => $v];
+    }
 }
 usort($centreList, fn($a, $b) => strcmp($a['label'], $b['label']));
 
@@ -220,6 +271,10 @@ require __DIR__ . '/../includes/layout_top.php';
 
 <div class="card">
   <form method="get" class="row" style="align-items:flex-end;">
+    <div>
+      <label for="year">Year</label>
+      <input type="number" id="year" name="year" value="<?= (int) $year ?>" min="2000" max="2100" style="width:90px;">
+    </div>
     <?php if ($admin['role'] === 'super'): ?>
     <div>
       <label for="zone">Zone</label>
@@ -232,46 +287,20 @@ require __DIR__ . '/../includes/layout_top.php';
     </div>
     <?php endif; ?>
     <div>
-      <label for="year">Year</label>
-      <input type="number" id="year" name="year" value="<?= (int) $year ?>" min="2000" max="2100" style="width:90px;">
+      <label>Venue</label>
+      <?php mday_render_multiselect('venue', 'venues', $venueOptions, $venueFilter); ?>
     </div>
     <div>
-      <label for="centre">Centre / Venue</label>
-      <select id="centre" name="centre">
-        <option value="">All centres</option>
-        <?php foreach ($allCentresInZone as $c): ?>
-          <option value="<?= e($c['name']) ?>" <?= $centreFilter === $c['name'] ? 'selected' : '' ?>>
-            <?= $zoneId === null ? e($c['name'] . ' — ' . $c['zone_name']) : e($c['name']) ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
+      <label>Activity</label>
+      <?php mday_render_multiselect('activity', 'activities', $activityOptions, $activityFilter); ?>
     </div>
     <div>
-      <label for="activity">Activity</label>
-      <select id="activity" name="activity">
-        <option value="">All activities</option>
-        <?php foreach ($activityOptions as $a): ?>
-          <option value="<?= e($a) ?>" <?= $activityFilter === $a ? 'selected' : '' ?>><?= e($a) ?></option>
-        <?php endforeach; ?>
-      </select>
+      <label>Group</label>
+      <?php mday_render_multiselect('group', 'groups', $groupOptions, $groupFilter); ?>
     </div>
     <div>
-      <label for="group">Group</label>
-      <select id="group" name="group">
-        <option value="">All groups</option>
-        <?php foreach ($groupOptions as $g): ?>
-          <option value="<?= e($g) ?>" <?= $groupFilter === $g ? 'selected' : '' ?>><?= e($g) ?></option>
-        <?php endforeach; ?>
-      </select>
-    </div>
-    <div>
-      <label for="section">Section</label>
-      <select id="section" name="section">
-        <option value="">All sections</option>
-        <?php foreach ($sectionOptions as $s): ?>
-          <option value="<?= e($s) ?>" <?= $sectionFilter === $s ? 'selected' : '' ?>><?= e($s) ?></option>
-        <?php endforeach; ?>
-      </select>
+      <label>Section</label>
+      <?php mday_render_multiselect('section', 'sections', $sectionOptions, $sectionFilter); ?>
     </div>
     <div style="flex:0;"><button type="submit">Apply</button></div>
   </form>
@@ -314,6 +343,18 @@ require __DIR__ . '/../includes/layout_top.php';
   .mday-slot.clash { outline: 2px dashed #C0392B; outline-offset: -2px; }
   .mday-slot.clash::after { content: '⚠'; position: absolute; top: 0; right: 0; font-size: 7px; color: #C0392B; }
   .mday-label { position: absolute; top: 50%; left: 3px; right: 2px; transform: translateY(-50%); font-size: 8px; font-weight: 700; line-height: 1.1; white-space: nowrap; overflow: visible; color: #000; z-index: 3; pointer-events: none; }
+
+  .mday-ms { position: relative; min-width: 150px; }
+  .mday-ms-trigger { border: 1px solid #ccc; border-radius: 4px; padding: 8px 10px; font-size: 13px; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; user-select: none; }
+  .mday-ms-trigger:hover { border-color: #999; }
+  .mday-ms-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 50; background: #fff; border: 1px solid #ccc; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.15); min-width: 200px; max-height: 260px; overflow-y: auto; padding: 6px; }
+  .mday-ms-panel.open { display: block; }
+  .mday-ms-option { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 4px; font-size: 12px; font-weight: normal; margin: 0; cursor: pointer; }
+  .mday-ms-option:hover { background: #f5f5f5; }
+  .mday-ms-option input { width: auto; margin: 0; }
+  .mday-ms-actions { display: flex; gap: 8px; padding: 6px 6px 2px; border-top: 1px solid #eee; margin-top: 4px; }
+  .mday-ms-actions button { font-size: 10px; text-transform: uppercase; letter-spacing: .03em; color: #666; background: none; border: none; cursor: pointer; padding: 2px 4px; }
+  .mday-ms-actions button:hover { color: #222; }
 </style>
 
 <div class="mday-scroll">
@@ -384,4 +425,41 @@ require __DIR__ . '/../includes/layout_top.php';
   <?php endfor; ?>
 </div>
 </div>
+<script>
+// Wires up the Venue/Activity/Group/Section tick-box dropdowns: a plain
+// checkbox list under the hood (so it still submits fine without JS run —
+// just without the collapsible panel/trigger label), matching the original
+// Painted Calendar tool's multiselect filters.
+(function () {
+  document.querySelectorAll('.mday-ms').forEach(function (ms) {
+    var trigger = ms.querySelector('.mday-ms-trigger');
+    var panel = ms.querySelector('.mday-ms-panel');
+    var label = ms.querySelector('.mday-ms-label');
+    var noun = ms.dataset.noun || 'items';
+    var allLabel = 'All ' + noun;
+    var boxes = Array.prototype.slice.call(panel.querySelectorAll('input[type=checkbox]'));
+
+    function updateLabel() {
+      var checked = boxes.filter(function (c) { return c.checked; });
+      if (checked.length === 0 || checked.length === boxes.length) label.textContent = allLabel;
+      else if (checked.length === 1) label.textContent = checked[0].value;
+      else label.textContent = checked.length + ' ' + noun + ' selected';
+    }
+    trigger.addEventListener('click', function () {
+      document.querySelectorAll('.mday-ms-panel.open').forEach(function (p) { if (p !== panel) p.classList.remove('open'); });
+      panel.classList.toggle('open');
+    });
+    trigger.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); trigger.click(); } });
+    boxes.forEach(function (cb) { cb.addEventListener('change', updateLabel); });
+    var allBtn = ms.querySelector('[data-ms-all]');
+    var noneBtn = ms.querySelector('[data-ms-none]');
+    if (allBtn) allBtn.addEventListener('click', function () { boxes.forEach(function (c) { c.checked = true; }); updateLabel(); });
+    if (noneBtn) noneBtn.addEventListener('click', function () { boxes.forEach(function (c) { c.checked = false; }); updateLabel(); });
+    updateLabel();
+  });
+  document.addEventListener('click', function (ev) {
+    if (!ev.target.closest('.mday-ms')) document.querySelectorAll('.mday-ms-panel.open').forEach(function (p) { p.classList.remove('open'); });
+  });
+})();
+</script>
 <?php require __DIR__ . '/../includes/layout_bottom.php'; ?>
