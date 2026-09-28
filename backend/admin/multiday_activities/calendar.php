@@ -110,6 +110,24 @@ function mday_find_clashes(array $entries): array
     return [$clashKeys, count($clashedIds)];
 }
 
+// Tooltip body for one entry (shown on hover over any day it occupies), like
+// the original tool: venue and activity, group/section, date range, description.
+function mday_tip_html(array $e): string
+{
+    $when = function (string $date, ?string $time, string $slot): string {
+        $d = date('j M Y', strtotime($date));
+        if ($time !== null && $time !== '') return $d . ' ' . substr($time, 0, 5);
+        return $d . ' (' . ($slot === 'M' ? 'morning' : ($slot === 'A' ? 'afternoon' : 'evening')) . ')';
+    };
+    $html = '<span class="mday-tip-venue">' . e($e['centre']) . '</span> · <span class="mday-tip-tag">' . e($e['activity'] ?: '—') . '</span>';
+    $html .= '<span class="mday-tip-line">Grp: ' . e($e['labor'] ?: '—') . ' · Sec: ' . e($e['section'] ?: '—') . '</span>';
+    $html .= '<span class="mday-tip-line">' . e($when($e['start_date'], $e['start_time'], $e['_start_slot'])) . ' → ' . e($when($e['end_date'], $e['end_time'], $e['_end_slot'])) . '</span>';
+    if ($e['description'] !== null && $e['description'] !== '') {
+        $html .= '<span class="mday-tip-line">' . e($e['description']) . '</span>';
+    }
+    return $html;
+}
+
 function mday_section_fill(?string $section): string
 {
     $s = strtolower(trim((string) $section));
@@ -354,6 +372,12 @@ require __DIR__ . '/../includes/layout_top.php';
   .mday-slot.clash::after { content: '⚠'; position: absolute; top: 0; right: 0; font-size: 7px; color: #C0392B; }
   .mday-label { position: absolute; top: 50%; left: 3px; right: 2px; transform: translateY(-50%); font-size: 8px; font-weight: 700; line-height: 1.1; white-space: nowrap; overflow: visible; color: #000; z-index: 3; pointer-events: none; }
 
+  .mday-tooltip { position: fixed; z-index: 200; display: none; background: #1C1A17; color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 11px; line-height: 1.6; max-width: 320px; min-width: 170px; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+  .mday-tooltip hr { border: none; border-top: 1px solid #444; margin: 4px 0; }
+  .mday-tip-venue { font-weight: 600; letter-spacing: .03em; }
+  .mday-tip-tag { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; background: #F7F6F2; color: #555; }
+  .mday-tip-line { display: block; }
+
   .mday-ms { position: relative; min-width: 150px; }
   .mday-ms-trigger { border: 1px solid #ccc; border-radius: 4px; padding: 8px 10px; font-size: 13px; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; user-select: none; }
   .mday-ms-trigger:hover { border-color: #999; }
@@ -430,14 +454,16 @@ require __DIR__ . '/../includes/layout_top.php';
                     $f = $sf[$si];
                 ?>
                   <div class="mday-slot<?= $f['start'] ? ' start' : '' ?><?= $f['end'] ? ' end' : '' ?><?= $f['clash'] ? ' clash' : '' ?><?= $f['ot'] ? ' ot' : '' ?><?= $f['ob'] ? ' ob' : '' ?><?= $f['step'] ? ' step' : '' ?>"
-                       style="<?= $f['fill'] ? 'background:' . e($f['fill']) . ';' : '' ?><?= $f['step'] ? '--step-h:' . (int) $f['step'] . '%;' : '' ?>"
-                       title="<?= e(implode(' · ', array_map(fn($e) => trim(($e['activity'] ?: '—') . '-' . ($e['labor'] ?: '') . ' (' . date('d/m', strtotime($e['start_date'])) . '–' . date('d/m', strtotime($e['end_date'])) . ')'), $active))) ?>">
+                       style="<?= $f['fill'] ? 'background:' . e($f['fill']) . ';' : '' ?><?= $f['step'] ? '--step-h:' . (int) $f['step'] . '%;' : '' ?>">
                     <?php if ($label && $label['slot'] === $si): ?>
                       <div class="mday-label"><?= e(trim(($label['entry']['activity'] ?: '—') . '-' . ($label['entry']['labor'] ?: ''))) ?></div>
                     <?php endif; ?>
                   </div>
                 <?php endfor; ?>
               </div>
+              <?php if ($active): ?>
+                <div class="mday-tip" hidden><?= implode('<hr>', array_map('mday_tip_html', $active)) ?></div>
+              <?php endif; ?>
             </div>
           <?php endif; ?>
         <?php endfor; ?>
@@ -513,6 +539,31 @@ require __DIR__ . '/../includes/layout_top.php';
   var yearInput = document.getElementById('year');
   if (yearInput) yearInput.addEventListener('change', refresh);
   form.addEventListener('submit', function (ev) { ev.preventDefault(); refresh(); }); // Enter in the year box
+
+  // Hover tooltip (venue, activity, group/section, dates, description) for any
+  // day cell with activity. One fixed-position element, so it is never clipped
+  // by the scrolling grid, and delegated, so it survives the live refresh.
+  var tip = document.createElement('div');
+  tip.className = 'mday-tooltip';
+  document.body.appendChild(tip);
+  var tipCell = null;
+  function hideTip() { tip.style.display = 'none'; tipCell = null; }
+  document.addEventListener('mouseover', function (ev) {
+    var cell = ev.target.closest ? ev.target.closest('.mday-cell') : null;
+    var src = cell && cell.querySelector('.mday-tip');
+    if (!src) { hideTip(); return; }
+    if (cell === tipCell) return;
+    tipCell = cell;
+    tip.innerHTML = src.innerHTML;
+    tip.style.display = 'block';
+    var r = cell.getBoundingClientRect();
+    var left = Math.min(r.left, window.innerWidth - tip.offsetWidth - 8);
+    var top = r.bottom + 4;
+    if (top + tip.offsetHeight > window.innerHeight - 8) top = r.top - tip.offsetHeight - 4;
+    tip.style.left = Math.max(8, left) + 'px';
+    tip.style.top = Math.max(8, top) + 'px';
+  });
+  window.addEventListener('scroll', hideTip, true);
 
   document.addEventListener('click', function (ev) {
     if (!ev.target.closest('.mday-ms')) document.querySelectorAll('.mday-ms-panel.open').forEach(function (p) { p.classList.remove('open'); });
