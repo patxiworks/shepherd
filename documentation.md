@@ -26,8 +26,15 @@ their contents.
   Admin → Settings). Migration `009` has been applied to the local MAMP
   database; the table is empty until someone presses *Generate calendar*. Not
   yet used by the frontend — see [Liturgical calendar](#liturgical-calendar).
-- The `backend/` directory is untracked in git so far (new, not yet
-  committed) — check `git status` before assuming it's deployed anywhere.
+- ✅ **Multi-day activities** (retreats/courses/camps at a venue over several
+  days — a port of the standalone "Painted Calendar" HTML tool) added on the
+  `conference-centres` branch: migration `015`, an admin list/CRUD page and a
+  painted calendar view, with the tool's 148 rows imported into the local MAMP
+  database. Not yet used by the frontend — see
+  [Multi-day Activities](#admin-panel-backendadmin).
+- The backend is committed on the `backend-admin-panel` branch (not on
+  `master`), and `conference-centres` is branched from it — check
+  `git branch` / `git status` before assuming any of it is deployed anywhere.
 
 ---
 
@@ -147,6 +154,12 @@ source (id, zone_id, unit, week, day, centre, activity, section, labor,
 absences (id, zone_id, priest, start_at, end_at, activity, description)
                              -- when a priest is away; admin-only (see "Absences" below)
 
+multiday_activities (id, zone_id, centre, activity, section, labor,
+                     start_date, start_time, end_date, end_time, description)
+                             -- multi-day venue programmes: a date+time RANGE, not a
+                             -- single activity_date; kept apart from `activities`
+                             -- (see "Multi-day Activities" below)
+
 settings (name, value)       -- admin-editable options (week_start, max_masses_per_day, calendar_*)
 
 liturgical_calendar (cal_date, celebration, class, liturgical_rank, color,
@@ -159,7 +172,7 @@ priests (id, name, zone_id)  -- lookup lists behind the Activities form
   └─ priest_zones (priest_id, zone_id)  -- extra zones a priest also serves in;
 sections (id, name)          -- activities.priest/section/labor/activity
 labors (id, name)            -- store the *name*, not an id
-activity_types (id, name)
+activity_types (id, name, is_multiday)  -- is_multiday = 1: a multi-day programme type
 
 admin_users (id, username, password_hash, role, zone_id, centre_id)  -- PHP admin-panel logins, separate from `users` above
 ```
@@ -234,8 +247,8 @@ that when the frontend is cut over, only the URL constants change:
 ### Admin panel (`backend/admin/`)
 
 Plain PHP pages, one `index.php` per entity (`zones`, `centres`, `users`,
-`activities`, `source`, `masses`, `absences`, `admins`, `priests`, `sections`, `labors`,
-`activity_types`, `settings`), each
+`activities`, `source`, `masses`, `absences`, `multiday_activities`, `admins`, `priests`,
+`sections`, `labors`, `activity_types`, `settings`), each
 handling its own list + create + edit + delete in one file (list on GET, mutate on POST with an
 `action=delete` flag for deletes). Shared chrome lives in
 `backend/admin/includes/` (`layout_top.php`/`layout_bottom.php` for the
@@ -545,31 +558,78 @@ painted venue view; super and zone admins; migration
 that run across several days at a centre, ported from a standalone
 "Painted Calendar" HTML tool that had no backend of its own. Kept in its own
 table (`multiday_activities`), not `activities`, so the day-to-day Activities
-view never needs to filter these out.
+view never needs to filter these out. The two pages are tabs of one section
+(List / Calendar), linked from the top nav ("Multi-day Activities") and with a
+count on the dashboard (guarded by `multiday_activities_available()` in
+[`backend/includes/multiday_activities.php`](backend/includes/multiday_activities.php),
+like `absences_available()`, so the dashboard still loads before migration
+`015` is applied).
 
-- Fields: zone, centre, activity, section, labor ("group" in the original
-  tool), start date/time, end date/time. Centre and activity are free text
-  (same convention as `activities`); the Activity dropdown only offers
-  `activity_types` rows with `is_multiday = 1`. Start/end time are freeform,
-  not tied to a fixed slot.
-- The end (date, and time if both are on the same day) must not be before the
-  start. A zone admin only sees and edits their own zone's rows; a super
-  admin picks the zone, same as Absences.
-- **Calendar view** (`calendar.php`): a read-only month-by-month grid, one
-  swimlane per centre, for a chosen zone/year(/centre). Each entry is painted
-  as a band across the days it occupies, coloured by section (`sf` pink,
-  `sv` blue), with a thick border on its start/end day and a centred
-  activity–group label at the midpoint of its run. Since the underlying time
-  is freeform, painting still uses three bands per day (Morning/Afternoon/
-  Evening); a blank start/end time is treated as an evening arrival / morning
-  departure respectively (`mday_slot()`), matching the pattern actually used
-  by these venues. Entries at the same centre with genuinely overlapping
-  bands are outlined and counted in a banner at the top
-  (`mday_find_clashes()`).
+- **Data model.** Migration `015` adds `activity_types.is_multiday` — a flag on
+  the *type*, set by hand, not derived from the name (a name like `Mass St.
+  Josemaria` is one day; `crt` spans several) — and seeds the 13 activity
+  types the original tool used with it set to 1. `multiday_activities` holds
+  zone, centre, activity, section, labor ("group" in the original tool),
+  `start_date`/`start_time`, `end_date`/`end_time` and a description. Centre,
+  activity, section and labor are stored as text (same convention as
+  `activities`), and the times are freeform and optional.
+- **List / CRUD** (`index.php`, same layout as Absences: modal form, sortable
+  table, latest 300 rows). The Activity dropdown only offers `activity_types`
+  with `is_multiday = 1`; Centre follows the selected zone. The end (date, and
+  time if both are on the same day) must not be before the start, and the
+  centre must belong to the chosen zone. A zone admin only sees and edits
+  their own zone's rows (`mday_in_scope()`); a super admin sees all zones.
+  Leave the times blank for the usual pattern (evening arrival, morning
+  departure).
+- **Calendar view** (`calendar.php`, read-only): one block per month, each with
+  a bold border and a gap below, and one swimlane per venue (centre) with a
+  small gap between venues.
+  - *Painting.* Each entry is painted across the days it occupies, coloured by
+    section (`sf` pink, `sv` blue, other grey) and fully encircled by a bold
+    outline: top/bottom edges follow the entry's topmost/bottommost occupied
+    slot of each day, joined by short step connectors where they change height,
+    with thicker start/end edges — as in the original. A label
+    (`activity-group`) is printed once, at the midpoint of the run. Since
+    times are freeform, painting still uses three bands per day
+    (Morning <12:00 / Afternoon <18:00 / Evening); a blank start time counts as
+    evening and a blank end time as morning (`mday_slot()`).
+  - *Tooltip.* Hovering a day with activity shows a dark tooltip like the
+    original: venue and activity, `Grp: … · Sec: …`, the date range (with the
+    time, or morning/evening when none is set) and the description, one block
+    per entry when several overlap. It is a single fixed-position element fed
+    from a hidden `.mday-tip` in each cell, so the scrolling grid doesn't clip
+    it.
+  - *Clashes.* Entries at the same centre whose occupied slots genuinely
+    overlap are outlined with a dashed red border and counted in a banner
+    (`mday_find_clashes()`); back-to-back handovers (one ending in the morning,
+    the next starting in the evening) are not clashes. Grouping is by
+    zone + centre, so two zones reusing a centre name are never merged, but
+    only the centre name is shown.
+  - *Filters.* **Year** first, then **Zone** (super admins only; "All zones" is
+    the default, and only zones that have multi-day activities are listed;
+    changing it reloads the page and clears the Venue ticks, since that list is
+    per zone), then **Venue**, **Activity**, **Group** and **Section** as
+    tick-box dropdowns (several values can be ticked, with All/None; nothing
+    ticked means no filter), matching the original. There is no Apply button:
+    each change re-fetches the page and swaps in the new banner and grid
+    without a reload, leaving the dropdown open (falling back to a normal
+    submit if that fails), and the URL is updated so the view stays linkable.
+    Venue lists the zone's centres (every centre in "All zones"); Activity is
+    the `is_multiday` types; Group and Section come from `labors` / `sections`.
+- **Initial data.** The Painted Calendar's 148 rows were loaded once into the
+  local MAMP database with a throwaway script (not in the repo). Venue → centre
+  mapping: Iroto and Alayo became new centres in a new zone **Ijebu-Ode**,
+  Iwollo a new centre in a new zone **Iwollo**, and the rest reused existing
+  centres — Irawo → Rao and Imoran (Ibadan), Lagoon → LS and Whitesands → WS
+  (VI-Lekki), Greendale → Gdl (Nsukka). Eleven new `labors` were added for the
+  group codes (`n`, `nax`, `sss+`, `agd`, `cl`, `s`, `sacd`, `RVS`, `Admins`,
+  `LS`, `Iwollo H`); every source row used evening-start/morning-end, so all
+  imported with blank times. Re-running it elsewhere would need the same zones
+  and centres created first (or the mapping adjusted).
 - Not served by the API and does not bump `zones.last_update`; nothing in the
   frontend reads it yet. The original tool's CSV/XLSX import, roll-forward-to-
-  next-year, and inline spreadsheet-style editing were not ported — data
-  entry here goes through the List tab's form instead.
+  next-year, dashboard tab and inline spreadsheet-style editing were not
+  ported — data entry goes through the List tab's form instead.
 
 ### Liturgical calendar
 
@@ -726,5 +786,7 @@ contracts were deliberately kept identical.
 | Add a section/labor *colour* | [`src/lib/section-colors.ts`](src/lib/section-colors.ts) |
 | Change what a `zone`/`centre` admin can access | `admin_require_role()` calls and `*_in_scope()` functions in `backend/admin/<entity>/index.php` |
 | Add a new admin access level or field | [`backend/schema.sql`](backend/schema.sql) `admin_users` table + [`backend/includes/auth.php`](backend/includes/auth.php) + [`backend/admin/admins/index.php`](backend/admin/admins/index.php) |
+| Change the multi-day calendar's painting, tooltip, clash detection or filters | [`backend/admin/multiday_activities/calendar.php`](backend/admin/multiday_activities/calendar.php) (helpers are the `mday_*` functions at the top) |
+| Add/edit multi-day activities, or mark an activity type as multi-day | Admin panel → Multi-day Activities (List tab); Activity types page for `is_multiday` (the checkbox isn't on that page yet — set it in SQL) |
 | Run the one-time Sheets → MySQL import | [`backend/migrate/migrate.php`](backend/migrate/migrate.php) |
 | Deploy the backend | [`backend/README.md`](backend/README.md) |
