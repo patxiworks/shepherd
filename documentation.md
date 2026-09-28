@@ -566,9 +566,13 @@ like `absences_available()`, so the dashboard still loads before migration
 `015` is applied).
 
 - **Data model.** Migration `015` adds `activity_types.is_multiday` — a flag on
-  the *type*, set by hand, not derived from the name (a name like `Mass St.
-  Josemaria` is one day; `crt` spans several) — and seeds the 13 activity
-  types the original tool used with it set to 1. `multiday_activities` holds
+  the *type*, not derived from the name (a name like `Mass St. Josemaria` is
+  one day; `crt` spans several) — and seeds the 13 activity types the original
+  tool used with it set to 1. It is edited with the **Multi-day programme**
+  checkbox on Admin → Activity types (the list has a Multi-day column; the
+  checkbox is an option of the shared `lookup_admin_page()`, only shown once
+  migration `015` is applied). Renaming an activity type also renames it on
+  the `multiday_activities` rows that use it. `multiday_activities` holds
   zone, centre, activity, section, labor ("group" in the original tool),
   `start_date`/`start_time`, `end_date`/`end_time` and a description. Centre,
   activity, section and labor are stored as text (same convention as
@@ -787,6 +791,6 @@ contracts were deliberately kept identical.
 | Change what a `zone`/`centre` admin can access | `admin_require_role()` calls and `*_in_scope()` functions in `backend/admin/<entity>/index.php` |
 | Add a new admin access level or field | [`backend/schema.sql`](backend/schema.sql) `admin_users` table + [`backend/includes/auth.php`](backend/includes/auth.php) + [`backend/admin/admins/index.php`](backend/admin/admins/index.php) |
 | Change the multi-day calendar's painting, tooltip, clash detection or filters | [`backend/admin/multiday_activities/calendar.php`](backend/admin/multiday_activities/calendar.php) (helpers are the `mday_*` functions at the top) |
-| Add/edit multi-day activities, or mark an activity type as multi-day | Admin panel → Multi-day Activities (List tab); Activity types page for `is_multiday` (the checkbox isn't on that page yet — set it in SQL) |
+| Add/edit multi-day activities, or mark an activity type as multi-day | Admin panel → Multi-day Activities (List tab); to make an activity type a multi-day one, tick "Multi-day programme" on Admin panel → Activity types |
 | Run the one-time Sheets → MySQL import | [`backend/migrate/migrate.php`](backend/migrate/migrate.php) |
 | Deploy the backend | [`backend/README.md`](backend/README.md) |

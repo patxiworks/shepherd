@@ -41,6 +41,9 @@ function lookup_save_extra_zones(PDO $pdo, string $table, int $id, array $zoneId
 //            in other zones (priest_zones, "Also serves in" checkboxes): the
 //            entries "of" a zone are those whose home it is plus those that
 //            list it (see priests_by_zone()).
+//   multiday optional bool (activity_types only): the form gets a "Multi-day
+//            programme" checkbox saved to the is_multiday column (needs
+//            migration 015), and the list shows it.
 //   used_in  list of [table, column] pairs that store this name as free
 //            text. Renaming an entry is cascaded to these; the "In use"
 //            count on the list is computed from them too. An entry that
@@ -61,6 +64,7 @@ function lookup_admin_page(array $cfg): void
     }
     $url = '/admin/' . $table . '/index.php';
     $hasZone = !empty($cfg['zone']);
+    $hasMultiday = !empty($cfg['multiday']);
 
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $action = $_POST['action'] ?? '';
@@ -80,6 +84,7 @@ function lookup_admin_page(array $cfg): void
         } else {
             $name = trim($_POST['name'] ?? '');
             $zoneId = (int) ($_POST['zone_id'] ?? 0);
+            $isMultiday = isset($_POST['is_multiday']) ? 1 : 0;
             // Other zones the entry also serves in (never its home zone).
             $extraZones = array_values(array_unique(array_filter(array_map('intval', (array) ($_POST['extra_zones'] ?? [])), fn($z) => $z && $z !== $zoneId)));
             if ($name === '' || ($hasZone && !$zoneId)) {
@@ -114,6 +119,8 @@ function lookup_admin_page(array $cfg): void
                         }
                         if ($hasZone) {
                             $pdo->prepare("UPDATE $table SET name = ?, zone_id = ? WHERE id = ?")->execute([$name, $zoneId, (int) $id]);
+                        } elseif ($hasMultiday) {
+                            $pdo->prepare("UPDATE $table SET name = ?, is_multiday = ? WHERE id = ?")->execute([$name, $isMultiday, (int) $id]);
                         } else {
                             $pdo->prepare("UPDATE $table SET name = ? WHERE id = ?")->execute([$name, (int) $id]);
                         }
@@ -136,6 +143,8 @@ function lookup_admin_page(array $cfg): void
                             $pdo->prepare("INSERT INTO $table (name, zone_id) VALUES (?, ?)")->execute([$name, $zoneId]);
                             lookup_save_extra_zones($pdo, $table, (int) $pdo->lastInsertId(), $extraZones);
                             $pdo->commit();
+                        } elseif ($hasMultiday) {
+                            $pdo->prepare("INSERT INTO $table (name, is_multiday) VALUES (?, ?)")->execute([$name, $isMultiday]);
                         } else {
                             $pdo->prepare("INSERT INTO $table (name) VALUES (?)")->execute([$name]);
                         }
@@ -211,6 +220,10 @@ function lookup_admin_page(array $cfg): void
       </div>
       <?php endif; ?>
     </div>
+    <?php if ($hasMultiday): ?>
+    <label style="font-weight:normal;"><input type="checkbox" name="is_multiday" value="1" style="width:auto;" <?= !empty($editing['is_multiday']) ? 'checked' : '' ?>> Multi-day programme (retreat, course, camp&hellip;)</label>
+    <small class="hint" style="min-height:0;">Ticked types are offered under Multi-day Activities (list and calendar) instead of being used for the day-to-day activities.</small>
+    <?php endif; ?>
     <?php if ($hasZone && $table === 'priests'): ?>
     <?php $chosenExtras = $extras[(int) ($editing['id'] ?? 0)] ?? []; ?>
     <label for="extra_zone_add">Also serves in</label>
@@ -299,12 +312,13 @@ function lookup_admin_page(array $cfg): void
 </div>
 
 <table>
-  <thead><tr><th>Name</th><?php if ($hasZone): ?><th>Zone</th><th>Also serves in</th><?php endif; ?><th>In use</th><th></th></tr></thead>
+  <thead><tr><th>Name</th><?php if ($hasZone): ?><th>Zone</th><th>Also serves in</th><?php endif; ?><?php if ($hasMultiday): ?><th>Multi-day</th><?php endif; ?><th>In use</th><th></th></tr></thead>
   <tbody>
   <?php foreach ($rows as $row): ?>
     <tr>
       <td><?= e($row['name']) ?></td>
       <?php if ($hasZone): ?><td><?= e($row['zone_name'] ?? '—') ?></td><td><?= e(implode(', ', $extras[(int) $row['id']] ?? [])) ?: '—' ?></td><?php endif; ?>
+      <?php if ($hasMultiday): ?><td data-sort="<?= (int) $row['is_multiday'] ?>"><?= $row['is_multiday'] ? 'Yes' : '' ?></td><?php endif; ?>
       <td><?= (int) $row['in_use'] ?></td>
       <td class="actions">
         <a href="<?= e($url) ?>?edit=<?= (int) $row['id'] ?>">Edit</a>
@@ -317,7 +331,7 @@ function lookup_admin_page(array $cfg): void
     </tr>
   <?php endforeach; ?>
   <?php if (!$rows): ?>
-    <tr><td colspan="<?= $hasZone ? 5 : 3 ?>" style="text-align:center;color:#888;">Nothing here yet.</td></tr>
+    <tr><td colspan="<?= ($hasZone ? 5 : 3) + ($hasMultiday ? 1 : 0) ?>" style="text-align:center;color:#888;">Nothing here yet.</td></tr>
   <?php endif; ?>
   </tbody>
 </table>
