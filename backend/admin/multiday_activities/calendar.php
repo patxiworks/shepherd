@@ -278,7 +278,7 @@ require __DIR__ . '/../includes/layout_top.php';
     <?php if ($admin['role'] === 'super'): ?>
     <div>
       <label for="zone">Zone</label>
-      <select id="zone" name="zone" onchange="this.form.submit()">
+      <select id="zone" name="zone" onchange="this.form.querySelectorAll('input[name=\'venue[]\']').forEach(function (c) { c.checked = false; }); this.form.submit();">
         <option value="" <?= $zoneId === null ? 'selected' : '' ?>>All zones</option>
         <?php foreach ($zones as $zone): ?>
           <option value="<?= (int) $zone['id'] ?>" <?= $zoneId === (int) $zone['id'] ? 'selected' : '' ?>><?= e($zone['name']) ?></option>
@@ -302,10 +302,10 @@ require __DIR__ . '/../includes/layout_top.php';
       <label>Section</label>
       <?php mday_render_multiselect('section', 'sections', $sectionOptions, $sectionFilter); ?>
     </div>
-    <div style="flex:0;"><button type="submit">Apply</button></div>
   </form>
 </div>
 
+<div id="mday-results">
 <?php if ($clashedCount > 0): ?>
 <div class="flash error">
   ⚠ <strong><?= $clashedCount ?></strong> entr<?= $clashedCount === 1 ? 'y has' : 'ies have' ?> a scheduling clash this year —
@@ -455,6 +455,7 @@ require __DIR__ . '/../includes/layout_top.php';
   <?php endfor; ?>
 </div>
 </div>
+</div><!-- #mday-results -->
 <script>
 // Wires up the Venue/Activity/Group/Section tick-box dropdowns: a plain
 // checkbox list under the hood (so it still submits fine without JS run —
@@ -487,6 +488,32 @@ require __DIR__ . '/../includes/layout_top.php';
     if (noneBtn) noneBtn.addEventListener('click', function () { boxes.forEach(function (c) { c.checked = false; }); updateLabel(); });
     updateLabel();
   });
+  // No Apply button: any filter change re-fetches this page and swaps in the
+  // new banner + grid, leaving the form (and any open dropdown) untouched, so
+  // several boxes can be ticked in a row. Falls back to a normal reload.
+  var form = document.querySelector('.card form');
+  var seq = 0;
+  function refresh() {
+    var mine = ++seq;
+    var qs = new URLSearchParams(new FormData(form)).toString();
+    fetch(location.pathname + '?' + qs, { credentials: 'same-origin' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then(function (html) {
+        if (mine !== seq) return; // a newer change superseded this one
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var fresh = doc.getElementById('mday-results');
+        if (!fresh) throw new Error('no results');
+        document.getElementById('mday-results').innerHTML = fresh.innerHTML;
+        history.replaceState(null, '', location.pathname + '?' + qs);
+      })
+      .catch(function () { form.submit(); });
+  }
+  form.querySelectorAll('.mday-ms input[type=checkbox]').forEach(function (cb) { cb.addEventListener('change', refresh); });
+  form.querySelectorAll('.mday-ms [data-ms-all], .mday-ms [data-ms-none]').forEach(function (b) { b.addEventListener('click', refresh); });
+  var yearInput = document.getElementById('year');
+  if (yearInput) yearInput.addEventListener('change', refresh);
+  form.addEventListener('submit', function (ev) { ev.preventDefault(); refresh(); }); // Enter in the year box
+
   document.addEventListener('click', function (ev) {
     if (!ev.target.closest('.mday-ms')) document.querySelectorAll('.mday-ms-panel.open').forEach(function (p) { p.classList.remove('open'); });
   });
