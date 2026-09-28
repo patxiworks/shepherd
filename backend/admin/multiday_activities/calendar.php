@@ -325,7 +325,8 @@ require __DIR__ . '/../includes/layout_top.php';
   .mday-grid { min-width: 900px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; background: #fff; }
   .mday-month { border-bottom: 1px solid #ddd; }
   .mday-month:last-child { border-bottom: none; }
-  .mday-month-header { background: #333; color: #fff; padding: 6px 12px; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+  .mday-month-header { background: none; color: #222; padding: 8px 12px 6px; font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .mday-month-header .mday-year { color: #666; font-weight: normal; font-size: 11px; }
   .mday-body { display: grid; grid-template-columns: 110px repeat(31, minmax(20px, 1fr)); border-top: 1px solid #ddd; }
   .mday-daynum { text-align: center; padding: 3px 1px; font-size: 9px; color: #999; border-right: 1px solid #eee; border-bottom: 1px solid #ddd; background: #f7f7f7; font-family: monospace; }
   .mday-daynum.weekend { background: #efeeea; color: #777; }
@@ -340,6 +341,15 @@ require __DIR__ . '/../includes/layout_top.php';
   .mday-slot + .mday-slot { border-top: 1px solid rgba(255,255,255,.6); }
   .mday-slot.start { border-left: 2px solid #000; }
   .mday-slot.end { border-right: 2px solid #000; }
+  /* Encircling outline: top edge on an activity's topmost slot of the day, bottom edge on its bottommost. */
+  .mday-slot.ot { box-shadow: inset 0 2px 0 0 #000; }
+  .mday-slot.ob { box-shadow: inset 0 -2px 0 0 #000; }
+  .mday-slot.ot.ob { box-shadow: inset 0 2px 0 0 #000, inset 0 -2px 0 0 #000; }
+  /* Short vertical line closing the gap where the outline's top/bottom edge changes height between two days. */
+  .mday-slot.step::before { content: ''; position: absolute; left: -1px; width: 2px; background: #000; z-index: 2; top: 0; height: var(--step-h, 0); }
+  /* Narrow gap between venue rows so painted bands read as separate venues. */
+  .mday-gap { height: 6px; background: #f5f5f5; border: none; }
+  .mday-gap.first { border-right: 1px solid #ddd; }
   .mday-slot.clash { outline: 2px dashed #C0392B; outline-offset: -2px; }
   .mday-slot.clash::after { content: '⚠'; position: absolute; top: 0; right: 0; font-size: 7px; color: #C0392B; }
   .mday-label { position: absolute; top: 50%; left: 3px; right: 2px; transform: translateY(-50%); font-size: 8px; font-weight: 700; line-height: 1.1; white-space: nowrap; overflow: visible; color: #000; z-index: 3; pointer-events: none; }
@@ -363,7 +373,7 @@ require __DIR__ . '/../includes/layout_top.php';
     $daysInM = (int) date('t', strtotime("$year-$m-01"));
   ?>
   <div class="mday-month">
-    <div class="mday-month-header"><?= MDAY_MONTHS[$m - 1] ?> <span style="opacity:.5;"><?= $year ?></span></div>
+    <div class="mday-month-header"><?= MDAY_MONTHS[$m - 1] ?> <span class="mday-year"><?= $year ?></span></div>
     <div class="mday-body">
       <div class="mday-daynum" style="background:#eee;"></div>
       <?php for ($d = 1; $d <= 31; $d++): ?>
@@ -378,7 +388,7 @@ require __DIR__ . '/../includes/layout_top.php';
         <?php endif; ?>
       <?php endfor; ?>
 
-      <?php foreach ($centreList as $venue): ?>
+      <?php foreach ($centreList as $vi => $venue): ?>
         <div class="mday-venue"><?= e($venue['label']) ?></div>
         <?php for ($d = 1; $d <= 31; $d++): ?>
           <?php if ($d > $daysInM): ?>
@@ -392,19 +402,35 @@ require __DIR__ . '/../includes/layout_top.php';
           ?>
             <div class="mday-cell<?= $isWeekend ? ' weekend' : '' ?>">
               <div class="mday-inner">
-                <?php for ($si = 0; $si < 3; $si++):
-                  $fill = null; $isStartSlot = false; $isEndSlot = false; $isClash = false;
+                <?php
+                  $sf = [];
+                  for ($si = 0; $si < 3; $si++) $sf[$si] = ['fill' => null, 'start' => false, 'end' => false, 'clash' => false, 'ot' => false, 'ob' => false, 'step' => 0];
                   foreach ($active as $e) {
                     $slots = mday_active_slots($e, $dayIso);
-                    if (!in_array($si, $slots, true)) continue;
-                    $fill = mday_section_fill($e['section']);
-                    if ($dayIso === $e['start_date'] && $si === MDAY_SLOT_ORDER[$e['_start_slot']]) $isStartSlot = true;
-                    if ($dayIso === $e['end_date'] && $si === MDAY_SLOT_ORDER[$e['_end_slot']]) $isEndSlot = true;
-                    if (isset($clashKeys[$e['id'] . '|' . $dayIso . '|' . $si])) $isClash = true;
+                    if (!$slots) continue;
+                    $top = min($slots); $bottom = max($slots);
+                    foreach ($slots as $si) {
+                      $sf[$si]['fill'] = mday_section_fill($e['section']);
+                      if ($dayIso === $e['start_date'] && $si === MDAY_SLOT_ORDER[$e['_start_slot']]) $sf[$si]['start'] = true;
+                      if ($dayIso === $e['end_date'] && $si === MDAY_SLOT_ORDER[$e['_end_slot']]) $sf[$si]['end'] = true;
+                      if (isset($clashKeys[$e['id'] . '|' . $dayIso . '|' . $si])) $sf[$si]['clash'] = true;
+                      if ($si === $top) $sf[$si]['ot'] = true;
+                      if ($si === $bottom) $sf[$si]['ob'] = true;
+                    }
+                    if ($dayIso > $e['start_date']) {
+                      $prev = mday_active_slots($e, date('Y-m-d', strtotime("$dayIso -1 day")));
+                      if ($prev) {
+                        $pt = min($prev); $pb = max($prev);
+                        if ($pt !== $top) { $lo = min($pt, $top); $hi = max($pt, $top); $sf[$lo]['step'] = max($sf[$lo]['step'], ($hi - $lo) * 100); }
+                        if ($pb !== $bottom) { $lo = min($pb, $bottom); $hi = max($pb, $bottom); $k = min($lo + 1, 2); $sf[$k]['step'] = max($sf[$k]['step'], ($hi - $lo) * 100); }
+                      }
+                    }
                   }
+                  for ($si = 0; $si < 3; $si++):
+                    $f = $sf[$si];
                 ?>
-                  <div class="mday-slot<?= $isStartSlot ? ' start' : '' ?><?= $isEndSlot ? ' end' : '' ?><?= $isClash ? ' clash' : '' ?>"
-                       style="<?= $fill ? 'background:' . e($fill) . ';' : '' ?>"
+                  <div class="mday-slot<?= $f['start'] ? ' start' : '' ?><?= $f['end'] ? ' end' : '' ?><?= $f['clash'] ? ' clash' : '' ?><?= $f['ot'] ? ' ot' : '' ?><?= $f['ob'] ? ' ob' : '' ?><?= $f['step'] ? ' step' : '' ?>"
+                       style="<?= $f['fill'] ? 'background:' . e($f['fill']) . ';' : '' ?><?= $f['step'] ? '--step-h:' . (int) $f['step'] . '%;' : '' ?>"
                        title="<?= e(implode(' · ', array_map(fn($e) => trim(($e['activity'] ?: '—') . '-' . ($e['labor'] ?: '') . ' (' . date('d/m', strtotime($e['start_date'])) . '–' . date('d/m', strtotime($e['end_date'])) . ')'), $active))) ?>">
                     <?php if ($label && $label['slot'] === $si): ?>
                       <div class="mday-label"><?= e(trim(($label['entry']['activity'] ?: '—') . '-' . ($label['entry']['labor'] ?: ''))) ?></div>
@@ -415,6 +441,10 @@ require __DIR__ . '/../includes/layout_top.php';
             </div>
           <?php endif; ?>
         <?php endfor; ?>
+        <?php if ($vi !== array_key_last($centreList)): ?>
+          <div class="mday-gap first"></div>
+          <?php for ($d = 1; $d <= 31; $d++): ?><div class="mday-gap"></div><?php endfor; ?>
+        <?php endif; ?>
       <?php endforeach; ?>
       <?php if (!$centreList): ?>
         <div class="mday-venue" style="color:#888;">No entries</div>
