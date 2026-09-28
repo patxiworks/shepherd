@@ -322,9 +322,9 @@ require __DIR__ . '/../includes/layout_top.php';
 
 <style>
   .mday-scroll { overflow-x: auto; }
-  .mday-grid { min-width: 900px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; background: #fff; }
-  .mday-month { border-bottom: 1px solid #ddd; }
-  .mday-month:last-child { border-bottom: none; }
+  .mday-grid { min-width: 900px; }
+  /* Each month is its own bold-bordered block with a gap below, so months read as clearly separate. */
+  .mday-month { border: 2px solid #222; border-radius: 6px; overflow: hidden; background: #fff; margin-bottom: 18px; }
   .mday-month-header { background: none; color: #222; padding: 8px 12px 6px; font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
   .mday-month-header .mday-year { color: #666; font-weight: normal; font-size: 11px; }
   .mday-body { display: grid; grid-template-columns: 110px repeat(31, minmax(20px, 1fr)); border-top: 1px solid #ddd; }
