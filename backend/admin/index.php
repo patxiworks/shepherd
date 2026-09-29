@@ -38,11 +38,6 @@ if ($admin['role'] === 'super') {
         'Activities' => $activities->fetchColumn(),
         'Masses' => $masses->fetchColumn(),
     ];
-    if ($mdayAvailable) {
-        $multiday = $pdo->prepare('SELECT COUNT(*) FROM multiday_activities WHERE zone_id = ?');
-        $multiday->execute([$admin['zone_id']]);
-        $counts['Multi-day Activities'] = $multiday->fetchColumn();
-    }
 } else { // centre
     $centreName = admin_centre_name($pdo, $admin);
     $scopeLabel = 'Centre: ' . ($centreName ?? 'Unknown');
@@ -66,7 +61,7 @@ require __DIR__ . '/includes/layout_top.php';
 <div class="row">
   <?php foreach ($counts as $label => $count): ?>
     <div class="card" style="flex:1; min-width:140px; text-align:center;">
-      <div style="font-size:28px; font-weight:700; color:#673AB7;"><?= (int) $count ?></div>
+      <div style="font-size:28px; font-weight:700; color:var(--brand);"><?= (int) $count ?></div>
       <div style="font-size:13px; color:#666;"><?= e($label) ?></div>
     </div>
   <?php endforeach; ?>

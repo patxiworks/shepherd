@@ -55,6 +55,7 @@ function lookup_admin_page(array $cfg): void
     require_once __DIR__ . '/../../includes/functions.php';
     require_once __DIR__ . '/../../includes/auth.php';
     require_once __DIR__ . '/flash.php';
+    require_once __DIR__ . '/bulk.php';
     admin_require_role('super');
 
     $pdo = pastores_db();
@@ -66,21 +67,28 @@ function lookup_admin_page(array $cfg): void
     $hasZone = !empty($cfg['zone']);
     $hasMultiday = !empty($cfg['multiday']);
 
+    // Deleting an entry the source table still uses is refused (shared by Delete and bulk delete).
+    $deleteOne = function (int $id) use ($pdo, $table, $cfg): ?string {
+        $stmt = $pdo->prepare("SELECT name FROM $table WHERE id = ?");
+        $stmt->execute([$id]);
+        $name = $stmt->fetchColumn();
+        $inSource = $name === false ? 0 : lookup_source_uses($pdo, $cfg, $name);
+        if ($inSource) {
+            return ucfirst($cfg['singular']) . " \"$name\" is used by $inSource row" . ($inSource === 1 ? '' : 's') . ' in Source, so it can\'t be deleted. Change or remove those source rows first.';
+        }
+        $pdo->prepare("DELETE FROM $table WHERE id = ?")->execute([$id]);
+        return null;
+    };
+
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $action = $_POST['action'] ?? '';
         $id = $_POST['id'] ?? '';
 
-        if ($action === 'delete') {
-            $stmt = $pdo->prepare("SELECT name FROM $table WHERE id = ?");
-            $stmt->execute([(int) $id]);
-            $name = $stmt->fetchColumn();
-            $inSource = $name === false ? 0 : lookup_source_uses($pdo, $cfg, $name);
-            if ($inSource) {
-                flash('error', ucfirst($cfg['singular']) . " \"$name\" is used by $inSource row" . ($inSource === 1 ? '' : 's') . ' in Source, so it can\'t be deleted. Change or remove those source rows first.');
-            } else {
-                $pdo->prepare("DELETE FROM $table WHERE id = ?")->execute([(int) $id]);
-                flash('success', ucfirst($cfg['singular']) . ' deleted. Existing activities keep their current value.');
-            }
+        if ($action === 'bulk_delete') {
+            bulk_run($deleteOne, $cfg['singular'], $cfg['singular'] . 's');
+        } elseif ($action === 'delete') {
+            $err = $deleteOne((int) $id);
+            flash($err === null ? 'success' : 'error', $err ?? ucfirst($cfg['singular']) . ' deleted. Existing activities keep their current value.');
         } else {
             $name = trim($_POST['name'] ?? '');
             $zoneId = (int) ($_POST['zone_id'] ?? 0);
@@ -238,8 +246,8 @@ function lookup_admin_page(array $cfg): void
     <datalist id="extra_zone_list"></datalist>
     <small class="hint" style="min-height:0;">For a priest on a temporary transfer or who covers several zones: the zone above is their home zone, and they also appear in the priest lists of the zones added here. Start typing a zone name and pick it (or press Enter). Removing a zone whose source rows still use them is refused.</small>
     <style>
-      .zone-chip { display:inline-flex; align-items:center; gap:4px; background:#ede7f6; color:#4527a0; border-radius:12px; padding:2px 4px 2px 10px; font-size:13px; }
-      .zone-chip button { background:none; color:#4527a0; padding:0 6px; font-size:16px; line-height:1; }
+      .zone-chip { display:inline-flex; align-items:center; gap:4px; background:var(--tint-soft); color:var(--brand-dark); border-radius:12px; padding:2px 4px 2px 10px; font-size:13px; }
+      .zone-chip button { background:none; color:var(--brand-dark); padding:0 6px; font-size:16px; line-height:1; }
     </style>
     <script>
     (function () {
@@ -321,11 +329,11 @@ function lookup_admin_page(array $cfg): void
       <?php if ($hasMultiday): ?><td data-sort="<?= (int) $row['is_multiday'] ?>"><?= $row['is_multiday'] ? 'Yes' : '' ?></td><?php endif; ?>
       <td><?= (int) $row['in_use'] ?></td>
       <td class="actions">
-        <a href="<?= e($url) ?>?edit=<?= (int) $row['id'] ?>">Edit</a>
+        <?= icon_edit($url . '?edit=' . (int) $row['id']) ?>
         <form class="inline" method="post" onsubmit="return confirm('Delete this <?= e($cfg['singular']) ?> from the list? Existing records keep their current value.');">
           <input type="hidden" name="action" value="delete">
           <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
-          <a href="#" onclick="this.closest('form').requestSubmit(); return false;" style="color:#E91E63;">Delete</a>
+          <?= icon_delete() ?>
         </form>
       </td>
     </tr>

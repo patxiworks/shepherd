@@ -4,21 +4,27 @@ require __DIR__ . '/../../includes/db.php';
 require __DIR__ . '/../../includes/functions.php';
 require __DIR__ . '/../../includes/auth.php';
 require __DIR__ . '/../includes/flash.php';
+require __DIR__ . '/../includes/bulk.php';
 $admin = admin_require_role('super');
 
 $pdo = pastores_db();
 
+$deleteOne = function (int $id) use ($pdo, $admin): ?string {
+    if ($id === (int) $admin['id']) {
+        return 'You cannot delete your own account.';
+    }
+    $pdo->prepare('DELETE FROM admin_users WHERE id = ?')->execute([$id]);
+    return null;
+};
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    if ($action === 'delete') {
-        $id = (int) $_POST['id'];
-        if ($id === (int) $admin['id']) {
-            flash('error', 'You cannot delete your own account.');
-        } else {
-            $pdo->prepare('DELETE FROM admin_users WHERE id = ?')->execute([$id]);
-            flash('success', 'Admin account deleted.');
-        }
+    if ($action === 'bulk_delete') {
+        bulk_run($deleteOne, 'admin account', 'admin accounts');
+    } elseif ($action === 'delete') {
+        $err = $deleteOne((int) $_POST['id']);
+        flash($err === null ? 'success' : 'error', $err ?? 'Admin account deleted.');
     } else {
         $username = trim($_POST['username'] ?? '');
         $password = $_POST['password'] ?? '';
@@ -173,12 +179,12 @@ require __DIR__ . '/../includes/layout_top.php';
         <?php endif; ?>
       </td>
       <td class="actions">
-        <a href="/admin/admins/index.php?edit=<?= (int) $a['id'] ?>">Edit</a>
+        <?= icon_edit('/admin/admins/index.php?edit=' . (int) $a['id']) ?>
         <?php if ((int) $a['id'] !== (int) $admin['id']): ?>
           <form class="inline" method="post" onsubmit="return confirm('Delete this admin account?');">
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="<?= (int) $a['id'] ?>">
-            <a href="#" onclick="this.closest('form').requestSubmit(); return false;" style="color:#E91E63;">Delete</a>
+            <?= icon_delete() ?>
           </form>
         <?php endif; ?>
       </td>

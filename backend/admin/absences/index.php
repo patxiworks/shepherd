@@ -3,6 +3,7 @@ require __DIR__ . '/../../includes/db.php';
 require __DIR__ . '/../../includes/functions.php';
 require __DIR__ . '/../../includes/auth.php';
 require __DIR__ . '/../includes/flash.php';
+require __DIR__ . '/../includes/bulk.php';
 $admin = admin_require_role('super', 'zone');
 $isZoneScoped = $admin['role'] === 'zone';
 
@@ -28,17 +29,27 @@ function absence_datetime(?string $value): ?string
     return $d ? $d->format('Y-m-d H:i:s') : null;
 }
 
+$deleteOne = function (int $id) use ($pdo, $admin): ?string {
+    if (!absence_in_scope($pdo, $id, $admin)) {
+        return 'You do not have access to that entry.';
+    }
+    $pdo->prepare('DELETE FROM absences WHERE id = ?')->execute([$id]);
+    return null;
+};
+$bulkWhere = $isZoneScoped ? ['a.zone_id = ?', [(int) $admin['zone_id']]] : ['1 = 1', []];
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    if ($action === 'delete') {
-        $id = (int) $_POST['id'];
-        if (absence_in_scope($pdo, $id, $admin)) {
-            $pdo->prepare('DELETE FROM absences WHERE id = ?')->execute([$id]);
-            flash('success', 'Absence deleted.');
+    if ($action === 'bulk_delete') {
+        if (!empty($_POST['all_matching'])) {
+            bulk_delete_matching($pdo, 'absences', $bulkWhere[0], $bulkWhere[1], 'absence', 'absences');
         } else {
-            flash('error', 'You do not have access to that entry.');
+            bulk_run($deleteOne, 'absence', 'absences');
         }
+    } elseif ($action === 'delete') {
+        $err = $deleteOne((int) $_POST['id']);
+        flash($err === null ? 'success' : 'error', $err ?? 'Absence deleted.');
     } else {
         $id = $_POST['id'] ?? '';
         $zoneId = $isZoneScoped ? (int) $admin['zone_id'] : (int) ($_POST['zone_id'] ?? 0);
@@ -122,6 +133,10 @@ $activityOptions = lookup_names($pdo, 'activity_types');
 $toInput = fn(?string $dt) => $dt ? str_replace(' ', 'T', substr($dt, 0, 16)) : '';
 $show = fn(string $dt) => date('d/m/Y H:i', strtotime($dt));
 
+$bulkCount = $pdo->prepare("SELECT COUNT(*) FROM absences a WHERE {$bulkWhere[0]}");
+$bulkCount->execute($bulkWhere[1]);
+$bulkTotal = (int) $bulkCount->fetchColumn();
+
 $pageTitle = 'Absences — Pastores Admin';
 require __DIR__ . '/../includes/layout_top.php';
 ?>
@@ -173,7 +188,7 @@ require __DIR__ . '/../includes/layout_top.php';
   </form>
 </div>
 
-<table>
+<table data-bulk-total="<?= $bulkTotal ?>">
   <thead><tr><th>Zone</th><th>Priest</th><th>Start</th><th>End</th><th>Activity</th><th>Description</th><th></th></tr></thead>
   <tbody>
   <?php foreach ($absences as $a): ?>
@@ -185,11 +200,11 @@ require __DIR__ . '/../includes/layout_top.php';
       <td><?= e($a['activity']) ?></td>
       <td><?= e($a['description']) ?></td>
       <td class="actions">
-        <a href="/admin/absences/index.php?edit=<?= (int) $a['id'] ?>">Edit</a>
+        <?= icon_edit('/admin/absences/index.php?edit=' . (int) $a['id']) ?>
         <form class="inline" method="post" onsubmit="return confirm('Delete this absence?');">
           <input type="hidden" name="action" value="delete">
           <input type="hidden" name="id" value="<?= (int) $a['id'] ?>">
-          <a href="#" onclick="this.closest('form').requestSubmit(); return false;" style="color:#E91E63;">Delete</a>
+          <?= icon_delete() ?>
         </form>
       </td>
     </tr>

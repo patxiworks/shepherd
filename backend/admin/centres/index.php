@@ -3,23 +3,30 @@ require __DIR__ . '/../../includes/db.php';
 require __DIR__ . '/../../includes/functions.php';
 require __DIR__ . '/../../includes/auth.php';
 require __DIR__ . '/../includes/flash.php';
+require __DIR__ . '/../includes/bulk.php';
 admin_require_role('super');
 
 $pdo = pastores_db();
 
+// Source rows must only use centres that exist, so a centre they use can't go.
+$deleteOne = function (int $id) use ($pdo): ?string {
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM source s JOIN centres c ON c.zone_id = s.zone_id AND c.name = s.centre WHERE c.id = ?');
+    $stmt->execute([$id]);
+    if ($inSource = (int) $stmt->fetchColumn()) {
+        return "That centre is used by $inSource row" . ($inSource === 1 ? '' : 's') . ' in Source, so it can\'t be deleted. Change or remove those source rows first.';
+    }
+    $pdo->prepare('DELETE FROM centres WHERE id = ?')->execute([$id]);
+    return null;
+};
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    if ($action === 'delete') {
-        // Source rows must only use centres that exist, so a centre they use can't go.
-        $stmt = $pdo->prepare('SELECT COUNT(*) FROM source s JOIN centres c ON c.zone_id = s.zone_id AND c.name = s.centre WHERE c.id = ?');
-        $stmt->execute([(int) $_POST['id']]);
-        if ($inSource = (int) $stmt->fetchColumn()) {
-            flash('error', "That centre is used by $inSource row" . ($inSource === 1 ? '' : 's') . ' in Source, so it can\'t be deleted. Change or remove those source rows first.');
-        } else {
-            $pdo->prepare('DELETE FROM centres WHERE id = ?')->execute([(int) $_POST['id']]);
-            flash('success', 'Centre deleted.');
-        }
+    if ($action === 'bulk_delete') {
+        bulk_run($deleteOne, 'centre', 'centres');
+    } elseif ($action === 'delete') {
+        $err = $deleteOne((int) $_POST['id']);
+        flash($err === null ? 'success' : 'error', $err ?? 'Centre deleted.');
     } else {
         $name = trim($_POST['name'] ?? '');
         $zoneId = (int) ($_POST['zone_id'] ?? 0);
@@ -132,11 +139,11 @@ require __DIR__ . '/../includes/layout_top.php';
       <td><?= e($centre['zone_name']) ?></td>
       <td><?= e($centre['section']) ?></td>
       <td class="actions">
-        <a href="/admin/centres/index.php?edit=<?= (int) $centre['id'] ?>">Edit</a>
+        <?= icon_edit('/admin/centres/index.php?edit=' . (int) $centre['id']) ?>
         <form class="inline" method="post" onsubmit="return confirm('Delete this centre?');">
           <input type="hidden" name="action" value="delete">
           <input type="hidden" name="id" value="<?= (int) $centre['id'] ?>">
-          <a href="#" onclick="this.closest('form').requestSubmit(); return false;" style="color:#E91E63;">Delete</a>
+          <?= icon_delete() ?>
         </form>
       </td>
     </tr>

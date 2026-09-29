@@ -11,6 +11,7 @@ require __DIR__ . '/../../includes/activity_bilocation.php';
 require __DIR__ . '/../../includes/activity_mass_limit.php';
 require __DIR__ . '/../../includes/activity_no_priest.php';
 require __DIR__ . '/../includes/flash.php';
+require __DIR__ . '/../includes/bulk.php';
 $admin = admin_require_role('super', 'zone', 'centre');
 
 $pdo = pastores_db();
@@ -204,13 +205,13 @@ function activity_row_html(array $a, string $qs = ''): string
   <?= $cell('duration', 'time', $a['duration'] ? substr($a['duration'], 0, 5) : '', $t($a['duration'])) ?>
   <?= $cell('description', 'text', $a['description'], e($a['description']), ' class="desc" title="' . e($a['description']) . '"') ?>
   <td class="actions">
-    <a href="/admin/activities/index.php?edit=<?= $id ?>&zone=<?= $zone ?><?= $qs !== '' ? '&' . e($qs) : '' ?>">Edit</a>
+    <?= icon_edit('/admin/activities/index.php?edit=' . $id . '&zone=' . $zone . ($qs !== '' ? '&' . $qs : '')) ?>
     <form class="inline" method="post" onsubmit="return confirm('Delete this activity?');">
       <input type="hidden" name="action" value="delete">
       <input type="hidden" name="id" value="<?= $id ?>">
       <input type="hidden" name="zone_id" value="<?= $zone ?>">
       <input type="hidden" name="qs" value="<?= e($qs) ?>">
-      <a href="#" onclick="this.closest('form').requestSubmit(); return false;" style="color:#E91E63;">Delete</a>
+      <?= icon_delete() ?>
     </form>
   </td>
 </tr>
@@ -316,6 +317,31 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             }
         } catch (InvalidArgumentException $ex) {
             flash('error', $ex->getMessage());
+        }
+    } elseif ($action === 'bulk_delete') {
+        if (!empty($_POST['all_matching'])) {
+            // Every activity matching the filters in `qs` in the posted zone (a zone/centre admin's own zone).
+            $bulkZone = $admin['role'] === 'super' ? (int) ($_POST['zone'] ?? 0) : (int) $admin['zone_id'];
+            $bulkFilters = activity_filters_from_qs($_POST['qs'] ?? '');
+            if (!absences_available($pdo)) {
+                unset($bulkFilters['absent']);
+            }
+            [$whereSql, $whereArgs] = activity_where($admin, $scopeCentreName, $bulkZone, $bulkFilters);
+            bulk_delete_matching($pdo, 'activities', $whereSql, $whereArgs, 'activity', 'activities', fn() => touch_zone($pdo, $bulkZone));
+        } else {
+            bulk_run(function (int $id) use ($pdo, $admin, $scopeCentreName): ?string {
+                if (!activity_in_scope($pdo, $id, $admin, $scopeCentreName)) {
+                    return 'You do not have access to that activity.';
+                }
+                $stmt = $pdo->prepare('SELECT zone_id FROM activities WHERE id = ?');
+                $stmt->execute([$id]);
+                $zoneId = $stmt->fetchColumn();
+                $pdo->prepare('DELETE FROM activities WHERE id = ?')->execute([$id]);
+                if ($zoneId) {
+                    touch_zone($pdo, (int) $zoneId);
+                }
+                return null;
+            }, 'activity', 'activities');
         }
     } elseif ($action === 'delete') {
         $id = (int) $_POST['id'];
@@ -459,11 +485,15 @@ if (!absences_available($pdo)) {
 }
 $filterQs = http_build_query($filters);
 $activities = [];
+$totalMatching = 0;
 if ($filterZone) {
     [$whereSql, $whereArgs] = activity_where($admin, $scopeCentreName, (int) $filterZone, $filters);
     $stmt = $pdo->prepare("SELECT a.*" . activity_flags_select($pdo) . " FROM activities a WHERE $whereSql ORDER BY a.activity_date DESC, a.from_time DESC LIMIT 300");
     $stmt->execute($whereArgs);
     $activities = $stmt->fetchAll();
+    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM activities a WHERE $whereSql");
+    $countStmt->execute($whereArgs);
+    $totalMatching = (int) $countStmt->fetchColumn();
 }
 
 // Legend (above the table): how many activities currently match each rule —
@@ -581,7 +611,103 @@ $pageTitle = 'Activities — Pastores Admin';
 $pageWide = true; // the table has many columns
 require __DIR__ . '/../includes/layout_top.php';
 ?>
+<?php /* page styles first, so the (long) table is styled from the first paint */ ?>
+<style>
+  main table td { vertical-align: middle; }
+  tbody tr[data-id] { cursor: pointer; }
+  td[data-type=date], td[data-type=time], td[data-derived] { white-space: nowrap; }
+  td.desc { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  tr.duplicate td { background: #eaf1fb; }
+  tr.duplicate:not(.editing):hover td { background: #dce8f8; }
+  tr.mass-limit td { background: #f1e9fb; }
+  tr.mass-limit:not(.editing):hover td { background: #e6d9f7; }
+  tr.bilocation td { background: #fff3cd; }
+  tr.bilocation:not(.editing):hover td { background: #ffeaa7; }
+  tr.absent td { background: #fdecea; }
+  tr.absent:not(.editing):hover td { background: #fbdcd8; }
+  tr.no-priest td { background: #eceff1; }
+  tr.no-priest:not(.editing):hover td { background: #dde3e6; }
+  /* No padding: the .cell-input below fills the cell edge-to-edge (its own
+     padding/border give it breathing room) instead of leaving a gap around
+     it, so an editing row's wider fields (selects, longer inputs) don't
+     also need the cell — and so the table — any wider than they already do. */
+  /* border-collapse resolves a same-width/same-style border conflict (this
+     row's border-top vs. the row above's border-bottom, both 1px solid)
+     unreliably — not necessarily in favour of the one declared here — so
+     these are 2px: strictly wider always wins, unambiguously. */
+  tr.editing td { background: #fffbe6; padding: 0; cursor: default; border-top: 2px solid #000; border-bottom: 2px solid #000; }
+  tr.editing td.desc { max-width: none; overflow: visible; }
+  tr.editing .cell-input { width: 100%; min-width: 96px; height: 40px; padding: 4px 6px; font-size: 12px; border: none; }
+  tr.editing td[data-type=time] .cell-input { min-width: 84px; }
+  tr.editing td.actions { white-space: nowrap; padding: 0 8px; }
+  tr.editing td.actions button { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; vertical-align: middle; }
+  tr.editing td.actions button svg { width: 14px; height: 14px; }
+  tr.editing .row-error { display: block; color: #c62828; font-size: 12px; margin-top: 4px; white-space: normal; }
+  tr.saved td { background: #e8f5e9; }
+  .table-hint { font-size: 12px; color: #666; margin: 0 0 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+  .legend-box { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; text-decoration: none; border: 1px solid transparent; }
+  .legend-box strong { font-weight: 700; }
+  a.legend-box:hover { filter: brightness(0.95); }
+  a.legend-box.active { outline: 2px solid currentColor; outline-offset: 1px; }
+  .legend-box.zero { opacity: .5; cursor: default; }
+  .legend-no-priest { background: #eceff1; color: #37474f; border-color: #b0bec5; }
+  .legend-absent { background: #fdecea; color: #c62828; border-color: #ef9a9a; }
+  .legend-bilocation { background: #fff3cd; color: #8a6100; border-color: #e0c060; }
+  .legend-mass-limit { background: #f1e9fb; color: #5b2fa0; border-color: #c3a8ec; }
+  .legend-duplicate { background: #eaf1fb; color: #1a56a8; border-color: #9dbbe6; }
+  .absent-badge { display: inline-block; background: #fff; color: #c62828; border: 1px solid #ef9a9a; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
+  .no-priest-badge { display: inline-block; background: #fff; color: #37474f; border: 1px solid #b0bec5; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
+  tr.saved-warn td { background: #f8c9c4; }
+  tr.saved-dup td { background: #cfe0f7; }
+  tr.saved-bilocation td { background: #ffe08a; }
+  tr.saved-masses td { background: #dccbf5; }
+  tr.saved-no-priest td { background: #cfd8dc; }
+  .mass-badge { display: inline-block; background: #fff; color: #5b2fa0; border: 1px solid #c3a8ec; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
+  .bilocation-badge { display: inline-block; background: #fff; color: #8a6100; border: 1px solid #e0c060; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
+  .dup-badge { display: inline-block; background: #fff; color: #1a56a8; border: 1px solid #9dbbe6; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
+  /* Zone admin, small screens only: a fixed icon (always at the same
+     viewport corner, so it never scrolls away) hides everything above the
+     table — including the shared top menu bar — so the table can use the
+     full screen height instead of what's left under all of that. Its
+     chevron points up ("collapse everything upward") normally and flips to
+     point down ("bring it back") once toggled — #act-*.js below just toggles
+     body.act-focus; toggling back restores everything exactly as it was
+     (nothing here is ever removed, just hidden). */
+  .act-focus-toggle { display: none; }
+  @media (max-width: 899px) {
+    /* top: below the (2-row, ~83px at this width) header normally, so it
+       doesn't sit over "Logout"; once the header's hidden (act-focus) there's
+       nothing to clear, so it moves up to the very top of the screen. */
+    .act-focus-toggle { display: flex; align-items: center; justify-content: center; position: fixed; top: 93px; right: 10px; z-index: 50; width: 36px; height: 36px; background: #673AB7; color: #fff; border: none; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,.3); cursor: pointer; transition: top .15s; }
+    .act-focus-toggle svg { width: 18px; height: 18px; transition: transform .15s; }
+    body.act-focus .act-focus-toggle { top: 10px; }
+    body.act-focus .act-focus-toggle svg { transform: rotate(180deg); }
+    body.act-focus header.topbar,
+    body.act-focus main > .flash,
+    body.act-focus #act-above-table { display: none; }
+    body.act-focus main { margin: 0; padding: 0; max-width: none; }
+    body.act-focus .table-wrap { max-height: 100vh; height: 100vh; border: none; border-radius: 0; box-shadow: none; }
+  }
+</style>
+<?php if ($admin['role'] === 'zone'): ?>
+<!-- Small screens only (act-focus-toggle is hidden by CSS otherwise): hides
+     everything above the table — including the top menu bar — so the table
+     can use the full screen height. See #act-focus-toggle.js below and
+     .act-focus-toggle/body.act-focus in the <style> further down. A single
+     up-chevron that layout_top.php-style CSS rotates 180deg (down) once
+     body.act-focus is set — no icon-swapping JS needed. -->
+<button type="button" id="act-focus-toggle" class="act-focus-toggle" aria-pressed="false" aria-label="Hide filters and menu, show just the table" title="Hide filters and menu">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 15l-6-6-6 6"/></svg>
+</button>
+<?php endif; ?>
+<div id="act-above-table">
 <h1>Activities</h1>
+<nav class="tabs">
+  <a class="active" href="/admin/activities/index.php">List</a>
+  <a href="/admin/activities/calendar.php<?= $filterZone ? '?zone=' . (int) $filterZone : '' ?>">Calendar</a>
+  <a href="/admin/activities/dashboard.php<?= $filterZone ? '?zone=' . (int) $filterZone : '' ?>">Dashboard</a>
+</nav>
 
 <div class="card" data-modal data-add-label="Add from source">
   <h2>Add from source</h2>
@@ -746,8 +872,9 @@ require __DIR__ . '/../includes/layout_top.php';
 </div>
 <?php endif; ?>
 <p class="table-hint">Click a row to edit it in place &middot; click a column heading to sort &middot; showing the latest <?= count($activities) ?> activit<?= count($activities) === 1 ? 'y' : 'ies' ?><?= count($activities) >= 300 ? ' (limit 300)' : '' ?>.</p>
+</div>
 <div class="table-wrap">
-<table>
+<table data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs, 'zone' => (int) $filterZone])) ?>">
   <thead><tr>
     <th>Date</th><th>Day</th><th>Wk</th><th>Centre</th><th>Section</th><th>Activity</th>
     <th>Labor</th><th>Priest</th><th>From</th><th>To</th><th>Duration</th><th>Description</th><th></th>
@@ -763,53 +890,6 @@ require __DIR__ . '/../includes/layout_top.php';
   </tbody>
 </table>
 </div>
-<style>
-  main table td { vertical-align: middle; }
-  tbody tr[data-id] { cursor: pointer; }
-  td[data-type=date], td[data-type=time], td[data-derived] { white-space: nowrap; }
-  td.desc { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  tr.duplicate td { background: #eaf1fb; }
-  tr.duplicate:not(.editing):hover td { background: #dce8f8; }
-  tr.mass-limit td { background: #f1e9fb; }
-  tr.mass-limit:not(.editing):hover td { background: #e6d9f7; }
-  tr.bilocation td { background: #fff3cd; }
-  tr.bilocation:not(.editing):hover td { background: #ffeaa7; }
-  tr.absent td { background: #fdecea; }
-  tr.absent:not(.editing):hover td { background: #fbdcd8; }
-  tr.no-priest td { background: #eceff1; }
-  tr.no-priest:not(.editing):hover td { background: #dde3e6; }
-  tr.editing td { background: #fffbe6; padding: 4px 6px; cursor: default; }
-  tr.editing td.desc { max-width: none; overflow: visible; }
-  tr.editing .cell-input { width: 100%; min-width: 96px; padding: 4px 6px; font-size: 12px; }
-  tr.editing td[data-type=time] .cell-input { min-width: 84px; }
-  tr.editing td.actions { white-space: nowrap; }
-  tr.editing td.actions button { padding: 4px 10px; font-size: 12px; }
-  tr.editing .row-error { display: block; color: #c62828; font-size: 12px; margin-top: 4px; white-space: normal; }
-  tr.saved td { background: #e8f5e9; }
-  .table-wrap { overflow-x: auto; }
-  .table-hint { font-size: 12px; color: #666; margin: 0 0 8px; }
-  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
-  .legend-box { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; text-decoration: none; border: 1px solid transparent; }
-  .legend-box strong { font-weight: 700; }
-  a.legend-box:hover { filter: brightness(0.95); }
-  a.legend-box.active { outline: 2px solid currentColor; outline-offset: 1px; }
-  .legend-box.zero { opacity: .5; cursor: default; }
-  .legend-no-priest { background: #eceff1; color: #37474f; border-color: #b0bec5; }
-  .legend-absent { background: #fdecea; color: #c62828; border-color: #ef9a9a; }
-  .legend-bilocation { background: #fff3cd; color: #8a6100; border-color: #e0c060; }
-  .legend-mass-limit { background: #f1e9fb; color: #5b2fa0; border-color: #c3a8ec; }
-  .legend-duplicate { background: #eaf1fb; color: #1a56a8; border-color: #9dbbe6; }
-  .absent-badge { display: inline-block; background: #fff; color: #c62828; border: 1px solid #ef9a9a; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
-  .no-priest-badge { display: inline-block; background: #fff; color: #37474f; border: 1px solid #b0bec5; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
-  tr.saved-warn td { background: #f8c9c4; }
-  tr.saved-dup td { background: #cfe0f7; }
-  tr.saved-bilocation td { background: #ffe08a; }
-  tr.saved-masses td { background: #dccbf5; }
-  tr.saved-no-priest td { background: #cfd8dc; }
-  .mass-badge { display: inline-block; background: #fff; color: #5b2fa0; border: 1px solid #c3a8ec; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
-  .bilocation-badge { display: inline-block; background: #fff; color: #8a6100; border: 1px solid #e0c060; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
-  .dup-badge { display: inline-block; background: #fff; color: #1a56a8; border: 1px solid #9dbbe6; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
-</style>
 <script>
 (function () {
   var weekStart = <?= json_encode($weekStart) ?>;          // 'sunday' | 'monday'
@@ -929,7 +1009,8 @@ require __DIR__ . '/../includes/layout_top.php';
     tr.classList.add('editing');
     Array.prototype.forEach.call(tr.querySelectorAll('td[data-field]'), function (td) { makeEditor(td, zone); });
     tr.querySelector('td.actions').innerHTML =
-      '<button type="button" class="save">Save</button> <button type="button" class="secondary cancel">Cancel</button>' +
+      '<button type="button" class="save" aria-label="Save" title="Save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button> ' +
+      '<button type="button" class="secondary cancel" aria-label="Cancel" title="Cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg></button>' +
       '<span class="row-error"></span>';
     editing = { tr: tr, orig: orig };
     dirty = false;
@@ -998,6 +1079,23 @@ require __DIR__ . '/../includes/layout_top.php';
     if (!editing) return;
     if (ev.key === 'Enter' && ev.target.matches('input, select')) { ev.preventDefault(); saveEdit(); }
     if (ev.key === 'Escape') { ev.preventDefault(); cancelEdit(); }
+  });
+})();
+</script>
+<script>
+// Zone admin, small screens only (button is absent otherwise — see the
+// <style> above): toggles body.act-focus, which hides the top menu bar and
+// everything above the table (#act-above-table) so the table fills the
+// screen. The chevron itself flips via CSS (body.act-focus .act-focus-toggle
+// svg { transform: rotate(180deg) }), so there's no icon markup to swap here.
+(function () {
+  var toggle = document.getElementById('act-focus-toggle');
+  if (!toggle) return;
+  toggle.addEventListener('click', function () {
+    var on = document.body.classList.toggle('act-focus');
+    toggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+    toggle.setAttribute('aria-label', on ? 'Show filters and menu' : 'Hide filters and menu, show just the table');
+    toggle.title = on ? 'Show filters and menu' : 'Hide filters and menu';
   });
 })();
 </script>

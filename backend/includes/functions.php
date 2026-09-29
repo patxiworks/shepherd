@@ -64,6 +64,27 @@ function e(?string $value): string
     return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
 }
 
+// Inline SVG icons for the Edit/Delete links in every admin table (icon_btn()
+// wraps them in the <a class="icon-btn"> markup styled in layout_top.php).
+// Static markup, safe to echo unescaped.
+function icon_btn(string $href, string $label, string $svg, string $extraAttrs = '', string $class = ''): string
+{
+    $class = trim('icon-btn ' . $class);
+    return '<a href="' . e($href) . '" class="' . e($class) . '" title="' . e($label) . '" aria-label="' . e($label) . '"' . $extraAttrs . '>' . $svg . '</a>';
+}
+
+function icon_edit(string $href, string $extraAttrs = ''): string
+{
+    $svg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
+    return icon_btn($href, 'Edit', $svg, $extraAttrs);
+}
+
+function icon_delete(string $onclick = "this.closest('form').requestSubmit(); return false;"): string
+{
+    $svg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+    return icon_btn('#', 'Delete', $svg, ' onclick="' . e($onclick) . '"', 'delete');
+}
+
 // Days of the week, keyed by the 3-letter abbreviation stored in
 // activities.day (matching the existing data) => full name.
 const PASTORES_DAYS = [

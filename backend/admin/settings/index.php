@@ -3,6 +3,7 @@ require __DIR__ . '/../../includes/db.php';
 require __DIR__ . '/../../includes/functions.php';
 require __DIR__ . '/../../includes/auth.php';
 require __DIR__ . '/../../includes/liturgical_calendar.php';
+require __DIR__ . '/../../includes/theme.php';
 require __DIR__ . '/../../includes/activity_mass_limit.php';
 require __DIR__ . '/../includes/flash.php';
 admin_require_role('super');
@@ -11,6 +12,18 @@ $pdo = pastores_db();
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $action = $_POST['action'] ?? 'save_week_start';
+
+    if ($action === 'save_theme') {
+        $mode = $_POST['theme_mode'] ?? '';
+        if (!isset(PASTORES_THEME_MODES[$mode])) {
+            flash('error', 'Invalid theme.');
+        } else {
+            set_setting($pdo, 'theme_mode', $mode);
+            flash('success', 'Theme saved.');
+        }
+        header('Location: /admin/settings/index.php');
+        exit;
+    }
 
     if ($action === 'save_max_masses') {
         [$min, $max] = PASTORES_MAX_MASSES_SETTING_RANGE;
@@ -72,6 +85,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
 $weekStart = get_week_start($pdo);
 $maxMasses = mass_limit($pdo);
+$themeMode = theme_mode($pdo);
+$themeToday = theme_today_color($pdo);
 $calendarOptions = liturgical_calendar_options($pdo);
 [$windowFrom, $windowTo] = liturgical_calendar_window();
 $calendarStatus = null;
@@ -115,6 +130,27 @@ require __DIR__ . '/../includes/layout_top.php';
     </small>
     <div class="btn-row">
       <button type="submit">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Theme</h2>
+  <form method="post">
+    <input type="hidden" name="action" value="save_theme">
+    <?php foreach (PASTORES_THEME_MODES as $value => $label): ?>
+      <label style="display:flex; gap:8px; align-items:center; font-weight:400;">
+        <input type="radio" name="theme_mode" value="<?= e($value) ?>" style="width:auto;" <?= $themeMode === $value ? 'checked' : '' ?>>
+        <?= e($label) ?>
+      </label>
+    <?php endforeach; ?>
+    <small class="hint" style="min-height:0;">
+      "Liturgical season" colours the panel after today's colour in the liturgical calendar: green, red, purple, rose, or gold
+      in place of white. <?php if ($themeToday !== null): ?>Today is <strong><?= e(PASTORES_THEME_COLORS[$themeToday][0]) ?></strong>.<?php else: ?>
+      The calendar has no entry for today (generate it below), so the default sky blue is used meanwhile.<?php endif; ?>
+    </small>
+    <div class="btn-row">
+      <button type="submit">Save theme</button>
     </div>
   </form>
 </div>

@@ -5,6 +5,7 @@ require __DIR__ . '/../../includes/auth.php';
 require __DIR__ . '/../../includes/activity_io.php';
 require __DIR__ . '/../../includes/source_io.php';
 require __DIR__ . '/../includes/flash.php';
+require __DIR__ . '/../includes/bulk.php';
 // The Source table mirrors Activities but is for super admins only, so there
 // is no zone/centre scoping here. Its `day` column is the numeric day of the
 // week (1 = first day of the week per Admin > Settings; Sunday start: Mon = 2,
@@ -156,12 +157,12 @@ function source_row_html(array $a, string $qs = '', array $weekdayNames = []): s
   <?= $cell('duration', 'time', $a['duration'] ? substr($a['duration'], 0, 5) : '', $t($a['duration'])) ?>
   <?= $cell('description', 'text', $a['description'], e($a['description']), ' class="desc" title="' . e($a['description']) . '"') ?>
   <td class="actions">
-    <a href="/admin/source/index.php?edit=<?= $id ?><?= $qs !== '' ? '&' . e($qs) : '' ?>">Edit</a>
+    <?= icon_edit('/admin/source/index.php?edit=' . $id . ($qs !== '' ? '&' . $qs : '')) ?>
     <form class="inline" method="post" onsubmit="return confirm('Delete this source row?');">
       <input type="hidden" name="action" value="delete">
       <input type="hidden" name="id" value="<?= $id ?>">
       <input type="hidden" name="qs" value="<?= e($qs) ?>">
-      <a href="#" onclick="this.closest('form').requestSubmit(); return false;" style="color:#E91E63;">Delete</a>
+      <?= icon_delete() ?>
     </form>
   </td>
 </tr>
@@ -213,6 +214,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $_SESSION['import_report'] = import_source($pdo, $rows, (int) ($_POST['zone_id'] ?? 0));
         } catch (ImportException $ex) {
             flash('error', 'Import failed: ' . $ex->getMessage());
+        }
+    } elseif ($action === 'bulk_delete') {
+        if (!empty($_POST['all_matching'])) {
+            [$whereSql, $whereArgs] = source_where(source_filters_from_qs($_POST['qs'] ?? '', $weekdayNames, $zoneIds));
+            bulk_delete_matching($pdo, 'source', $whereSql, $whereArgs, 'source row', 'source rows');
+        } else {
+            bulk_run(function (int $id) use ($pdo): ?string {
+                if (!source_exists($pdo, $id)) {
+                    return 'That source row no longer exists.';
+                }
+                $pdo->prepare('DELETE FROM source WHERE id = ?')->execute([$id]);
+                return null;
+            }, 'source row', 'source rows');
         }
     } elseif ($action === 'delete') {
         $id = (int) $_POST['id'];
@@ -300,6 +314,9 @@ $sectionHint = $currentCentre ? 'Section: ' . ($currentSection ?: '—') : '';
 // bring the page down.
 const SOURCE_ROW_LIMIT = 5000;
 [$whereSql, $whereArgs] = source_where($filters);
+$countStmt = $pdo->prepare("SELECT COUNT(*) FROM source a WHERE $whereSql");
+$countStmt->execute($whereArgs);
+$totalMatching = (int) $countStmt->fetchColumn();
 $stmt = $pdo->prepare(
     "SELECT a.*, z.name AS zone_name FROM source a JOIN zones z ON z.id = a.zone_id WHERE $whereSql
      ORDER BY z.name, a.week, a.day, a.from_time, a.id LIMIT " . SOURCE_ROW_LIMIT
@@ -539,7 +556,7 @@ require __DIR__ . '/../includes/layout_top.php';
 <?php endif; ?>
 <p class="table-hint">Click a row to edit it in place &middot; click a column heading to sort &middot; showing <?= count($activities) ?> source row<?= count($activities) === 1 ? '' : 's' ?><?= count($activities) >= SOURCE_ROW_LIMIT ? ' (limit ' . SOURCE_ROW_LIMIT . ' &mdash; filter to see the rest)' : '' ?>.</p>
 <div class="table-wrap">
-<table>
+<table data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs])) ?>">
   <thead><tr>
     <th>Zone</th><th>Day</th><th>Wk</th><th>Centre</th><th>Section</th><th>Activity</th>
     <th>Labor</th><th>Priest</th><th>From</th><th>To</th><th>Duration</th><th>Description</th><th></th>
@@ -560,16 +577,24 @@ require __DIR__ . '/../includes/layout_top.php';
   tbody tr[data-id] { cursor: pointer; }
   td[data-type=time], td[data-type=day], td[data-type=week], td[data-derived] { white-space: nowrap; }
   td.desc { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  tr.editing td { background: #fffbe6; padding: 4px 6px; cursor: default; }
+  /* No padding: the .cell-input below fills the cell edge-to-edge (its own
+     padding/border give it breathing room) instead of leaving a gap around
+     it, so an editing row's wider fields (selects, longer inputs) don't
+     also need the cell — and so the table — any wider than they already do. */
+  /* border-collapse resolves a same-width/same-style border conflict (this
+     row's border-top vs. the row above's border-bottom, both 1px solid)
+     unreliably — not necessarily in favour of the one declared here — so
+     these are 2px: strictly wider always wins, unambiguously. */
+  tr.editing td { background: #fffbe6; padding: 0; cursor: default; border-top: 2px solid #000; border-bottom: 2px solid #000; }
   tr.editing td.desc { max-width: none; overflow: visible; }
-  tr.editing .cell-input { width: 100%; min-width: 96px; padding: 4px 6px; font-size: 12px; }
+  tr.editing .cell-input { width: 100%; min-width: 96px; height: 40px; padding: 4px 6px; font-size: 12px; border: none; }
   tr.editing td[data-type=time] .cell-input { min-width: 84px; }
   tr.editing td[data-type=day] .cell-input, tr.editing td[data-type=week] .cell-input { min-width: 72px; }
-  tr.editing td.actions { white-space: nowrap; }
-  tr.editing td.actions button { padding: 4px 10px; font-size: 12px; }
+  tr.editing td.actions { white-space: nowrap; padding: 0 8px; }
+  tr.editing td.actions button { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; vertical-align: middle; }
+  tr.editing td.actions button svg { width: 14px; height: 14px; }
   tr.editing .row-error { display: block; color: #c62828; font-size: 12px; margin-top: 4px; white-space: normal; }
   tr.saved td { background: #e8f5e9; }
-  .table-wrap { overflow-x: auto; }
   .table-hint { font-size: 12px; color: #666; margin: 0 0 8px; }
 </style>
 <script>
@@ -673,7 +698,8 @@ require __DIR__ . '/../includes/layout_top.php';
     tr.classList.add('editing');
     Array.prototype.forEach.call(tr.querySelectorAll('td[data-field]'), function (td) { makeEditor(td, zone); });
     tr.querySelector('td.actions').innerHTML =
-      '<button type="button" class="save">Save</button> <button type="button" class="secondary cancel">Cancel</button>' +
+      '<button type="button" class="save" aria-label="Save" title="Save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button> ' +
+      '<button type="button" class="secondary cancel" aria-label="Cancel" title="Cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg></button>' +
       '<span class="row-error"></span>';
     editing = { tr: tr, orig: orig };
     dirty = false;

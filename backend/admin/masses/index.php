@@ -3,6 +3,7 @@ require __DIR__ . '/../../includes/db.php';
 require __DIR__ . '/../../includes/functions.php';
 require __DIR__ . '/../../includes/auth.php';
 require __DIR__ . '/../includes/flash.php';
+require __DIR__ . '/../includes/bulk.php';
 $admin = admin_require_role('super', 'zone');
 $isZoneScoped = $admin['role'] === 'zone';
 
@@ -20,23 +21,42 @@ function mass_in_scope(PDO $pdo, int $massId, array $admin): bool
     return (int) $stmt->fetchColumn() === (int) $admin['zone_id'];
 }
 
+$deleteOne = function (int $id) use ($pdo, $admin): ?string {
+    if (!mass_in_scope($pdo, $id, $admin)) {
+        return 'You do not have access to that entry.';
+    }
+    $stmt = $pdo->prepare('SELECT zone_id FROM masses WHERE id = ?');
+    $stmt->execute([$id]);
+    $zoneId = $stmt->fetchColumn();
+    $pdo->prepare('DELETE FROM masses WHERE id = ?')->execute([$id]);
+    if ($zoneId) {
+        touch_zone($pdo, (int) $zoneId);
+    }
+    return null;
+};
+// What "select all" covers: everything for a super admin, only their own zone's entries (never the global ones) for a zone admin.
+$bulkWhere = $isZoneScoped ? ['a.zone_id = ?', [(int) $admin['zone_id']]] : ['1 = 1', []];
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    if ($action === 'delete') {
-        $id = (int) $_POST['id'];
-        if (mass_in_scope($pdo, $id, $admin)) {
-            $stmt = $pdo->prepare('SELECT zone_id FROM masses WHERE id = ?');
-            $stmt->execute([$id]);
-            $zoneId = $stmt->fetchColumn();
-            $pdo->prepare('DELETE FROM masses WHERE id = ?')->execute([$id]);
-            if ($zoneId) {
-                touch_zone($pdo, (int) $zoneId);
-            }
-            flash('success', 'Mass entry deleted.');
+    if ($action === 'bulk_delete') {
+        if (!empty($_POST['all_matching'])) {
+            bulk_delete_matching($pdo, 'masses', $bulkWhere[0], $bulkWhere[1], 'mass entry', 'mass entries', function () use ($pdo, $isZoneScoped, $admin) {
+                if ($isZoneScoped) {
+                    touch_zone($pdo, (int) $admin['zone_id']);
+                } else {
+                    foreach ($pdo->query('SELECT id FROM zones')->fetchAll(PDO::FETCH_COLUMN) as $z) {
+                        touch_zone($pdo, (int) $z);
+                    }
+                }
+            });
         } else {
-            flash('error', 'You do not have access to that entry.');
+            bulk_run($deleteOne, 'mass entry', 'mass entries');
         }
+    } elseif ($action === 'delete') {
+        $err = $deleteOne((int) $_POST['id']);
+        flash($err === null ? 'success' : 'error', $err ?? 'Mass entry deleted.');
     } else {
         $zoneId = $isZoneScoped ? (int) $admin['zone_id'] : ($_POST['zone_id'] !== '' ? (int) $_POST['zone_id'] : null);
         $massDate = $_POST['mass_date'] ?? '';
@@ -92,6 +112,10 @@ if ($isZoneScoped) {
     )->fetchAll();
 }
 
+$bulkCount = $pdo->prepare("SELECT COUNT(*) FROM masses a WHERE {$bulkWhere[0]}");
+$bulkCount->execute($bulkWhere[1]);
+$bulkTotal = (int) $bulkCount->fetchColumn();
+
 $pageTitle = 'Masses — Pastores Admin';
 require __DIR__ . '/../includes/layout_top.php';
 ?>
@@ -138,7 +162,7 @@ require __DIR__ . '/../includes/layout_top.php';
   </form>
 </div>
 
-<table>
+<table data-bulk-total="<?= $bulkTotal ?>">
   <thead><tr><th>Date</th><th>Zone</th><th>Class</th><th>Mass</th><th></th></tr></thead>
   <tbody>
   <?php foreach ($masses as $m): ?>
@@ -149,11 +173,11 @@ require __DIR__ . '/../includes/layout_top.php';
       <td><?= e($m['mass']) ?></td>
       <td class="actions">
         <?php if (!$isZoneScoped || $m['zone_id'] !== null): ?>
-          <a href="/admin/masses/index.php?edit=<?= (int) $m['id'] ?>">Edit</a>
+          <?= icon_edit('/admin/masses/index.php?edit=' . (int) $m['id']) ?>
           <form class="inline" method="post" onsubmit="return confirm('Delete this entry?');">
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="<?= (int) $m['id'] ?>">
-            <a href="#" onclick="this.closest('form').requestSubmit(); return false;" style="color:#E91E63;">Delete</a>
+            <?= icon_delete() ?>
           </form>
         <?php else: ?>
           <span style="color:#aaa; font-size:12px;">Global — read only</span>

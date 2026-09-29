@@ -3,6 +3,7 @@ require __DIR__ . '/../../includes/db.php';
 require __DIR__ . '/../../includes/functions.php';
 require __DIR__ . '/../../includes/auth.php';
 require __DIR__ . '/../includes/flash.php';
+require __DIR__ . '/../includes/bulk.php';
 $admin = admin_require_role('super', 'zone', 'centre');
 
 $pdo = pastores_db();
@@ -27,17 +28,22 @@ function user_in_scope(PDO $pdo, int $userId, array $admin, ?string $scopeCentre
     return true;
 }
 
+$deleteOne = function (int $id) use ($pdo, $admin, $scopeCentreName): ?string {
+    if (!user_in_scope($pdo, $id, $admin, $scopeCentreName)) {
+        return 'You do not have access to that user.';
+    }
+    $pdo->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
+    return null;
+};
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    if ($action === 'delete') {
-        $id = (int) $_POST['id'];
-        if (user_in_scope($pdo, $id, $admin, $scopeCentreName)) {
-            $pdo->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
-            flash('success', 'User deleted.');
-        } else {
-            flash('error', 'You do not have access to that user.');
-        }
+    if ($action === 'bulk_delete') {
+        bulk_run($deleteOne, 'user', 'users');
+    } elseif ($action === 'delete') {
+        $err = $deleteOne((int) $_POST['id']);
+        flash($err === null ? 'success' : 'error', $err ?? 'User deleted.');
     } else {
         $zoneId = $admin['role'] === 'super' ? (int) ($_POST['zone_id'] ?? 0) : (int) $admin['zone_id'];
         $name = trim($_POST['name'] ?? '');
@@ -181,11 +187,11 @@ require __DIR__ . '/../includes/layout_top.php';
       <td><?= e($user['section']) ?></td>
       <td><?= e($user['role']) ?></td>
       <td class="actions">
-        <a href="/admin/users/index.php?edit=<?= (int) $user['id'] ?>">Edit</a>
+        <?= icon_edit('/admin/users/index.php?edit=' . (int) $user['id']) ?>
         <form class="inline" method="post" onsubmit="return confirm('Delete this user?');">
           <input type="hidden" name="action" value="delete">
           <input type="hidden" name="id" value="<?= (int) $user['id'] ?>">
-          <a href="#" onclick="this.closest('form').requestSubmit(); return false;" style="color:#E91E63;">Delete</a>
+          <?= icon_delete() ?>
         </form>
       </td>
     </tr>

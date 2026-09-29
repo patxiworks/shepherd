@@ -28,8 +28,8 @@ their contents.
   yet used by the frontend — see [Liturgical calendar](#liturgical-calendar).
 - ✅ **Multi-day activities** (retreats/courses/camps at a venue over several
   days — a port of the standalone "Painted Calendar" HTML tool) added on the
-  `conference-centres` branch: migration `015`, an admin list/CRUD page and a
-  painted calendar view, with the tool's 148 rows imported into the local MAMP
+  `conference-centres` branch: migration `015`, an admin list/CRUD page, a
+  painted calendar view and a statistics dashboard, with the tool's 148 rows imported into the local MAMP
   database. Not yet used by the frontend — see
   [Multi-day Activities](#admin-panel-backendadmin).
 - The backend is committed on the `backend-admin-panel` branch (not on
@@ -154,8 +154,8 @@ source (id, zone_id, unit, week, day, centre, activity, section, labor,
 absences (id, zone_id, priest, start_at, end_at, activity, description)
                              -- when a priest is away; admin-only (see "Absences" below)
 
-multiday_activities (id, zone_id, centre, activity, section, labor,
-                     start_date, start_time, end_date, end_time, description)
+multiday_activities (id, zone_id, centre, activity, section, labor, priest,
+                     start_date, start_time, end_date, end_time, description, roll_rule)
                              -- multi-day venue programmes: a date+time RANGE, not a
                              -- single activity_date; kept apart from `activities`
                              -- (see "Multi-day Activities" below)
@@ -257,6 +257,148 @@ banners via `$_SESSION['flash']`). The `priests`/`sections`/`labors` pages
 are thin wrappers around the shared
 [`admin/includes/lookup_page.php`](backend/admin/includes/lookup_page.php).
 
+**Table styling** (`layout_top.php`, applies to every admin table unless a
+page overrides it with a more specific/later selector, e.g. the Dashboard
+heatmap): `th` is a faint top-to-bottom gradient tint of the brand purple
+(`#673AB7`) rather than flat grey, body rows alternate white/`#f8f6fb`
+(`tbody tr { background: #fff }`, `tbody tr:nth-child(even)` overriding it —
+explicit rather than left transparent/falling through to `.table-wrap`'s own
+background, which didn't reliably paint over the wrap's right border along a
+plain row's un-covered last cell, e.g. an editing row's actions cell before
+it had its own background applied), a hover tint (`tbody tr:hover`, same
+specificity but declared after the stripe so it always wins) applies
+regardless of a row's stripe, and cells get a light-purple grid
+(`border-bottom`/`border-right`, `#ceb9f3`, the `border-right` dropped on the
+last column). The outer border/rounding/shadow are on `.table-wrap` (see
+above) rather than the `<table>` itself, so they frame it as a fixed box
+instead of scrolling away with the table's content on a narrow screen; the
+table's own corners are rounded to match by targeting the corner cells
+directly (accounting for the bulk-delete checkbox column, when present,
+always being the true first cell) rather than `overflow: hidden` on the
+wrap, which would otherwise silently stop the sticky header below from
+working (confirmed by testing both ways — any ancestor with a non-`visible`
+`overflow` breaks `position: sticky` relative to the browser viewport, even
+one that never itself scrolls, and moving that `overflow` to a further-out
+ancestor doesn't avoid it either — confirmed the same way). `table` itself
+has no `background` (unlike before): its flat rectangular background, no
+longer clipped to the wrap's rounded shape now that overflow can be
+`visible`, was poking a small square notch past the rounded corners in
+place of the curve; leaving it transparent lets `.table-wrap`'s own
+(correctly-rounded, since a box always rounds its own background) white
+background show through instead. `th` is `position: sticky; top: 0`, so a
+long table's header (Activities' especially, with its 300-row cap) stays
+visible while scrolling — via two different mechanisms depending on screen
+width, since a table can't both scroll horizontally in its own box *and*
+stick to the browser viewport (confirmed the same way — they're mutually
+exclusive on the same element). `≥900px`, `.table-wrap` drops
+`overflow-x: auto` (no horizontal scroll needed there in practice) and the
+header sticks to the top of the browser viewport as the page scrolls.
+`<900px`, where the horizontal scrollbar is still needed, `.table-wrap`
+instead gets `max-height: 60vh; overflow-y: auto`, turning it into a
+bounded, both-axis scrollport of its own; once a table is taller than that,
+it scrolls internally (not the page) and the header sticks to the top of
+*that* — confirmed working with horizontal and vertical scroll together in
+the same box. A table shorter than `60vh` is unaffected either way (nothing
+to scroll).
+
+**Activities List "focus" toggle (`<900px`, zone admin only)** — a
+fixed-position round icon button (`#act-focus-toggle`,
+[`activities/index.php`](backend/admin/activities/index.php), only rendered
+when `$admin['role'] === 'zone'`) hides *everything* above the table,
+including the shared top menu bar, so the table can use the full screen
+height — for a zone admin the List view's own top nav has just Activities
+and Absences, easily reached again after toggling back, unlike super's
+multi-level dropdowns. Everything from `<h1>` through the "Click a row to
+edit…" hint is wrapped in `#act-above-table`; clicking the icon toggles
+`body.act-focus`, which hides `header.topbar`, any flash message and
+`#act-above-table`, zeroes `main`'s margin/padding, and gives `.table-wrap`
+`height: 100vh` with its border/radius/shadow removed (edge-to-edge). The
+icon itself is `position: fixed` (so it never scrolls away) at
+`top: 93px` normally (clearing the — at this width, two-row — header) and
+`top: 10px` once the header's hidden. It's a single up-chevron SVG — CSS
+alone rotates it 180° (`body.act-focus .act-focus-toggle svg { transform:
+rotate(180deg) }`) to point down once toggled, so the small script right
+after the inline-editing one only ever toggles the class/aria attributes,
+never touches the icon markup. Verified in the browser: toggles cleanly
+both ways, repositions correctly between the two `top` values, and the
+chevron's computed `transform` flips between `none` and a 180°
+rotation matrix.
+
+Pages that colour whole rows for a reason (Activities'
+absent/duplicate/bilocation/no-priest/mass-limit flags, bulk-select's
+`tr.picked`) do it by painting the `<td>`s, which sit on top of both the
+stripe and the hover tint.
+
+**Top nav** (`layout_top.php`, role-aware, built from `$_SESSION['admin_role']`):
+a super admin gets four click-to-open dropdowns (`.nav-drop`, toggled by the
+shared script in `layout_bottom.php`), in order — **Structure** (Zones,
+Centres, Sections, Labors, Activity types), **People** (Users, Priests,
+Admins), **Records** (Source, Absences) and **Activities** (Regular →
+Activities List, Multi-day → Multi-day Activities List) — plus **Settings**
+as a plain top-level link.
+A zone admin gets two plain links, **Activities** and **Absences**; a centre
+admin gets **Users** and **Activities**. There is no Masses link for any
+role (the Masses admin page still exists at
+[`admin/masses/index.php`](backend/admin/masses/index.php) but isn't
+reachable from the nav any more — it wasn't serving a purpose).
+
+**Activities tabs.** (The tab strip, shared with Multi-day, is `nav.tabs` in `layout_top.php`: the tabs sit on a 2px brand-coloured base line.) The Activities section has tabs **List** (the table below,
+[`index.php`](backend/admin/activities/index.php)), **Calendar**
+([`calendar.php`](backend/admin/activities/calendar.php)) and **Dashboard**
+([`dashboard.php`](backend/admin/activities/dashboard.php)); all use the full page
+width. The **Calendar** is a read-only view over the same
+`activities` rows: one zone at a time (a super admin picks it, the first zone by
+default, as on the List tab; zone/centre admins are locked to theirs, and a centre
+admin only sees their own centre) with a **Month / Week / Day** switch, ‹ › and
+Today navigation (a month, 7 days or a day at a time), and a "Go to date" picker. The
+view is anchored on `?date=YYYY-MM-DD` (`?month=YYYY-MM` is still accepted) and
+`?view=month|week|day`. Tick-box **Centre / Activity / Group / Section / Priest**
+filters refresh live (the filter card and script are the Multi-day calendar's, from
+[`multiday_filters.php`](backend/includes/multiday_filters.php)); the navigation and
+view links keep the filters.
+- *Month*: whole weeks starting on the *week start* setting (so the neighbouring
+  months' days show their activities too); each activity is a chip
+  (`time centre activity · group`) coloured by section (`sf` pink, `sv` blue, other
+  grey; dashed edge = no priest); a day shows the first 3 with "+N more" to expand it.
+  A day number opens that day's Day view.
+- *Week*: seven taller columns with no limit; chips wrap and show the start time (no end
+  time) plus a second line with the priest and group.
+- *Day*: a time grid, hours (from 06:00 to 20:00, wider if an activity falls outside) down
+  the left and each activity a larger chip whose top is its start time and whose height
+  runs to its end time (`to_time`, else start + `duration`, else half an hour; never
+  drawn shorter than 30 minutes or past midnight). Chips that overlap share the width:
+  each cluster of overlapping chips is split into as many columns as it needs
+  (`acal_day_layout()`). Activities with no start time sit in a "No time set" strip above
+  the grid, and a red line marks the current time when the day is today (placed by the
+  browser's clock, not PHP's, whose timezone is UTC here, and moved every minute).
+
+In Month and Week, hovering a chip shows a tooltip (centre, activity, date and times,
+group, section, priest, description) and clicking opens the activity in the List tab's
+editor. The List tab's flags (absent priest, duplicates, bilocation, mass limit) are not
+shown on the calendar.
+
+The **Dashboard** is modelled on the Multi-day one: statistics over the same rows for
+one zone (a super admin picks it; zone/centre admins are locked as on the Calendar) and
+a date range (**From / To**, the current month by default, at most 731 days, swapped if
+reversed, with This month / Last month / Next month / This year quick links), using the
+Calendar's tick-box Centre / Activity / Group / Section / Priest filters with the same
+live refresh. It shows stat cards (Total Activities, Centres Active and Priests Involved —
+each with how many the zone has, and how many aren't on the Centres/Priests lists —,
+Days With Activity, Scheduled Time = each activity's `to_time − from_time` or its
+`duration`, Avg. per Active Day); a row of **needs-attention** counts using the List tab's
+flags (No priest, Priest absent, Priest bilocation, Over mass limit, Duplicates, from the
+same SQL fragments as the List legend; a non-zero card opens the List tab filtered to the
+range and that flag); and bars for By Centre, By Activity, By Priest (activities and hours,
+top 15), By Group, By Day of the Week (in week-start order), a **donut** for By Section
+(share-of-whole with a handful of uneven slices is the one case a donut reads well;
+Day of the Week stays a bar since a pie/donut misreads close values — see the
+dataviz skill's anti-patterns), Load Over Time (per week, per month beyond 120 days) and Start Time (per hour). The bar and
+stat-card and donut building blocks (`dash_bar()`, `dash_donut()`, `dash_stat()` and
+their CSS) are shared with the Multi-day dashboard in
+[`backend/admin/includes/dash.php`](backend/admin/includes/dash.php); the donut's
+legend always prints the exact count and percentage as text next to each slice, so
+identity/value are never colour or angle alone.
+
 **Activities form** ([`backend/admin/activities/index.php`](backend/admin/activities/index.php)):
 
 - **Date is the only input for day/weekday/week.** `activities.day`
@@ -275,15 +417,94 @@ are thin wrappers around the shared
   `<div class="card" data-modal data-add-label="New x">` holding an
   add/edit form is turned into a `<dialog>` by the script in
   [`backend/admin/includes/layout_bottom.php`](backend/admin/includes/layout_bottom.php),
-  opened by a "New x" button (or straight away on `?edit=ID`; closing it
+  hidden by CSS until then so it can't flash while the page loads, and opened by a "New x" button (or straight away on `?edit=ID`; closing it
   in edit mode returns to the list). Every table there is sortable by
   clicking a column heading (client-side, over the rows on the page).
+- **Edit/Delete icons (every admin table's actions column).** `icon_edit($href)`
+  and `icon_delete($onclick = '...')`
+  ([`backend/includes/functions.php`](backend/includes/functions.php)) render the
+  `.icon-btn` pencil/trash links used in place of "Edit"/"Delete" text, styled in
+  `layout_top.php`; both take `title`/`aria-label` from the action name so they
+  stay accessible without visible text.
+- **Responsive layout.** At `≤720px` (`layout_top.php`) the whole nav —
+  dropdowns or the zone/centre admin's plain links — collapses behind a
+  hamburger button (`.nav-toggle`, next to the brand); tapping it drops
+  `nav.topnav` open as a full-width column below the brand/logout row (each
+  dropdown still expands in place as an accordion within it). The toggle,
+  the accordion open/close and closing on outside click/Escape are wired up
+  in `layout_bottom.php` (`closeNav()`/`closeDrops()`), reusing the same
+  `.nav-drop`/`.open` mechanism the desktop dropdowns use. A `≤640px`
+  breakpoint drops a `.toolbar-row`'s right-aligned buttons (Filter / Export /
+  Import / …) onto their own row under the left-aligned ones (New x / Roll
+  forward / …) instead of wrapping into the same crowded row — done by giving
+  the first `.push-right` item `flex-basis: 100%` so it (and everything after
+  it) starts a fresh flex line; this is what Activities' and Multi-day
+  Activities' toolbars do on a phone. A `≤480px` breakpoint tightens
+  card/table padding and font size. Every table is wrapped in a `.table-wrap`
+  (`overflow-x: auto`) so a wide table scrolls horizontally instead of
+  squashing — `layout_bottom.php` adds the wrapper automatically to any table
+  that doesn't already have one (Source and Activities wrap their own, for
+  the toolbar/filter-count line above them). The Dashboard bar-chart labels
+  ([`backend/admin/includes/dash.php`](backend/admin/includes/dash.php)) and the
+  Venue/Activity/Group/Section/Priest tick-box filter panels
+  ([`backend/includes/multiday_filters.php`](backend/includes/multiday_filters.php))
+  also shrink/clamp under these breakpoints. `admin/login.php` had its own
+  fixed-width form (a content-box sizing bug made it wider on screen than its
+  declared 320px) fixed to `width: 100%; max-width: 320px` with `border-box`
+  sizing.
+- **Bulk delete (every admin table with Delete links).** An icon at the far left of
+  the toolbar (in `layout_bottom.php`) switches the table into selection mode;
+  the checkbox column and the "N selected · Delete selected · Cancel" bar are
+  hidden otherwise. The script finds deletable rows itself (a row containing a
+  Delete form with `action=delete` + `id`), so tables need no markup; the
+  checkbox column is always in the DOM (hidden by CSS) so sort column numbers
+  don't shift, and a MutationObserver adds it to rows re-rendered by inline
+  editing. While selecting, clicking a row ticks it instead of opening the
+  inline editor (Shift-click ticks a range); the header box ticks every shown
+  row. **Delete selected** confirms and posts `action=bulk_delete` with `ids[]`
+  to the page. Each page handles it with `bulk_run()`
+  ([`backend/admin/includes/bulk.php`](backend/admin/includes/bulk.php)) around
+  the *same* closure its single Delete uses (`$deleteOne`), so scope checks and
+  "in use" refusals (centres / lookup entries used by Source, your own admin
+  account) apply identically; the result is one summary ("Deleted 3 zones. 1 not
+  deleted: …"). Tables that show only the latest N rows (Activities, Source,
+  Masses, Absences, Multi-day) set `data-bulk-total` (and `data-bulk-extra`, JSON of
+  extra fields such as the filter string and zone). Once every shown row is
+  ticked and more exist, a link offers "Select all N matching the current
+  filters"; that needs the count typed to confirm and posts `all_matching` +
+  `expected`, and the page calls `bulk_delete_matching()`, which refuses if
+  the count changed meanwhile (ids are selected first, since a WHERE that reads
+  the same table can't be used inside a DELETE). For Masses/Absences "all" means
+  everything the admin may delete (a zone admin: their own zone, never global
+  masses). Zones delete everything linked to them, as the single Delete does.
 - **Spreadsheet-style editing (Activities only).** Clicking a row makes its
   cells inputs; Enter/Save posts `action=inline_save` to the same page,
   which answers with JSON containing the re-rendered row
   (`activity_row_html()`); Esc/Cancel reverts. Day/Wk/Section update
   live as you change Date/Centre. You must save or cancel a changed row
-  before editing another. The Edit link still opens the full modal form.
+  before editing another. The Edit link still opens the full modal form. An
+  editing cell (`tr.editing td`, same on Source and Multi-day Activities) has
+  no padding of its own, so its `.cell-input` (which also has no border of
+  its own — just the yellow cell background — on top of that, and a fixed
+  `height: 40px`) fills it edge-to-edge instead of leaving a gap around it —
+  otherwise editing widened a row (selects/inputs sized for their content)
+  more than it needed to, sometimes forcing the table's own horizontal
+  scrollbar to appear. The editing row itself (`tr.editing td`) gets a black
+  `border-top`/`border-bottom` (the usual light-purple grid colour elsewhere)
+  so it stands out from the rows around it — **2px**, not 1px: with
+  `border-collapse`, this row's border-top and the row above's border-bottom
+  share one collapsed edge, and same-width/same-style conflicts there don't
+  reliably resolve in favour of whichever was declared here, so it's made
+  strictly wider instead, which always wins unambiguously (confirmed in the
+  browser: 1px lost to the neighbour's purple, 2px shows solid black on both
+  edges). Its `.actions` cell keeps `padding: 0 8px` (the row's other cells
+  stay at `0`) so the Save/Cancel icons below aren't flush against that black
+  edge. Save and Cancel (also the same on all three) are icon buttons — a
+  check and an ×, built inline
+  in each page's own `startEdit()` rather than through
+  `icon_edit()`/`icon_delete()` (those are PHP-rendered; these are strings
+  inside client-side JS) — sized as small centred squares
+  (`tr.editing td.actions button`) instead of the old padded text buttons.
 - **Section is derived from the centre**: on save it is copied from
   `centres.section`; the form shows it as small text under Centre. To change
   the section of a centre's activities, change the centre's section (Centres
@@ -553,17 +774,21 @@ their own zone's rows; a super admin picks the zone. Notes:
 
 **Multi-day Activities** ([`backend/admin/multiday_activities/index.php`](backend/admin/multiday_activities/index.php)
 for the list/CRUD, [`calendar.php`](backend/admin/multiday_activities/calendar.php) for the
-painted venue view; super and zone admins; migration
+painted venue view, [`dashboard.php`](backend/admin/multiday_activities/dashboard.php) for the
+statistics; **super admin only** (zone and centre admins get a 403, and the nav link
+and dashboard count are hidden from them); migration
 `backend/migrate/015_multiday_activities.sql`): retreats, courses and camps
 that run across several days at a centre, ported from a standalone
 "Painted Calendar" HTML tool that had no backend of its own. Kept in its own
 table (`multiday_activities`), not `activities`, so the day-to-day Activities
-view never needs to filter these out. The two pages are tabs of one section
-(List / Calendar), linked from the top nav ("Multi-day Activities") and with a
+view never needs to filter these out. The three pages are tabs of one section
+(List / Calendar / Dashboard), linked from the top nav's Activities dropdown ("Multi-day") and with a
 count on the dashboard (guarded by `multiday_activities_available()` in
 [`backend/includes/multiday_activities.php`](backend/includes/multiday_activities.php),
 like `absences_available()`, so the dashboard still loads before migration
-`015` is applied).
+`015` is applied). Migration `016` must be applied before the List tab or the
+Priests page is used (the Priests page counts/cascades on `multiday_activities.priest`), and
+`017` (`roll_rule`) before the List tab too.
 
 - **Data model.** Migration `015` adds `activity_types.is_multiday` — a flag on
   the *type*, not derived from the name (a name like `Mass St. Josemaria` is
@@ -574,17 +799,112 @@ like `absences_available()`, so the dashboard still loads before migration
   migration `015` is applied). Renaming an activity type also renames it on
   the `multiday_activities` rows that use it. `multiday_activities` holds
   zone, centre, activity, section, labor ("group" in the original tool),
+  priest (in charge; optional, added by migration `016`),
   `start_date`/`start_time`, `end_date`/`end_time` and a description. Centre,
   activity, section and labor are stored as text (same convention as
   `activities`), and the times are freeform and optional.
 - **List / CRUD** (`index.php`, same layout as Absences: modal form, sortable
   table, latest 300 rows). The Activity dropdown only offers `activity_types`
-  with `is_multiday = 1`; Centre follows the selected zone. The end (date, and
+  with `is_multiday = 1`; Centre and **Priest in charge** follow the selected
+  zone (the priest must be one of the zone's priests, `priests_by_zone()`, and
+  is optional; renaming a priest cascades to these rows). The page uses the
+  same full width as the Calendar tab (`$pageWide`) so switching tabs doesn't
+  resize the content. The end (date, and
   time if both are on the same day) must not be before the start, and the
-  centre must belong to the chosen zone. A zone admin only sees and edits
-  their own zone's rows (`mday_in_scope()`); a super admin sees all zones.
+  centre must belong to the chosen zone. The scope checks for zone admins
+  (`mday_in_scope()` and the zone-restricted queries) are still in the code as
+  defence in depth, but the pages are super-only, so every zone is visible.
   Leave the times blank for the usual pattern (evening arrival, morning
   departure).
+  - **Spreadsheet-style editing.** As on Activities, clicking a row turns its
+    cells into inputs (dropdowns for Centre / Activity / Section / Group /
+    Priest, a date + time pair for Start and End, a textarea for Description);
+    Enter (in a single-line field) or Save posts `action=inline_save` to the same
+    page, which answers with JSON containing the re-rendered row
+    (`mday_row_html()`) or `{error}` (403 out of scope, 422 validation);
+    Esc/Cancel reverts. You must save or cancel a changed row before editing
+    another, and picking a start date moves an empty or earlier end date up to
+    it. The zone isn't editable inline (use the Edit link). Centre has no blank
+    option (it is required); the other dropdowns have one, to clear the value.
+    Validation is shared with the modal form (`mday_fields()`), so both apply
+    the same rules.
+  - **Bulk delete** works here as on every admin table — see "Bulk delete" under
+    the modal-forms bullet above. On this page `data-bulk-extra` carries the filter
+    string (`qs`), so "select all N matching the filters" deletes through
+    `mday_where()`.
+  - **Filter, search, Import, Export** (a search box followed by the
+    buttons, above the table; the box uses `data-toolbar-item data-before-right`
+    in [`layout_bottom.php`](backend/admin/includes/layout_bottom.php) to sit before
+    the right-aligned Filter button). Filtering is **server-side** via GET params
+    (`mday_filters()` validates them, `mday_where()` builds the SQL), so it
+    searches every entry, not just the 300 shown: zone (super admin only),
+    centre, activity, section, group, priest, and a date range ("Running from" /
+    "Running until" — an entry matches if it runs on at least one day of the
+    range, i.e. `end_date >= from AND start_date <= until`). The **search box**
+    (`q`, Enter to apply) matches text in zone name, centre, activity, section,
+    group, priest and description; every word must appear in at least one of them, and
+    `%`/`_` are taken literally. The Filter button shows the number of active
+    filters and a "Filtered by …" line with a Clear link appears above the
+    table. Filters (including the search) are carried through Edit / Save /
+    Delete / inline saves / Import (hidden `qs` field) so you stay on the
+    filtered list. The dropdown values are those found in the entries in scope.
+    - *Export* opens a modal with the same filter fields (prefilled from the
+      current filters): "Export" downloads what they match, "Export all" ignores
+      them (a zone admin's own zone only either way). It is a UTF-8 CSV of every
+      matching entry, not just the 300 shown, with the columns `zone, centre,
+      activity, section, labor, priest, start_date, start_time, end_date,
+      end_time, description, roll_rule` (text starting with `=`, `+`, `-`, `@` gets a
+      leading `'`).
+    - *Import* (code in [`backend/includes/multiday_io.php`](backend/includes/multiday_io.php),
+      reusing the file readers and date/time parsers in `activity_io.php`) reads
+      a CSV or .xlsx upload, or a Google Sheets link (shared as "Anyone with the
+      link can view"). The first row is a header; columns can be in any order
+      and the exported names are accepted, plus aliases (`venue`, `group`,
+      `start`, `end`, `priest in charge`, …); unknown columns are ignored. A row
+      needs `centre`, `start_date` and `end_date` (end not before start);
+      times are optional. The zone comes from `zone`, else the zone currently
+      filtered on; a zone admin's rows always go into their own zone and a row
+      naming another zone is refused. Centre and priest (of that zone), activity,
+      section and labor must exist in their admin lists (matched
+      case-insensitively, stored spelling wins) — a blank section stays blank,
+      not the centre's, so re-importing an export doesn't create near-duplicates.
+      Rows with problems are reported (row number and reason, plus a list of the
+      unknown values to add) and skipped; valid rows are still imported in one
+      transaction. Rows identical to an existing one (same zone, centre,
+      activity, section, group, priest, dates, times and description) are
+      skipped, so importing the same file twice is safe.
+  - *Roll rule.* Each entry has a **Roll rule** (`roll_rule`, migration `017`;
+    Exact date / Stick to weekend / Flexible, default Flexible), a column in the
+    table that is edited inline or in the entry form, and an optional
+    `roll_rule` column in the import/export (blank = flexible; accepts
+    `exact`, `weekend`, `flexible`).
+  - *Roll forward* (the **Roll forward** button right after **New entry**;
+    code in [`backend/includes/multiday_rollforward.php`](backend/includes/multiday_rollforward.php)),
+    ported from the original's "Roll Forward to New Year". Choose the zone (super
+    admin; blank = all zones — a zone admin always rolls their own), the **From**
+    year (default: the latest year with entries) and **To** year, and
+    **Generate preview** (a GET to the same page, `roll=1&roll_*`). Every entry
+    starting in the From year is copied into the To year with its dates moved
+    by its rule — *Exact date* keeps the calendar date, *Stick to weekend* and
+    *Flexible* both take the nearest same weekday (forward before backward, up
+    to a week) — and its length, times, priest, group etc. preserved. *Free* and
+    *Maintenance* entries are not copied but regenerated as placeholders, per
+    the original: a Free day after each `ca` entry ends (if open; it may fall
+    up to 3 Jan of the next year); at least one Free day per month for each venue
+    with entries; and a minimum number of Maintenance days (default 14) for
+    the listed venues (default `Iroto, Iwollo` — editable, since the original
+    hard-coded them), greedily placed in the largest open gaps, with a warning
+    row when they don't fit. Placeholders occupy whole days (times 00:00–23:59)
+    and are not checked against bookings outside the roll's own venue/year.
+    Unlike the original, which replaced its whole log, **Apply** (`roll_apply`,
+    which recomputes the plan and inserts it in one transaction) only *adds*
+    rows: the From year is untouched, rows already present in the To year
+    (identical zone, centre, activity, section, group, priest, dates, times,
+    description) are skipped, and days already booked in the To year, existing
+    Free months and existing Maintenance days are taken into account, so
+    re-running a roll is safe (it adds nothing new). The `Free` / `Maintenance`
+    activity types are created (multi-day) on first use. Afterwards the list is
+    filtered to the To year.
 - **Calendar view** (`calendar.php`, read-only): one block per month, each with
   a bold border and a gap below, and one swimlane per venue (centre) with a
   small gap between venues.
@@ -598,7 +918,7 @@ like `absences_available()`, so the dashboard still loads before migration
     (Morning <12:00 / Afternoon <18:00 / Evening); a blank start time counts as
     evening and a blank end time as morning (`mday_slot()`).
   - *Tooltip.* Hovering a day with activity shows a dark tooltip like the
-    original: venue and activity, `Grp: … · Sec: …`, the date range (with the
+    original: venue and activity, `Priest: …` (only when one is set), `Grp: … · Sec: …`, the date range (with the
     time, or morning/evening when none is set) and the description, one block
     per entry when several overlap. It is a single fixed-position element fed
     from a hidden `.mday-tip` in each cell, so the scrolling grid doesn't clip
@@ -612,14 +932,36 @@ like `absences_available()`, so the dashboard still loads before migration
   - *Filters.* **Year** first, then **Zone** (super admins only; "All zones" is
     the default, and only zones that have multi-day activities are listed;
     changing it reloads the page and clears the Venue ticks, since that list is
-    per zone), then **Venue**, **Activity**, **Group** and **Section** as
+    per zone), then **Venue**, **Activity**, **Group**, **Section** and **Priest** as
     tick-box dropdowns (several values can be ticked, with All/None; nothing
     ticked means no filter), matching the original. There is no Apply button:
     each change re-fetches the page and swaps in the new banner and grid
     without a reload, leaving the dropdown open (falling back to a normal
     submit if that fails), and the URL is updated so the view stays linkable.
     Venue lists the zone's centres (every centre in "All zones"); Activity is
-    the `is_multiday` types; Group and Section come from `labors` / `sections`.
+    the `is_multiday` types; Group and Section come from `labors` / `sections`; Priest lists the zone's
+    priests (every zone's in "All zones"; `priests_by_zone()`) and matches the
+    entry's priest in charge.
+    The filter card, its tick-box dropdowns and the live-refresh script are
+    shared with the Dashboard tab and live in
+    [`backend/includes/multiday_filters.php`](backend/includes/multiday_filters.php)
+    (`mday_view_filters()`, `mday_filter_options()`, `mday_render_filter_form()`,
+    `mday_render_filter_assets()`; the dropdown styles are emitted by the form itself, `mday_render_filter_styles()`, and the Activities List page's own `<style>` sits right after the layout, both so nothing renders unstyled while a long page loads — don't move them to the end of the page).
+- **Dashboard view** (`dashboard.php`, read-only): statistics over the same rows as
+  the List tab, ported from the original tool's dashboard tab. It uses the
+  Calendar tab's filters (Year, Zone, Venue, Activity, Group, Section, Priest, live
+  refresh, linkable URL). Counting follows the original: an entry counts on
+  each day it runs inside the selected year (one spanning New Year is
+  clipped), and a venue's booked days are the *union* of its entries' days, so
+  overlaps never count a day twice. Contents: stat cards (Total Entries,
+  Venues Active of all centres in scope, Groups Active of all groups,
+  Priests in Charge with the number of entries that have none, Activity-Days,
+  Average length); **Venue Utilisation** (days booked / days in the year,
+  coloured per venue from the original palette by a hash of the name);
+  **Group Utilisation** (share of activity-days); **Monthly Load**
+  (activity-days per month); and, beyond the original, **By Activity**, **By
+  Section** (sf / sv / other, in the calendar colours) and **By Priest in
+  Charge**, each as activity-days and entries.
 - **Initial data.** The Painted Calendar's 148 rows were loaded once into the
   local MAMP database with a throwaway script (not in the repo). Venue → centre
   mapping: Iroto and Alayo became new centres in a new zone **Ijebu-Ode**,
@@ -631,9 +973,10 @@ like `absences_available()`, so the dashboard still loads before migration
   imported with blank times. Re-running it elsewhere would need the same zones
   and centres created first (or the mapping adjusted).
 - Not served by the API and does not bump `zones.last_update`; nothing in the
-  frontend reads it yet. The original tool's CSV/XLSX import, roll-forward-to-
-  next-year, dashboard tab and inline spreadsheet-style editing were not
-  ported — data entry goes through the List tab's form instead.
+  frontend reads it yet. The original tool's CSV/XLSX import
+  is the List tab's Import, its dashboard tab is the Dashboard tab and its
+  roll-forward is the List tab's Roll forward. (Inline spreadsheet-style editing
+  was added on the List tab afterwards.)
 
 ### Liturgical calendar
 
@@ -712,6 +1055,19 @@ If the calendar should feed those headers, the natural step is to have
 `api/masses.php` merge `liturgical_calendar` (`class` → `Class`, `celebration`
 → `Mass`) with manual `masses` rows, manual rows winning.
 
+### Admin theme
+
+The admin panel's colours follow a `theme_mode` setting (Admin → Settings → **Theme**,
+super admin; stored in `settings`, no migration): **Default** is sky blue (`#0284C7`);
+**Liturgical season** uses today's `color` in `liturgical_calendar` — Green `#2E7D32`,
+Red `#C62828`, Purple `#673AB7`, Rose `#B0396A`, and gold `#94700A` in place of White
+(a white theme would vanish into the page). With no calendar row for today (not
+generated yet) the default is used. Code: [`backend/includes/theme.php`](backend/includes/theme.php)
+emits one `:root` block of CSS variables (`--brand`, `--brand-dark`, `--tint-*`, the tints
+mixed from the brand with `color-mix()`) from `layout_top.php` and `login.php`; pages use
+`var(--brand)` etc. rather than hex. Today's colour is read per request using the server's
+clock. The Next.js frontend is not themed.
+
 ### Local development
 
 The backend runs directly against MAMP without copying anything into
@@ -739,11 +1095,21 @@ real production data has already been migrated into the local MAMP
 database during backend development — see `backend/README.md` before
 re-running this against any database you don't want duplicated rows in.
 
-SQL migrations `002`–`014` in `backend/migrate/` are incremental schema
+SQL migrations `002`–`017` in `backend/migrate/` are incremental schema
 changes for databases created before the change (all safe to re-run). The
-latest, `009_liturgical_calendar.sql`, has been applied to the local MAMP
-database; **apply it to any other environment (e.g. production) before using
-Settings → Generate calendar**, otherwise the card says the table is missing.
+latest is `017_multiday_roll_rule.sql`. Apply any that an environment (e.g.
+production) is missing before using the feature they belong to:
+
+- `009_liturgical_calendar.sql` — Settings → Generate calendar; without it the
+  card says the table is missing.
+- `012_absences.sql`, `013_activities_priest_index.sql`, `014_max_masses_setting.sql`
+  — Absences and the Activities-page checks (absent priest, bilocation, mass
+  limit); `014` is optional, since the default of 2 is used without it.
+- `015_multiday_activities.sql`, `016_multiday_priest.sql` and
+  `017_multiday_roll_rule.sql` — Multi-day Activities. `016` is required by the
+  List tab and the Priests page, `017` by the List tab (Roll rule / Roll forward).
+
+`009`, `015`, `016` and `017` have been applied to the local MAMP database.
 
 ---
 
@@ -785,12 +1151,19 @@ contracts were deliberately kept identical.
 | Change a fixed-date celebration (name, rank, colour, class, notes) | [`backend/includes/romcal/fixed.dat`](backend/includes/romcal/fixed.dat), then regenerate |
 | Change how the calendar is computed (Easter, seasons, precedence) | [`backend/includes/romcal/Romcal.php`](backend/includes/romcal/Romcal.php) (mirrors the C source file by file; re-check against the C build if you change it) |
 | Change the calendar window or how rows are written | [`backend/includes/liturgical_calendar.php`](backend/includes/liturgical_calendar.php) |
+| Change the admin theme colours (sky blue default / liturgical season) | [`backend/includes/theme.php`](backend/includes/theme.php); the choice is in Admin → Settings → Theme |
 | Change which day the week starts on | Admin panel → Settings (super admin); also renumbers `activities.weekday` and `source.day` |
 | Add/rename/move a priest, or add a section, labor or activity type | Admin panel → Priests / Sections / Labors / Activity types (super admin). A centre's section is set on the Centres page. |
 | Add a section/labor *colour* | [`src/lib/section-colors.ts`](src/lib/section-colors.ts) |
 | Change what a `zone`/`centre` admin can access | `admin_require_role()` calls and `*_in_scope()` functions in `backend/admin/<entity>/index.php` |
 | Add a new admin access level or field | [`backend/schema.sql`](backend/schema.sql) `admin_users` table + [`backend/includes/auth.php`](backend/includes/auth.php) + [`backend/admin/admins/index.php`](backend/admin/admins/index.php) |
+| Change how the multi-day Roll forward shifts dates or places Free/Maintenance placeholders | [`backend/includes/multiday_rollforward.php`](backend/includes/multiday_rollforward.php) (`mday_roll_plan()`, `mday_roll_apply()`; the form/preview are in `index.php`) |
+| Change bulk delete (the select icon/bar, or a page's bulk handling) | [`backend/admin/includes/layout_bottom.php`](backend/admin/includes/layout_bottom.php) (client), [`backend/admin/includes/bulk.php`](backend/admin/includes/bulk.php) (`bulk_run()`, `bulk_delete_matching()`) and each page's `$deleteOne` |
+| Change the Activities dashboard's statistics (or the shared bar/card helpers) | [`backend/admin/activities/dashboard.php`](backend/admin/activities/dashboard.php) and [`backend/admin/includes/dash.php`](backend/admin/includes/dash.php) |
+| Change the Activities calendar's grid, chips, tooltip or filters | [`backend/admin/activities/calendar.php`](backend/admin/activities/calendar.php) |
+| Change the multi-day list's filters, search, CSV export or import columns/validation | [`backend/admin/multiday_activities/index.php`](backend/admin/multiday_activities/index.php) (`mday_filters()`, `mday_where()`, `mday_fields()`) and [`backend/includes/multiday_io.php`](backend/includes/multiday_io.php) |
 | Change the multi-day calendar's painting, tooltip, clash detection or filters | [`backend/admin/multiday_activities/calendar.php`](backend/admin/multiday_activities/calendar.php) (helpers are the `mday_*` functions at the top) |
+| Change the multi-day dashboard's statistics, or the filters shared by the Calendar and Dashboard tabs | [`backend/admin/multiday_activities/dashboard.php`](backend/admin/multiday_activities/dashboard.php) and [`backend/includes/multiday_filters.php`](backend/includes/multiday_filters.php) |
 | Add/edit multi-day activities, or mark an activity type as multi-day | Admin panel → Multi-day Activities (List tab); to make an activity type a multi-day one, tick "Multi-day programme" on Admin panel → Activity types |
 | Run the one-time Sheets → MySQL import | [`backend/migrate/migrate.php`](backend/migrate/migrate.php) |
 | Deploy the backend | [`backend/README.md`](backend/README.md) |

@@ -3,16 +3,24 @@ require __DIR__ . '/../../includes/db.php';
 require __DIR__ . '/../../includes/functions.php';
 require __DIR__ . '/../../includes/auth.php';
 require __DIR__ . '/../includes/flash.php';
+require __DIR__ . '/../includes/bulk.php';
 admin_require_role('super');
 
 $pdo = pastores_db();
 
+$deleteOne = function (int $id) use ($pdo): ?string {
+    $pdo->prepare('DELETE FROM zones WHERE id = ?')->execute([$id]);
+    return null;
+};
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    if ($action === 'delete') {
-        $pdo->prepare('DELETE FROM zones WHERE id = ?')->execute([(int) $_POST['id']]);
-        flash('success', 'Zone deleted.');
+    if ($action === 'bulk_delete') {
+        bulk_run($deleteOne, 'zone', 'zones');
+    } elseif ($action === 'delete') {
+        $err = $deleteOne((int) $_POST['id']);
+        flash($err === null ? 'success' : 'error', $err ?? 'Zone deleted.');
     } else {
         $name = trim($_POST['name'] ?? '');
         if ($name === '') {
@@ -68,11 +76,11 @@ require __DIR__ . '/../includes/layout_top.php';
       <td><?= e($zone['name']) ?></td>
       <td><?= e($zone['last_update']) ?></td>
       <td class="actions">
-        <a href="/admin/zones/index.php?edit=<?= (int) $zone['id'] ?>">Edit</a>
+        <?= icon_edit('/admin/zones/index.php?edit=' . (int) $zone['id']) ?>
         <form class="inline" method="post" onsubmit="return confirm('Delete this zone and everything linked to it?');">
           <input type="hidden" name="action" value="delete">
           <input type="hidden" name="id" value="<?= (int) $zone['id'] ?>">
-          <a href="#" onclick="this.closest('form').requestSubmit(); return false;" style="color:#E91E63;">Delete</a>
+          <?= icon_delete() ?>
         </form>
       </td>
     </tr>
