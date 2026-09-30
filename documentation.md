@@ -7,7 +7,7 @@ for Pastoral Attention of Centres"). It has two parts:
    a PWA. This is what end users (zone/centre staff) see and interact with.
 2. **Backend** — a PHP + MySQL API and admin panel (`backend/`), which
    replaces the app's original Google Sheets datasource. This is where
-   zones, centres, users, activities and masses are actually managed.
+   zones, centres, users, activities and multi-day activities are actually managed.
 
 If you're new to this repo, read this file top to bottom once, then use it
 as a map — it links to the actual source files rather than duplicating
@@ -53,7 +53,7 @@ Stack: Next.js 15 (App Router), React 18, TypeScript, Tailwind, shadcn/ui
 - [`src/app/page.tsx`](src/app/page.tsx) — the main schedule view. All
   client-side (`"use client"`). Responsibilities:
   - Redirects to `/login` if `localStorage.zoneUser` is missing.
-  - Fetches activities + masses from `GET /api/collections`, caches the
+  - Fetches activities + masses (the date-header names, still from the old Google Apps Script) from `GET /api/collections`, caches the
     response in `localStorage.pastoresData`, and renders instantly from
     cache on repeat visits.
   - Polls `GET /api/collections?action=lastupdate` in the background and
@@ -143,7 +143,6 @@ zones (id, name, last_update)
   └─ activities (id, zone_id, unit, week, day, weekday, activity_date,
                  centre, activity, section, labor, from_time, to_time,
                  duration, mfrequency, priest, description)
-  └─ masses (id, zone_id [nullable = global], mass_date, class, mass)
 
 source (id, zone_id, unit, week, day, centre, activity, section, labor,
         from_time, to_time, duration, mfrequency, priest, description)
@@ -217,10 +216,9 @@ Three roles on `admin_users`, enforced **server-side** in every
 - **`super`** — everything, including zones, centres, other admin
   accounts (`admin/admins/`), the priests/sections/labors lists, and the
   Source table.
-- **`zone`** (scoped by `zone_id`) — that zone's users, activities, and
-  masses. Cannot touch centres (centre creation/editing is `super`-only),
-  zones, or other admins. Can't edit *global* (zone_id-NULL) mass entries
-  since those apply to every zone.
+- **`zone`** (scoped by `zone_id`) — that zone's users, activities and
+  absences. Cannot touch centres (centre creation/editing is `super`-only),
+  zones, or other admins.
 - **`centre`** (scoped by `centre_id`, with `zone_id` auto-derived from
   it) — only users/activities whose `centre` field matches that centre's
   name. Everything else is 403.
@@ -240,14 +238,13 @@ that when the frontend is cut over, only the URL constants change:
 | Endpoint | Old equivalent | Notes |
 |---|---|---|
 | `GET api/activities.php?zone=&section=&centre=&action=lastupdate` | `REMOTE_ACTIVITIES_URL` | date/time fields re-encoded to match the odd Sheets ISO format the frontend already parses |
-| `GET api/masses.php?zone=` | `REMOTE_MASSES_URL` | `zone` is optional; omitted = old global behaviour |
 | `GET api/zones.php` | zone-login `GET` handler | `{ zones: [...] }` |
 | `POST api/login.php` | zone-login `POST` handler | does the passcode check in PHP now, not in Next.js |
 
 ### Admin panel (`backend/admin/`)
 
 Plain PHP pages, one `index.php` per entity (`zones`, `centres`, `users`,
-`activities`, `source`, `masses`, `absences`, `multiday_activities`, `admins`, `priests`,
+`activities`, `source`, `absences`, `multiday_activities`, `admins`, `priests`,
 `sections`, `labors`, `activity_types`, `settings`), each
 handling its own list + create + edit + delete in one file (list on GET, mutate on POST with an
 `action=delete` flag for deletes). Shared chrome lives in
@@ -337,10 +334,8 @@ Admins), **Records** (Source, Absences) and **Activities** (Regular →
 Activities List, Multi-day → Multi-day Activities List) — plus **Settings**
 as a plain top-level link.
 A zone admin gets two plain links, **Activities** and **Absences**; a centre
-admin gets **Users** and **Activities**. There is no Masses link for any
-role (the Masses admin page still exists at
-[`admin/masses/index.php`](backend/admin/masses/index.php) but isn't
-reachable from the nav any more — it wasn't serving a purpose).
+admin gets **Users** and **Activities**. There is no Masses page: the `masses` table, its admin page and `api/masses.php`
+were removed (migration `018`).
 
 **Activities tabs.** (The tab strip, shared with Multi-day, is `nav.tabs` in `layout_top.php`: the tabs sit on a 2px brand-coloured base line.) The Activities section has tabs **List** (the table below,
 [`index.php`](backend/admin/activities/index.php)), **Calendar**
@@ -468,15 +463,14 @@ identity/value are never colour or angle alone.
   "in use" refusals (centres / lookup entries used by Source, your own admin
   account) apply identically; the result is one summary ("Deleted 3 zones. 1 not
   deleted: …"). Tables that show only the latest N rows (Activities, Source,
-  Masses, Absences, Multi-day) set `data-bulk-total` (and `data-bulk-extra`, JSON of
+  Absences, Multi-day) set `data-bulk-total` (and `data-bulk-extra`, JSON of
   extra fields such as the filter string and zone). Once every shown row is
   ticked and more exist, a link offers "Select all N matching the current
   filters"; that needs the count typed to confirm and posts `all_matching` +
   `expected`, and the page calls `bulk_delete_matching()`, which refuses if
   the count changed meanwhile (ids are selected first, since a WHERE that reads
-  the same table can't be used inside a DELETE). For Masses/Absences "all" means
-  everything the admin may delete (a zone admin: their own zone, never global
-  masses). Zones delete everything linked to them, as the single Delete does.
+  the same table can't be used inside a DELETE). For Absences "all" means
+  everything the admin may delete (a zone admin: their own zone). Zones delete everything linked to them, as the single Delete does.
 - **Spreadsheet-style editing (Activities only).** Clicking a row makes its
   cells inputs; Enter/Save posts `action=inline_save` to the same page,
   which answers with JSON containing the re-rendered row
@@ -625,6 +619,25 @@ identity/value are never colour or angle alone.
     copy is flagged. `activity_duplicate_sql()` is the single definition.
   - *Filter / Export:* "Only duplicates" checkbox (`duplicate=1`).
   - *Saving an edit:* the warning says "identical to N other activities".
+- **Priest in a multi-day activity** (code in
+  [`backend/includes/activity_multiday_busy.php`](backend/includes/activity_multiday_busy.php)).
+  A priest in charge of a multi-day activity (the Priest in charge field, migration `016`) is
+  not free for other activities while it runs. Worked out on the fly and only flagged, like
+  absences. An activity clashes when it has the same priest (by name, any zone), is **not at the
+  multi-day activity's own centre** (same zone + centre; a retreat leader may still say Mass
+  there) and its time span overlaps the multi-day one's: start date + start time to end date +
+  end time. The times are freeform and usually blank, so a blank start counts as 18:00 (evening
+  arrival) and a blank end as 12:00 (morning departure), as the calendar paints them; text that
+  isn't HH:MM counts as blank; an activity with no times is a whole-day one (as for absences), so
+  it clashes on the first and last day too. `activity_in_multiday_sql()` is the single definition.
+  - *Table:* a teal badge **priest in cv | LS** (activity | centre; several joined by commas;
+    tooltip: "In charge of cv | LS (06/12 to 12/12)") and a light teal row. Row colour order: no
+    priest, absent, in multi-day, bilocation, over the mass limit, duplicate.
+  - *Filter / Export / legend:* "Only activities whose priest is in charge of a multi-day activity
+    at another centre" (`in_multiday=1`) and a **Priest in multi-day** legend box.
+  - *Saving (new or edit):* warns "Fr. X is in charge of cv | LS (06/12 to 12/12) then".
+  - *Add from source:* the range is checked and the warning names the priests and counts.
+  - Skipped silently if the multi-day table or its priest column is missing.
 - **Priest bilocation** (code in
   [`backend/includes/activity_bilocation.php`](backend/includes/activity_bilocation.php)).
   Not the same as a duplicate: **the same priest on the same date with
@@ -683,7 +696,7 @@ identity/value are never colour or angle alone.
   - *Saving (new or edit):* warns "no priest is assigned".
   - *Add from source:* source rows can also have no priest (it's optional there
     too); the range is checked and the message reports the count.
-- **Row colours summary** — grey = no priest, red = priest absent, amber =
+- **Row colours summary** — grey = no priest, red = priest absent, teal = priest in a multi-day activity, amber =
   priest bilocation, purple = over the mass limit, blue = duplicate; when several apply
   the row takes the first of that order and shows every badge. Inline saves
   flash the row in the matching stronger shade.
@@ -758,7 +771,7 @@ from Activities:
 **Absences** ([`backend/admin/absences/index.php`](backend/admin/absences/index.php),
 super and zone admins; migration `backend/migrate/012_absences.sql`): a list of
 priests' absences with the fields zone, priest, start date and time, end
-date and time, activity and description. Same layout as Masses (New button →
+date and time, activity and description. Same layout as the other list pages (New button →
 modal form, sortable table, latest 300 rows). A zone admin only sees and edits
 their own zone's rows; a super admin picks the zone. Notes:
 
@@ -1048,12 +1061,28 @@ octave get a proper `season` (Christmas / Lent / Easter). The port was
 compared with the compiled C program for every day of 1990–2100 under six
 option combinations (243,252 days): identical apart from the Dec 30 fix.
 
-**Not connected to the frontend.** Nothing reads this table yet. The existing
-`masses` table (`date → {Class, Mass}`, served by `api/masses.php` and shown as
-"(C) Mass of St Joseph" in the schedule's date headers) is separate and manual.
-If the calendar should feed those headers, the natural step is to have
-`api/masses.php` merge `liturgical_calendar` (`class` → `Class`, `celebration`
-→ `Mass`) with manual `masses` rows, manual rows winning.
+**Not connected to the frontend.** Nothing reads this table yet. The schedule's date
+headers ("(C) Mass of St Joseph") still come from the old Google Apps Script; the
+backend's own `masses` table and `api/masses.php` were removed. If the calendar should
+feed those headers, add an endpoint that returns `class` → `Class`, `celebration` → `Mass`
+per date.
+
+### Priests load summary (admin home)
+
+Under the count cards on the admin home page ([`backend/admin/index.php`](backend/admin/index.php)),
+[`backend/includes/pastoral_dashboard.php`](backend/includes/pastoral_dashboard.php) shows how
+priests' work is spread, adapted from the standalone `pastoral-dashboard.html`. Data: `activities`
+dated in the chosen **Period** (`pd_days`: next 7/30/90 days, default 30) plus, if migration `015`
+is applied, `multiday_activities` overlapping it — grouped by zone, centre, labor and priest in
+SQL and passed to the browser as JSON, which computes everything else. Scoped like the other
+pages (zone admin: own zone; centre admin: own centre, no roster). *Load* = weighted engagements:
+an activity weighs its labor's weight (default 1), a multi-day programme its own (default 3);
+weights are edited under **Weights** and kept in `localStorage`. Panels: KPI cards, priest load
+bars (black tick = average, red above 130 % of it, amber below 60 %, filterable by zone), alerts
+(overload, activities without a priest, priests on the `priests` list with nothing assigned,
+cross-zone service, priests not on the list, centres shared by 3+ priests), most/lightest
+centres and a zones table. Differences from the original: no pasted-sheet import (the data is the
+database) and no dark-mode toggle (it uses the admin theme colours).
 
 ### Admin theme
 
@@ -1089,15 +1118,15 @@ Then `http://localhost:8000/admin/login.php` and
 [`backend/migrate/migrate.php`](backend/migrate/migrate.php) is a one-time
 CLI script that pulls current data straight from the live Google Apps
 Script endpoints and imports it into MySQL (zones, centres, users,
-activities, masses). Run once against a target database; re-running
-duplicates activities/masses unless those tables are truncated first. The
+activities). Run once against a target database; re-running
+duplicates activities unless that table is truncated first. The
 real production data has already been migrated into the local MAMP
 database during backend development — see `backend/README.md` before
 re-running this against any database you don't want duplicated rows in.
 
-SQL migrations `002`–`017` in `backend/migrate/` are incremental schema
+SQL migrations `002`–`018` in `backend/migrate/` are incremental schema
 changes for databases created before the change (all safe to re-run). The
-latest is `017_multiday_roll_rule.sql`. Apply any that an environment (e.g.
+latest is `018_drop_masses.sql` (drops the `masses` table). Apply any that an environment (e.g.
 production) is missing before using the feature they belong to:
 
 - `009_liturgical_calendar.sql` — Settings → Generate calendar; without it the
@@ -1122,9 +1151,10 @@ point at the original Google Apps Script URLs. To switch over:
    `backend/README.md` §"Deploying to shared/cPanel hosting") and migrate
    production data there.
 2. In [`src/app/api/collections/route.ts`](src/app/api/collections/route.ts),
-   replace `REMOTE_ACTIVITIES_URL`/`REMOTE_MASSES_URL` with the deployed
-   `api/activities.php`/`api/masses.php` URLs (move to env vars instead of
-   hardcoding).
+   replace `REMOTE_ACTIVITIES_URL` with the deployed
+   `api/activities.php` URL (move to env vars instead of hardcoding). There is no
+   backend replacement for `REMOTE_MASSES_URL` (the `masses` table was removed): drop
+   the masses fetch, and the page then shows no mass names in date headers.
 3. In [`src/app/api/auth/zone-login/route.ts`](src/app/api/auth/zone-login/route.ts):
    - `GET` → proxy to `api/zones.php` instead of fetching all users and
      computing distinct zones in Next.js.
@@ -1151,6 +1181,7 @@ contracts were deliberately kept identical.
 | Change a fixed-date celebration (name, rank, colour, class, notes) | [`backend/includes/romcal/fixed.dat`](backend/includes/romcal/fixed.dat), then regenerate |
 | Change how the calendar is computed (Easter, seasons, precedence) | [`backend/includes/romcal/Romcal.php`](backend/includes/romcal/Romcal.php) (mirrors the C source file by file; re-check against the C build if you change it) |
 | Change the calendar window or how rows are written | [`backend/includes/liturgical_calendar.php`](backend/includes/liturgical_calendar.php) |
+| Change the admin home's Priests load summary panel (load rule, alerts, weights) | [`backend/includes/pastoral_dashboard.php`](backend/includes/pastoral_dashboard.php) |
 | Change the admin theme colours (sky blue default / liturgical season) | [`backend/includes/theme.php`](backend/includes/theme.php); the choice is in Admin → Settings → Theme |
 | Change which day the week starts on | Admin panel → Settings (super admin); also renumbers `activities.weekday` and `source.day` |
 | Add/rename/move a priest, or add a section, labor or activity type | Admin panel → Priests / Sections / Labors / Activity types (super admin). A centre's section is set on the Centres page. |

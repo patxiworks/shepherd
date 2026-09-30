@@ -9,7 +9,7 @@
 //
 // Review the output carefully, then re-run against a fresh/truncated
 // database if anything looks off — this script is idempotent for zones and
-// users (keyed by name), but will duplicate activities/masses if run twice
+// users (keyed by name), but will duplicate activities if run twice
 // without truncating first.
 
 require __DIR__ . '/../includes/db.php';
@@ -19,7 +19,6 @@ require __DIR__ . '/../includes/auth.php';
 // Copied from src/app/api/collections/route.ts and
 // src/app/api/auth/zone-login/route.ts — update if those have changed.
 const REMOTE_ACTIVITIES_URL = 'https://script.google.com/macros/s/AKfycbwRoGXp8hU-e8vlTntOlAwlqofP9mQ3PqTSBy7b4WdbhZyTE9P5M2OSmfIqZn0s0RnN/exec';
-const REMOTE_MASSES_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLiHOCjJ0S2XNOHXVk3AEesA4qe5dMyuZTqCK9wtU-_MRXFZj6000SRLROk0fd9R4DImOeusBE4_pb1i4iRUr8b6ow2cSMAGRk2KNWQZ_uKAhtVq6Jt3wU3GYMSAGCBHvzahEsYHKhlJXaSITrCVq4RAWWanNLDLnGiTt-eJcUzM7qgZWI9WiOtkFN2zYnTvvdy7PI78fW7k4-noDdwTuiWf-sXHO81SpLA6ty-pTpMcjjr7WBDzmO4j8tZRcHPiT4rKyUHpugSodFl_hiFgjxbmLGP8zvCcVyDMI1ogir8Iz-rHt8c&lib=Myn6iEwL8dqLg0i8ztc1Qms6Fh59HncaP';
 const REMOTE_USERS_URL = 'https://script.google.com/macros/s/AKfycbwRoGXp8hU-e8vlTntOlAwlqofP9mQ3PqTSBy7b4WdbhZyTE9P5M2OSmfIqZn0s0RnN/exec?action=pass';
 
 function fetch_json(string $url)
@@ -139,18 +138,6 @@ foreach ($zoneIds as $zoneName => $zoneId) {
         }
     }
 }
-
-echo "Fetching masses (global)...\n";
-$masses = fetch_json(REMOTE_MASSES_URL) ?: [];
-$insertMass = $pdo->prepare('INSERT IGNORE INTO masses (zone_id, mass_date, class, mass) VALUES (NULL, ?, ?, ?)');
-foreach ($masses as $date => $entry) {
-    $insertMass->execute([
-        normalize_date($date),
-        $entry['Class'] ?? null,
-        $entry['Mass'] ?? null,
-    ]);
-}
-echo 'Imported ' . count($masses) . " mass entries.\n";
 
 foreach ($zoneIds as $zoneName => $zoneId) {
     touch_zone($pdo, $zoneId);

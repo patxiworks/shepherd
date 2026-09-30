@@ -13,7 +13,6 @@ backend/
   includes/              shared PHP helpers (db connection, auth, formatting)
   api/                   public JSON endpoints, called by the Next.js server
     activities.php        GET  ?zone=&section=&centre=&action=lastupdate
-    masses.php             GET  ?zone= (optional)
     zones.php               GET  -> { zones: [...] }
     login.php               POST { zone, passcode } -> { success, user }
   admin/                 browser-based admin panel (session login required)
@@ -41,7 +40,7 @@ backend/
    INSERT INTO admin_users (username, password_hash) VALUES ('admin', '<hash>');
    ```
 5. Visit `https://your-host/backend/admin/login.php` and log in. Add at
-   least one zone, then centres/users/activities/masses as needed.
+   least one zone, then centres/users/activities as needed.
 6. Confirm the API responds: `https://your-host/backend/api/zones.php`
    should return `{"zones": [...]}`.
 
@@ -150,17 +149,15 @@ Columns: `cal_date`, `celebration`, `class` (A–E), `liturgical_rank`, `color`,
 `admin_users.role` is one of:
 
 - **`super`** — sees and manages everything: zones, centres, users,
-  activities, the source table, masses, the priests/sections/labors lists,
+  activities, the source table, the priests/sections/labors lists,
   and other admin accounts (`/admin/admins/`).
 - **`zone`** (`zone_id` set) — scoped to one zone: can manage that zone's
-  users, activities, and masses (but not create/edit *global*,
-  zone_id-NULL mass entries — those affect every zone, so only `super`
-  can touch them). Cannot see the Zones, Centres, or Admins sections —
+  users and activities. Cannot see the Zones, Centres, or Admins sections —
   centres are set up by `super` and are out of a zone admin's purview.
 - **`centre`** (`centre_id` set, `zone_id` derived from it automatically)
   — scoped to one centre: can only manage users and activities whose
   `centre` field matches that centre's name, within its zone. Cannot see
-  Zones, Centres, Admins, or Masses at all.
+  Zones, Centres or Admins at all.
 
 Every list/edit/delete query is filtered server-side by the logged-in
 admin's scope (see `*_in_scope()` helpers in each `admin/<entity>/index.php`
@@ -190,7 +187,7 @@ php migrate/migrate.php
 ```
 
 It's idempotent for zones/users (matched by name) but will duplicate
-activities/masses if you run it twice — truncate those tables first if you
+activities if you run it twice — truncate that table first if you
 need a clean re-import. Review the imported data in the admin panel before
 cutting the frontend over.
 
@@ -207,10 +204,9 @@ small edits (only the parts that build the remote URL / do the credential
 check — the request/response shape stays the same, so `page.tsx` and
 `login/page.tsx` don't need to change):
 
-- **`collections/route.ts`**: replace `REMOTE_ACTIVITIES_URL` and
-  `REMOTE_MASSES_URL` with `https://your-host/backend/api/activities.php`
-  and `https://your-host/backend/api/masses.php` (move these into env vars
-  rather than hardcoding, e.g. `PASTORES_API_BASE`).
+- **`collections/route.ts`**: replace `REMOTE_ACTIVITIES_URL` with
+  `https://your-host/backend/api/activities.php` (move it into an env var
+  rather than hardcoding, e.g. `PASTORES_API_BASE`). There is no masses endpoint any more.
 - **`auth/zone-login/route.ts`**:
   - `GET` — instead of fetching all users and computing distinct zones,
     fetch `api/zones.php` and return its JSON as-is.

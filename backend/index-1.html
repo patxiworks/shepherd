@@ -10,7 +10,6 @@ Next.js frontend already expects.</p>
   includes/              shared PHP helpers (db connection, auth, formatting)
   api/                   public JSON endpoints, called by the Next.js server
     activities.php        GET  ?zone=&amp;section=&amp;centre=&amp;action=lastupdate
-    masses.php             GET  ?zone= (optional)
     zones.php               GET  -&gt; { zones: [...] }
     login.php               POST { zone, passcode } -&gt; { success, user }
   admin/                 browser-based admin panel (session login required)
@@ -32,7 +31,7 @@ Next.js frontend already expects.</p>
    <code>sql
    INSERT INTO admin_users (username, password_hash) VALUES ('admin', '&lt;hash&gt;');</code></li>
 <li>Visit <code>https://your-host/backend/admin/login.php</code> and log in. Add at
-   least one zone, then centres/users/activities/masses as needed.</li>
+   least one zone, then centres/users/activities as needed.</li>
 <li>Confirm the API responds: <code>https://your-host/backend/api/zones.php</code>
    should return <code>{"zones": [...]}</code>.</li>
 </ol>
@@ -44,7 +43,7 @@ it into MySQL. Run it <strong>locally</strong>, pointed at your new database (se
 <p><code>bash
 php migrate/migrate.php</code></p>
 <p>It's idempotent for zones/users (matched by name) but will duplicate
-activities/masses if you run it twice — truncate those tables first if you
+activities if you run it twice — truncate that table first if you
 need a clean re-import. Review the imported data in the admin panel before
 cutting the frontend over.</p>
 <h2 id="cutting-the-nextjs-frontend-over">Cutting the Next.js frontend over</h2>
@@ -59,10 +58,9 @@ small edits (only the parts that build the remote URL / do the credential
 check — the request/response shape stays the same, so <code>page.tsx</code> and
 <code>login/page.tsx</code> don't need to change):</p>
 <ul>
-<li><strong><code>collections/route.ts</code></strong>: replace <code>REMOTE_ACTIVITIES_URL</code> and
-  <code>REMOTE_MASSES_URL</code> with <code>https://your-host/backend/api/activities.php</code>
-  and <code>https://your-host/backend/api/masses.php</code> (move these into env vars
-  rather than hardcoding, e.g. <code>PASTORES_API_BASE</code>).</li>
+<li><strong><code>collections/route.ts</code></strong>: replace <code>REMOTE_ACTIVITIES_URL</code> with
+  <code>https://your-host/backend/api/activities.php</code> (move it into an env var
+  rather than hardcoding, e.g. <code>PASTORES_API_BASE</code>). There is no masses endpoint any more.</li>
 <li><strong><code>auth/zone-login/route.ts</code></strong>:</li>
 <li><code>GET</code> — instead of fetching all users and computing distinct zones,
     fetch <code>api/zones.php</code> and return its JSON as-is.</li>

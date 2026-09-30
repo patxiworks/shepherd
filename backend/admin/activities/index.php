@@ -6,6 +6,7 @@ require __DIR__ . '/../../includes/activity_io.php';
 require __DIR__ . '/../../includes/source_apply.php';
 require __DIR__ . '/../../includes/vigil.php';
 require __DIR__ . '/../../includes/absences.php';
+require __DIR__ . '/../../includes/activity_multiday_busy.php';
 require __DIR__ . '/../../includes/activity_duplicates.php';
 require __DIR__ . '/../../includes/activity_bilocation.php';
 require __DIR__ . '/../../includes/activity_mass_limit.php';
@@ -44,12 +45,12 @@ $weekStart = get_week_start($pdo);
 function activity_filters(array $src): array
 {
     $filters = [];
-    foreach (['date_from', 'date_to', 'day', 'centre', 'section', 'priest', 'absent', 'duplicate', 'bilocation', 'masses', 'no_priest'] as $key) {
+    foreach (['date_from', 'date_to', 'day', 'centre', 'section', 'priest', 'absent', 'in_multiday', 'duplicate', 'bilocation', 'masses', 'no_priest'] as $key) {
         $v = trim((string) ($src[$key] ?? ''));
         if ($v === '') {
             continue;
         }
-        if (in_array($key, ['absent', 'duplicate', 'bilocation', 'masses', 'no_priest'], true)) {
+        if (in_array($key, ['absent', 'in_multiday', 'duplicate', 'bilocation', 'masses', 'no_priest'], true)) {
             $filters[$key] = '1'; // yes/no flags: only activities whose priest is absent / that have a duplicate / that is a bilocation / whose priest is over the mass limit / that have no priest
             continue;
         }
@@ -82,6 +83,10 @@ function activity_where(array $admin, ?string $scopeCentreName, int $zoneId, arr
         }
         if ($key === 'absent') {
             $where[] = activity_absent_sql();
+            continue;
+        }
+        if ($key === 'in_multiday') {
+            $where[] = activity_in_multiday_sql();
             continue;
         }
         if ($key === 'duplicate') {
@@ -154,7 +159,7 @@ function activity_fields(PDO $pdo, array $admin, ?string $scopeCentreName, int $
 // that activity_row_html() turns into badges.
 function activity_flags_select(PDO $pdo): string
 {
-    return activity_absent_select($pdo) . activity_duplicate_select() . activity_bilocation_select() . activity_mass_count_select();
+    return activity_absent_select($pdo) . activity_in_multiday_select($pdo) . activity_duplicate_select() . activity_bilocation_select() . activity_mass_count_select();
 }
 
 // One table row. Cells with data-field are editable in place (see the
@@ -173,6 +178,11 @@ function activity_row_html(array $a, string $qs = ''): string
         ? ' <span class="no-priest-badge" title="No priest assigned for this activity">no priest</span>' : '')
         . (!empty($a['absent_note'])
         ? ' <span class="absent-badge" title="' . e('Absent ' . $a['absent_note']) . '">absent</span>' : '');
+    // Priest in charge of a multi-day activity elsewhere (see includes/activity_multiday_busy.php).
+    $inMultiday = !empty($a['multiday_note']);
+    if ($inMultiday) {
+        $priestText .= ' <span class="multiday-badge" title="' . e('In charge of ' . $a['multiday_detail']) . '">' . e('priest in ' . $a['multiday_note']) . '</span>';
+    }
     // Same priest, same date, overlapping times (see includes/activity_bilocation.php).
     $hasBilocation = !empty($a['bilocation_note']);
     if ($hasBilocation) {
@@ -186,7 +196,7 @@ function activity_row_html(array $a, string $qs = ''): string
     }
     // Flag identical activities (see includes/activity_duplicates.php).
     $dupes = (int) ($a['duplicate_count'] ?? 0);
-    $classes = trim(($missingPriest ? 'no-priest ' : '') . (!empty($a['absent_note']) ? 'absent ' : '') . ($hasBilocation ? 'bilocation ' : '') . ($overLimit ? 'mass-limit ' : '') . ($dupes ? 'duplicate' : ''));
+    $classes = trim(($missingPriest ? 'no-priest ' : '') . (!empty($a['absent_note']) ? 'absent ' : '') . ($inMultiday ? 'in-multiday ' : '') . ($hasBilocation ? 'bilocation ' : '') . ($overLimit ? 'mass-limit ' : '') . ($dupes ? 'duplicate' : ''));
     $activityText = e($a['activity']) . ($dupes
         ? ' <span class="dup-badge" title="' . e("Identical to $dupes other activit" . ($dupes === 1 ? 'y' : 'ies') . ' (same date, centre, activity, priest and times)') . '">duplicate</span>' : '');
     ob_start();
@@ -244,7 +254,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $stmt = $pdo->prepare('SELECT a.*' . activity_flags_select($pdo) . ' FROM activities a WHERE a.id = ?');
         $stmt->execute([$id]);
         $row = $stmt->fetch();
-        $reply(['html' => activity_row_html($row, http_build_query(activity_filters_from_qs($_POST['qs'] ?? ''))), 'absent' => !empty($row['absent_note']), 'duplicate' => (int) $row['duplicate_count'] > 0, 'bilocation' => !empty($row['bilocation_note']), 'masses' => (int) $row['mass_count'] > mass_limit(), 'no_priest' => empty($row['priest'])]);
+        $reply(['html' => activity_row_html($row, http_build_query(activity_filters_from_qs($_POST['qs'] ?? ''))), 'absent' => !empty($row['absent_note']), 'in_multiday' => !empty($row['multiday_note']), 'duplicate' => (int) $row['duplicate_count'] > 0, 'bilocation' => !empty($row['bilocation_note']), 'masses' => (int) $row['mass_count'] > mass_limit(), 'no_priest' => empty($row['priest'])]);
     }
 
     if ($action === 'from_source') {
@@ -290,6 +300,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     $findings['absent'] = ['Priest absent', $absent['count']];
                     $parts[] = "Warning: {$absent['count']} activit" . ($absent['count'] === 1 ? 'y has a priest who is' : 'ies have a priest who is') . ' absent: ' . implode(', ', $names);
                 }
+                $inMultiday = in_multiday_activities_in_range($pdo, $zoneId, $from, $to, $scopeCentreName);
+                if ($inMultiday['count']) {
+                    $names = [];
+                    foreach ($inMultiday['priests'] as $priest => $n) {
+                        $names[] = "$priest ($n)";
+                    }
+                    $findings['in_multiday'] = ['Priest in a multi-day activity', $inMultiday['count']];
+                    $parts[] = "Warning: {$inMultiday['count']} activit" . ($inMultiday['count'] === 1 ? 'y has a priest who is' : 'ies have a priest who is') . ' in charge of a multi-day activity elsewhere: ' . implode(', ', $names);
+                }
                 $bilocations = bilocation_activities_in_range($pdo, $zoneId, $from, $to, $scopeCentreName);
                 if ($bilocations) {
                     $findings['bilocation'] = ['Priest bilocation', $bilocations];
@@ -325,6 +344,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $bulkFilters = activity_filters_from_qs($_POST['qs'] ?? '');
             if (!absences_available($pdo)) {
                 unset($bulkFilters['absent']);
+            }
+            if (!multiday_busy_available_safe($pdo)) {
+                unset($bulkFilters['in_multiday']);
             }
             [$whereSql, $whereArgs] = activity_where($admin, $scopeCentreName, $bulkZone, $bulkFilters);
             bulk_delete_matching($pdo, 'activities', $whereSql, $whereArgs, 'activity', 'activities', fn() => touch_zone($pdo, $bulkZone));
@@ -403,6 +425,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 if ($absentNote !== null) {
                     $warnings[] = "{$fields['priest']} is absent then ($absentNote)";
                 }
+                $multidayNote = activity_in_multiday_note($pdo, $savedId);
+                if ($multidayNote !== null) {
+                    $warnings[] = "{$fields['priest']} is in charge of {$multidayNote[1]} then";
+                }
                 $bilocationNote = activity_bilocation_note($pdo, $savedId);
                 if ($bilocationNote !== null) {
                     $warnings[] = "it overlaps another activity of {$fields['priest']} in a different centre ($bilocationNote)";
@@ -426,7 +452,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $query = isset($_POST['zone_id']) ? ['zone' => (int) $_POST['zone_id']] : [];
     $query += activity_filters_from_qs($_POST['qs'] ?? '');
     if (!empty($sourceFilters)) {
-        $query = array_diff_key($query, array_flip(['date_from', 'date_to', 'day', 'centre', 'section', 'priest', 'absent', 'duplicate', 'bilocation', 'masses', 'no_priest'])) + $sourceFilters;
+        $query = array_diff_key($query, array_flip(['date_from', 'date_to', 'day', 'centre', 'section', 'priest', 'absent', 'in_multiday', 'duplicate', 'bilocation', 'masses', 'no_priest'])) + $sourceFilters;
     }
     header('Location: /admin/activities/index.php' . ($query ? '?' . http_build_query($query) : ''));
     exit;
@@ -483,6 +509,9 @@ $filters = activity_filters($_GET);
 if (!absences_available($pdo)) {
     unset($filters['absent']); // migration 012 not applied yet
 }
+if (!multiday_busy_available_safe($pdo)) {
+    unset($filters['in_multiday']); // multi-day priest column (migration 016) not applied yet
+}
 $filterQs = http_build_query($filters);
 $activities = [];
 $totalMatching = 0;
@@ -505,6 +534,7 @@ if ($filterZone) {
 const PASTORES_ACTIVITY_FLAGS = [
     'no_priest' => ['No priest', 'no-priest'],
     'absent' => ['Priest absent', 'absent'],
+    'in_multiday' => ['Priest in multi-day', 'in-multiday'],
     'bilocation' => ['Priest bilocation', 'bilocation'],
     'masses' => ['Over mass limit', 'mass-limit'],
     'duplicate' => ['Duplicate', 'duplicate'],
@@ -516,6 +546,7 @@ if ($filterZone) {
     $flagSql = [
         'no_priest' => activity_priest_missing_sql(),
         'absent' => absences_available($pdo) ? activity_absent_sql() : null,
+        'in_multiday' => multiday_busy_available_safe($pdo) ? activity_in_multiday_sql() : null,
         'bilocation' => activity_has_bilocation_sql(),
         'masses' => activity_over_mass_limit_sql(),
         'duplicate' => activity_has_duplicate_sql(),
@@ -549,7 +580,7 @@ if (isset($_GET['export']) && $filterZone) {
     export_activities_csv($stmt, 'activities-' . $zoneName . '-' . date('Y-m-d') . '.csv');
     exit;
 }
-$filterLabels = ['date_from' => 'From', 'date_to' => 'To', 'day' => 'Day', 'centre' => 'Centre', 'section' => 'Section', 'priest' => 'Priest', 'absent' => 'Priest absent', 'duplicate' => 'Duplicates', 'bilocation' => 'Priest bilocation', 'masses' => 'Over mass limit', 'no_priest' => 'No priest'];
+$filterLabels = ['date_from' => 'From', 'date_to' => 'To', 'day' => 'Day', 'centre' => 'Centre', 'section' => 'Section', 'priest' => 'Priest', 'absent' => 'Priest absent', 'in_multiday' => 'Priest in multi-day', 'duplicate' => 'Duplicates', 'bilocation' => 'Priest bilocation', 'masses' => 'Over mass limit', 'no_priest' => 'No priest'];
 $exportAllUrl = '/admin/activities/index.php?' . http_build_query(['export' => 1] + ($admin['role'] === 'super' ? ['zone' => (int) $filterZone] : []));
 $clearUrl = '/admin/activities/index.php' . ($admin['role'] === 'super' ? '?zone=' . (int) $filterZone : '');
 
@@ -591,6 +622,9 @@ $renderFilterFields = function (string $p) use ($pdo, $filters, $admin, $formCen
     <?php if (absences_available($pdo)): ?>
     <label style="font-weight:normal;"><input type="checkbox" name="absent" value="1" style="width:auto;" <?= isset($filters['absent']) ? 'checked' : '' ?>> Only activities whose priest is absent (see Absences)</label>
     <?php endif; ?>
+    <?php if (multiday_busy_available_safe($pdo)): ?>
+    <label style="font-weight:normal;"><input type="checkbox" name="in_multiday" value="1" style="width:auto;" <?= isset($filters['in_multiday']) ? 'checked' : '' ?>> Only activities whose priest is in charge of a multi-day activity at another centre</label>
+    <?php endif; ?>
     <label style="font-weight:normal;"><input type="checkbox" name="duplicate" value="1" style="width:auto;" <?= isset($filters['duplicate']) ? 'checked' : '' ?>> Only duplicates (identical date, centre, activity, priest and times)</label>
     <label style="font-weight:normal;"><input type="checkbox" name="bilocation" value="1" style="width:auto;" <?= isset($filters['bilocation']) ? 'checked' : '' ?>> Only priest bilocation (same priest and date, overlapping times, different centres)</label>
     <label style="font-weight:normal;"><input type="checkbox" name="masses" value="1" style="width:auto;" <?= isset($filters['masses']) ? 'checked' : '' ?>> Only masses of priests with more than <?= mass_limit() ?> masses in a day</label>
@@ -621,6 +655,8 @@ require __DIR__ . '/../includes/layout_top.php';
   tr.duplicate:not(.editing):hover td { background: #dce8f8; }
   tr.mass-limit td { background: #f1e9fb; }
   tr.mass-limit:not(.editing):hover td { background: #e6d9f7; }
+  tr.in-multiday td { background: #e0f2f1; }
+  tr.in-multiday:not(.editing):hover td { background: #cfe9e7; }
   tr.bilocation td { background: #fff3cd; }
   tr.bilocation:not(.editing):hover td { background: #ffeaa7; }
   tr.absent td { background: #fdecea; }
@@ -653,13 +689,16 @@ require __DIR__ . '/../includes/layout_top.php';
   .legend-box.zero { opacity: .5; cursor: default; }
   .legend-no-priest { background: #eceff1; color: #37474f; border-color: #b0bec5; }
   .legend-absent { background: #fdecea; color: #c62828; border-color: #ef9a9a; }
+  .legend-in-multiday { background: #e0f2f1; color: #00695c; border-color: #80cbc4; }
   .legend-bilocation { background: #fff3cd; color: #8a6100; border-color: #e0c060; }
   .legend-mass-limit { background: #f1e9fb; color: #5b2fa0; border-color: #c3a8ec; }
   .legend-duplicate { background: #eaf1fb; color: #1a56a8; border-color: #9dbbe6; }
   .absent-badge { display: inline-block; background: #fff; color: #c62828; border: 1px solid #ef9a9a; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
+  .multiday-badge { display: inline-block; background: #fff; color: #00695c; border: 1px solid #80cbc4; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
   .no-priest-badge { display: inline-block; background: #fff; color: #37474f; border: 1px solid #b0bec5; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
   tr.saved-warn td { background: #f8c9c4; }
   tr.saved-dup td { background: #cfe0f7; }
+  tr.saved-multiday td { background: #b2dfdb; }
   tr.saved-bilocation td { background: #ffe08a; }
   tr.saved-masses td { background: #dccbf5; }
   tr.saved-no-priest td { background: #cfd8dc; }
@@ -854,7 +893,7 @@ require __DIR__ . '/../includes/layout_top.php';
 <p class="table-hint">
   <strong>Filtered by</strong>
   <?php foreach ($filters as $key => $value): ?>
-    &middot; <?= e($filterLabels[$key]) ?>: <?= e($key === 'day' ? PASTORES_DAYS[$value] : (in_array($key, ['absent', 'duplicate', 'bilocation', 'masses', 'no_priest'], true) ? 'yes' : $value)) ?>
+    &middot; <?= e($filterLabels[$key]) ?>: <?= e($key === 'day' ? PASTORES_DAYS[$value] : (in_array($key, ['absent', 'in_multiday', 'duplicate', 'bilocation', 'masses', 'no_priest'], true) ? 'yes' : $value)) ?>
   <?php endforeach; ?>
   &middot; <a href="<?= e($clearUrl) ?>">Clear filters</a>
 </p>
@@ -1050,7 +1089,7 @@ require __DIR__ . '/../includes/layout_top.php';
         tr.replaceWith(fresh);
         editing = null;
         // green normally; red if the priest is absent, amber for a priest bilocation, purple if over the mass limit, blue if it duplicates another row
-        var flashClass = res.body.absent ? 'saved-warn' : res.body.bilocation ? 'saved-bilocation' : res.body.masses ? 'saved-masses' : res.body.no_priest ? 'saved-no-priest' : res.body.duplicate ? 'saved-dup' : 'saved';
+        var flashClass = res.body.absent ? 'saved-warn' : res.body.in_multiday ? 'saved-multiday' : res.body.bilocation ? 'saved-bilocation' : res.body.masses ? 'saved-masses' : res.body.no_priest ? 'saved-no-priest' : res.body.duplicate ? 'saved-dup' : 'saved';
         fresh.classList.add(flashClass);
         setTimeout(function () { fresh.classList.remove(flashClass); }, flashClass === 'saved' ? 1200 : 3000);
       })

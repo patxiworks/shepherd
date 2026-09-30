@@ -108,23 +108,6 @@ CREATE TABLE IF NOT EXISTS source (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------------
--- masses: date -> {Class, Mass} lookup (formerly the "masses" sheet)
--- zone_id is nullable: current frontend fetches masses without a zone
--- filter, so NULL rows are treated as global/shared across zones.
--- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS masses (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  zone_id INT UNSIGNED NULL,
-  mass_date DATE NOT NULL,
-  class VARCHAR(100) NULL,
-  mass VARCHAR(255) NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_masses_zone FOREIGN KEY (zone_id) REFERENCES zones(id) ON DELETE CASCADE,
-  UNIQUE KEY uniq_mass_zone_date (zone_id, mass_date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ---------------------------------------------------------------------
 -- absences: when a priest is away (retreat, holiday, ...). Managed under
 -- Admin > Absences (super and zone admins). Like activities.priest, `priest`
 -- and `activity` hold the name as text, not a foreign key.
@@ -304,7 +287,7 @@ INSERT IGNORE INTO settings (name, value) VALUES
 -- the zone/passcode login used by the Next.js frontend)
 --
 -- role: 'super' sees/manages everything; 'zone' is scoped to zone_id
--- (all centres/users/activities/masses within that zone); 'centre' is
+-- (all centres/users/activities within that zone); 'centre' is
 -- scoped to centre_id (only users/activities matching that centre's name,
 -- within centre_id's own zone). zone_id/centre_id are ignored for 'super'
 -- and enforced server-side regardless of what a form submits.

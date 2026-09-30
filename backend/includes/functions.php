@@ -52,7 +52,7 @@ function date_to_iso(?string $date): ?string
 }
 
 // Bumps zones.last_update so the frontend's "check for updates" polling
-// (action=lastupdate) notices this zone's activities/masses/users changed.
+// (action=lastupdate) notices this zone's activities/users changed.
 function touch_zone(PDO $pdo, int $zoneId): void
 {
     $stmt = $pdo->prepare('UPDATE zones SET last_update = UTC_TIMESTAMP() WHERE id = ?');

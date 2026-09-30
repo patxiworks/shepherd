@@ -3,6 +3,7 @@ require __DIR__ . '/../includes/db.php';
 require __DIR__ . '/../includes/functions.php';
 require __DIR__ . '/../includes/auth.php';
 require __DIR__ . '/../includes/multiday_activities.php';
+require __DIR__ . '/../includes/pastoral_dashboard.php';
 $admin = admin_require_login();
 
 $pdo = pastores_db();
@@ -15,8 +16,6 @@ if ($admin['role'] === 'super') {
         'Centres' => $pdo->query('SELECT COUNT(*) FROM centres')->fetchColumn(),
         'Users' => $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn(),
         'Activities' => $pdo->query('SELECT COUNT(*) FROM activities')->fetchColumn(),
-        'Source' => $pdo->query('SELECT COUNT(*) FROM source')->fetchColumn(),
-        'Masses' => $pdo->query('SELECT COUNT(*) FROM masses')->fetchColumn(),
     ];
     if ($mdayAvailable) {
         $counts['Multi-day Activities'] = $pdo->query('SELECT COUNT(*) FROM multiday_activities')->fetchColumn();
@@ -30,13 +29,14 @@ if ($admin['role'] === 'super') {
     $users->execute([$admin['zone_id']]);
     $activities = $pdo->prepare('SELECT COUNT(*) FROM activities WHERE zone_id = ?');
     $activities->execute([$admin['zone_id']]);
-    $masses = $pdo->prepare('SELECT COUNT(*) FROM masses WHERE zone_id = ? OR zone_id IS NULL');
-    $masses->execute([$admin['zone_id']]);
+
+    $centres = $pdo->prepare('SELECT COUNT(*) FROM centres WHERE zone_id = ?');
+    $centres->execute([$admin['zone_id']]);
 
     $counts = [
         'Users' => $users->fetchColumn(),
+        'Centres' => $centres->fetchColumn(),
         'Activities' => $activities->fetchColumn(),
-        'Masses' => $masses->fetchColumn(),
     ];
 } else { // centre
     $centreName = admin_centre_name($pdo, $admin);
@@ -53,10 +53,10 @@ if ($admin['role'] === 'super') {
     ];
 }
 
-$pageTitle = 'Dashboard — Pastores Admin';
+$pageTitle = 'General Dashboard — Pastores Admin';
 require __DIR__ . '/includes/layout_top.php';
 ?>
-<h1>Dashboard</h1>
+<h1>General Dashboard</h1>
 <?php if ($scopeLabel): ?><p style="color:#666; margin-top:-8px;"><?= e($scopeLabel) ?></p><?php endif; ?>
 <div class="row">
   <?php foreach ($counts as $label => $count): ?>
@@ -66,4 +66,5 @@ require __DIR__ . '/includes/layout_top.php';
     </div>
   <?php endforeach; ?>
 </div>
+<?php pd_render($pdo, $admin, $mdayAvailable); ?>
 <?php require __DIR__ . '/includes/layout_bottom.php'; ?>
