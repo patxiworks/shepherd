@@ -1,0 +1,30 @@
+# Root .htaccess for hosting the whole repo (Hostinger etc.) where only backend/
+# is the PHP app. It serves backend/admin and backend/api at the site root
+# (the admin pages use root-absolute links such as /admin/...), and blocks
+# everything that must never be downloaded. Not needed when the document root
+# is the backend/ folder itself.
+Options -Indexes
+DirectoryIndex index.php index.html
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+
+# Never serve these: repo internals, the Next.js app, config, migrations, PHP helpers.
+RewriteRule ^(\.git|src|node_modules|\.next|docs)(/|$) - [F,L]
+RewriteRule ^backend/(migrate|includes)(/|$) - [F,L]
+RewriteRule ^backend/admin/includes(/|$) - [F,L]
+RewriteRule ^backend/config(\.sample)?\.php$ - [F,L]
+RewriteRule ^backend/.*\.(sql|md|dat|txt)$ - [F,L]
+RewriteRule ^(package(-lock)?\.json|tsconfig\.json|next\.config\.[a-z]+|documentation\.md|\.gitignore|\.env.*)$ - [F,L]
+
+# Someone typed /backend/admin/... : send them to the root-based URL.
+RewriteCond %{THE_REQUEST} \s/backend/(admin|api)(/[^\s?]*)?
+RewriteRule ^backend/(admin|api)(/.*)?$ /$1$2 [R=302,L]
+
+# Site root -> admin login.
+RewriteRule ^$ /admin/login.php [R=302,L]
+
+# /admin/... and /api/... are served from backend/.
+RewriteCond %{REQUEST_URI} !^/backend/
+RewriteRule ^(admin|api)(/.*)?$ backend/$1$2 [L]
+</IfModule>
