@@ -30,6 +30,7 @@ function pastores_db(): PDO
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
+            PDO::ATTR_TIMEOUT => 5, // fail fast on an unreachable DB host instead of hanging into a gateway timeout
         ]);
     }
     return $pdo;
