@@ -474,8 +474,13 @@ identity/value are never colour or angle alone.
 - **Spreadsheet-style editing (Activities only).** Clicking a row makes its
   cells inputs; Enter/Save posts `action=inline_save` to the same page,
   which answers with JSON containing the re-rendered row
-  (`activity_row_html()`); Esc/Cancel reverts. Day/Wk/Section update
-  live as you change Date/Centre. You must save or cancel a changed row
+  (`activity_row_html()`); Esc/Cancel reverts. The table columns are
+  Date, Centre, Activity, Priest, From, To and Description: Day, Wk, Section, Labor
+  and Duration are not shown (they are still stored and derived on save; an inline
+  save keeps the row's existing Labor, which is still editable in the modal form).
+  **Duration is always computed as To − From** on save (blank if either is empty or
+  To isn't later) and has no form field; rows saved before this keep their old value
+  until they're next saved. You must save or cancel a changed row
   before editing another. The Edit link still opens the full modal form. An
   editing cell (`tr.editing td`, same on Source and Multi-day Activities) has
   no padding of its own, so its `.cell-input` (which also has no border of
@@ -520,6 +525,31 @@ identity/value are never colour or angle alone.
   a "Filtered by …" line with a Clear link appears above the table. Filters
   are carried through Edit/Save/Delete (hidden `qs` field) so you stay on the
   filtered list.
+- **Date picker** (a `Date` calendar input right after "New activity", before the
+  right-aligned Filter group; placed by the toolbar script via `data-toolbar-item
+  data-before-right`). Choosing a date reloads the list filtered to that single date
+  (`date_from = date_to`, other filters kept); clearing it removes the date filter. It
+  reads "No date" unless exactly one date is filtered (none, or a From/To range).
+  **Day summary:** with a single date filtered, a "Priests on <date>" box lists each
+  priest (alphabetical, "(no priest)" last) with their activities that day (time,
+  activity, centre; from the rows shown, so other filters apply). Docked right of the
+  table at ≥1200px (sticky); below that it floats bottom-right, collapsed to its title
+  until tapped, and is hidden by the zone-admin focus toggle. After an inline save it is
+  rebuilt in the browser from the table rows (`window.refreshDaySummary()`), so edits
+  show immediately; delete and the modal form reload the page anyway. Activities in the
+  box show only their start time, and its priest column doesn't wrap. The main table
+  uses fixed column widths (`table.act-table`, `table-layout: fixed`, Description takes
+  the rest) so inline editing doesn't shift the layout. **Column widths are user-resizable**: drag the
+  right edge of a heading (double-click an edge to reset); the first drag freezes all
+  columns at their current pixel widths (the table can then grow wider and scroll), and
+  the widths are kept in `localStorage` (`actColWidths`), per browser. The priest column
+  shows the priest's name, their number of activities that day "(N)" and, if they are over
+  the limit, the "N masses" badge and, if their activities overlap at different centres, the "bilocation" badge, each under the name (the only flags shown; copied from the rows). Absent priests are always the last rows, after "(no priest)".
+  Because one edit can change the mass count of other rows, an inline save redraws the box
+  at once from the table and then again from a fresh fetch of the page. The zone's
+  priests who are absent that date (from `absences`, honouring the Priest filter) are
+  listed even with no activities, with "Activity (dd/mm/yyyy to dd/mm/yyyy)" in red ("Absent" if the absence has no activity); the table has no
+  alternating row shading.
 - **Add from source** (button before "New activity"; code in
   [`backend/includes/source_apply.php`](backend/includes/source_apply.php)).
   Takes a start and end date (max 366 days) and fills the activities from the

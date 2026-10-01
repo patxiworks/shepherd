@@ -138,6 +138,24 @@ function activity_fields(PDO $pdo, array $admin, ?string $scopeCentreName, int $
         $section = $stmt->fetchColumn();
     }
 
+    // The table has no Labor cell, so an inline save doesn't post it: keep the stored one.
+    $labor = trim($in['labor'] ?? '') ?: null;
+    if (!array_key_exists('labor', $in) && $id) {
+        $stmt = $pdo->prepare('SELECT labor FROM activities WHERE id = ?');
+        $stmt->execute([$id]);
+        $labor = $stmt->fetchColumn() ?: null;
+    }
+    // Duration is always to − from (blank unless both are set and to is later).
+    $from = ($in['from_time'] ?? '') ?: null;
+    $to = ($in['to_time'] ?? '') ?: null;
+    $duration = null;
+    if ($from && $to && preg_match('/^(\d\d):(\d\d)/', $from, $f) && preg_match('/^(\d\d):(\d\d)/', $to, $t)) {
+        $mins = ($t[1] * 60 + $t[2]) - ($f[1] * 60 + $f[2]);
+        if ($mins > 0) {
+            $duration = sprintf('%02d:%02d:00', intdiv($mins, 60), $mins % 60);
+        }
+    }
+
     return [
         'week' => $parts['week'] ?? null,
         'day' => $parts['day'] ?? null,
@@ -146,10 +164,10 @@ function activity_fields(PDO $pdo, array $admin, ?string $scopeCentreName, int $
         'centre' => $centre,
         'activity' => trim($in['activity'] ?? '') ?: null,
         'section' => $section ?: null,
-        'labor' => trim($in['labor'] ?? '') ?: null,
-        'from_time' => ($in['from_time'] ?? '') ?: null,
-        'to_time' => ($in['to_time'] ?? '') ?: null,
-        'duration' => ($in['duration'] ?? '') ?: null,
+        'labor' => $labor,
+        'from_time' => $from,
+        'to_time' => $to,
+        'duration' => $duration,
         'priest' => trim($in['priest'] ?? '') ?: null,
         'description' => trim($in['description'] ?? '') ?: null,
     ];
@@ -203,16 +221,11 @@ function activity_row_html(array $a, string $qs = ''): string
     ?>
 <tr data-id="<?= $id ?>" data-zone="<?= $zone ?>"<?= $classes !== '' ? ' class="' . $classes . '"' : '' ?>>
   <?= $cell('activity_date', 'date', $a['activity_date'], e($a['activity_date'])) ?>
-  <td data-derived="day"><?= e($a['day']) ?></td>
-  <td data-derived="week"><?= e((string) $a['week']) ?></td>
   <?= $cell('centre', 'centre', $a['centre'], e($a['centre'])) ?>
-  <td data-derived="section"><?= e($a['section']) ?></td>
   <?= $cell('activity', 'activity', $a['activity'], $activityText, ' data-sort="' . e($a['activity']) . '"') ?>
-  <?= $cell('labor', 'labor', $a['labor'], e($a['labor'])) ?>
   <?= $cell('priest', 'priest', $a['priest'], $priestText, ' data-sort="' . e($a['priest']) . '"') ?>
   <?= $cell('from_time', 'time', $a['from_time'] ? substr($a['from_time'], 0, 5) : '', $t($a['from_time'])) ?>
   <?= $cell('to_time', 'time', $a['to_time'] ? substr($a['to_time'], 0, 5) : '', $t($a['to_time'])) ?>
-  <?= $cell('duration', 'time', $a['duration'] ? substr($a['duration'], 0, 5) : '', $t($a['duration'])) ?>
   <?= $cell('description', 'text', $a['description'], e($a['description']), ' class="desc" title="' . e($a['description']) . '"') ?>
   <td class="actions">
     <?= icon_edit('/admin/activities/index.php?edit=' . $id . '&zone=' . $zone . ($qs !== '' ? '&' . $qs : '')) ?>
@@ -679,6 +692,21 @@ require __DIR__ . '/../includes/layout_top.php';
   tr.editing td.actions button { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; vertical-align: middle; }
   tr.editing td.actions button svg { width: 14px; height: 14px; }
   tr.editing .row-error { display: block; color: #c62828; font-size: 12px; margin-top: 4px; white-space: normal; }
+  /* Fixed column widths (sized for the inline editors), so a row doesn't
+     change the layout when it switches to editing. Description takes the rest. */
+  table.act-table { table-layout: fixed; width: 100%; min-width: 1080px; }
+  table.act-table th.bulk-col { width: 36px; }
+  table.act-table th.w-date { width: 140px; }
+  table.act-table th.w-centre { width: 170px; }
+  table.act-table th.w-activity { width: 170px; }
+  table.act-table th.w-priest { width: 200px; }
+  table.act-table th.w-time { width: 100px; }
+  table.act-table th.w-actions { width: 84px; }
+  table.act-table td { overflow-wrap: anywhere; }
+  table.act-table tr.editing .cell-input { min-width: 0; }
+  table.act-table th { position: sticky; }
+  .col-resize { position: absolute; top: 0; right: -3px; width: 7px; height: 100%; cursor: col-resize; z-index: 3; touch-action: none; }
+  .col-resize:hover, .col-resize.dragging { background: rgba(103,58,183,.35); }
   tr.saved td { background: #e8f5e9; }
   .table-hint { font-size: 12px; color: #666; margin: 0 0 8px; }
   .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
@@ -834,10 +862,6 @@ require __DIR__ . '/../includes/layout_top.php';
         <label for="to_time">To</label>
         <input type="time" id="to_time" name="to_time" value="<?= e($editing['to_time'] ?? '') ?>">
       </div>
-      <div>
-        <label for="duration">Duration</label>
-        <input type="time" id="duration" name="duration" value="<?= e($editing['duration'] ?? '') ?>">
-      </div>
     </div>
     <label for="description">Description</label>
     <textarea id="description" name="description"><?= e($editing['description'] ?? '') ?></textarea>
@@ -875,6 +899,38 @@ require __DIR__ . '/../includes/layout_top.php';
   </form>
 </div>
 
+<?php
+// "Pick a date" calendar button, placed after New activity by the toolbar
+// script (data-toolbar-item / data-before-right). Choosing a date reloads the
+// list filtered to that single date (date_from = date_to), keeping the other
+// filters; clearing it removes the date filter. It reads "No date" unless
+// exactly one date is being filtered on.
+$dayBase = array_diff_key($filters, ['date_from' => 1, 'date_to' => 1]) + ($admin['role'] === 'super' ? ['zone' => (int) $filterZone] : []);
+$dayValue = (isset($filters['date_from'], $filters['date_to']) && $filters['date_from'] === $filters['date_to']) ? $filters['date_from'] : '';
+?>
+<label class="day-pick<?= $dayValue === '' ? ' empty' : '' ?>" data-toolbar-item data-before-right title="Show only the activities of one date">
+  <input type="date" id="day-pick" value="<?= e($dayValue) ?>" data-base="<?= e(http_build_query($dayBase)) ?>" aria-label="Show activities of one date">
+  <span class="day-pick-empty" aria-hidden="true">No date</span>
+</label>
+<style>
+  .day-pick { position: relative; display: inline-flex; align-items: center; margin: 0; font-weight: normal; }
+  .day-pick input { width: auto; margin: 0; }
+  /* No single date filtered (none, or a range): hide the dd/mm/yyyy placeholder and say "No date" instead. */
+  .day-pick-empty { display: none; position: absolute; left: 10px; pointer-events: none; color: #555; background: #fff; padding-right: 4px; }
+  .day-pick.empty .day-pick-empty { display: inline; }
+  .day-pick.empty input::-webkit-datetime-edit { opacity: 0; }
+</style>
+<script>
+(function () {
+  var input = document.getElementById('day-pick');
+  if (!input) return;
+  input.addEventListener('change', function () {
+    var q = input.dataset.base;
+    if (input.value) q += (q ? '&' : '') + 'date_from=' + input.value + '&date_to=' + input.value;
+    location.href = '/admin/activities/index.php' + (q ? '?' + q : '');
+  });
+})();
+</script>
 
 <?php if ($admin['role'] === 'super'): ?>
 <div class="card">
@@ -912,11 +968,31 @@ require __DIR__ . '/../includes/layout_top.php';
 <?php endif; ?>
 <p class="table-hint">Click a row to edit it in place &middot; click a column heading to sort &middot; showing the latest <?= count($activities) ?> activit<?= count($activities) === 1 ? 'y' : 'ies' ?><?= count($activities) >= 300 ? ' (limit 300)' : '' ?>.</p>
 </div>
+<?php
+// Single date filtered: the priests of the zone who are absent that day (with
+// or without activities), for the summary box, which is drawn by the script
+// below from the table rows plus this list.
+$dayAbsent = [];
+if ($dayValue !== '' && absences_available($pdo)) {
+    $stmt = $pdo->prepare(
+        "SELECT priest, GROUP_CONCAT(CONCAT(COALESCE(NULLIF(activity, ''), 'Absent'), ' (', DATE_FORMAT(start_at, '%d/%m/%Y'), ' to ', DATE_FORMAT(end_at, '%d/%m/%Y'), ')')
+                ORDER BY start_at SEPARATOR '; ') AS note
+         FROM absences WHERE start_at < DATE_ADD(?, INTERVAL 1 DAY) AND end_at > ? GROUP BY priest"
+    );
+    $stmt->execute([$dayValue, $dayValue]);
+    foreach ($stmt as $row) {
+        if (in_array($row['priest'], $formPriests, true) && (!isset($filters['priest']) || $filters['priest'] === $row['priest'])) {
+            $dayAbsent[$row['priest']] = $row['note'];
+        }
+    }
+}
+?>
+<div class="act-layout">
 <div class="table-wrap">
-<table data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs, 'zone' => (int) $filterZone])) ?>">
+<table class="act-table" data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs, 'zone' => (int) $filterZone])) ?>">
   <thead><tr>
-    <th>Date</th><th>Day</th><th>Wk</th><th>Centre</th><th>Section</th><th>Activity</th>
-    <th>Labor</th><th>Priest</th><th>From</th><th>To</th><th>Duration</th><th>Description</th><th></th>
+    <th class="w-date">Date</th><th class="w-centre">Centre</th><th class="w-activity">Activity</th>
+    <th class="w-priest">Priest</th><th class="w-time">From</th><th class="w-time">To</th><th>Description</th><th class="w-actions"></th>
   </tr></thead>
   <tbody id="activities-body" data-qs="<?= e($filterQs) ?>">
   <?php foreach ($activities as $a): ?>
@@ -924,10 +1000,106 @@ require __DIR__ . '/../includes/layout_top.php';
 
   <?php endforeach; ?>
   <?php if (!$activities): ?>
-    <tr><td colspan="13" style="text-align:center;color:#888;"><?= $filters ? 'No activities match these filters.' : 'No activities for this zone yet.' ?></td></tr>
+    <tr><td colspan="8" style="text-align:center;color:#888;"><?= $filters ? 'No activities match these filters.' : 'No activities for this zone yet.' ?></td></tr>
   <?php endif; ?>
   </tbody>
 </table>
+</div>
+<?php if ($dayValue !== ''): ?>
+<details class="day-summary" id="day-summary" open>
+  <summary>Priests on <?= e(date('D j M Y', strtotime($dayValue))) ?> <span id="day-summary-count"></span></summary>
+  <table>
+    <thead><tr><th>Priest</th><th>Activities</th></tr></thead>
+    <tbody id="day-summary-body"></tbody>
+  </table>
+</details>
+<style>
+  .act-layout { display: block; }
+  .day-summary { position: relative; z-index: 15; background: #fff; border: 1px solid #ceb9f3; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.15); font-size: 13px; }
+  .day-summary summary { cursor: pointer; padding: 8px 12px; font-weight: 600; color: #673AB7; }
+  .day-summary summary span { font-weight: normal; color: #666; }
+  .day-summary table { width: 100%; }
+  .day-summary td, .day-summary th { vertical-align: top; }
+  .day-summary tbody tr, .day-summary tbody tr:nth-child(even) { background: #fff; }
+  .day-summary .absent-note { color: #c62828; }
+  .day-summary tbody td:first-child { white-space: nowrap; }
+  .day-summary td div { padding: 1px 0; }
+  .day-summary td small { color: #666; }
+  /* Large screens: docked to the right of the table, following the scroll. */
+  @media (min-width: 1200px) {
+    .act-layout { display: flex; align-items: flex-start; gap: 16px; }
+    .act-layout > .table-wrap { flex: 1 1 auto; min-width: 0; }
+    .day-summary { flex: 0 0 340px; position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; }
+  }
+  /* Small screens: floating bottom-right, collapsed to its title until tapped. */
+  @media (max-width: 1199px) {
+    .day-summary { position: fixed; right: 10px; bottom: 10px; z-index: 15; width: min(92vw, 360px); max-height: 60vh; overflow-y: auto; }
+    body.act-focus .day-summary { display: none; }
+  }
+</style>
+<script>
+(function () {
+  var d = document.getElementById('day-summary');
+  if (d && window.matchMedia('(max-width: 1199px)').matches) d.removeAttribute('open');
+
+  // Rebuilds the summary from the table rows as they are now; called after an
+  // inline save so an edit shows up here without reloading.
+  var absent = <?= json_encode($dayAbsent, JSON_FORCE_OBJECT | JSON_HEX_TAG) ?>;   // {priest: absence text} for this date
+  window.refreshDaySummary = function (doc) {
+    var body = document.getElementById('day-summary-body');
+    var rows = (doc || document).querySelectorAll('#activities-body tr[data-id]');
+    if (!body) return;
+    var by = {}, flags = {};   // flags[priest] = the mass-limit / bilocation badges of any of their rows
+    Object.keys(absent).forEach(function (p) { by[p] = []; });
+    Array.prototype.forEach.call(rows, function (tr) {
+      function v(f) { var td = tr.querySelector('td[data-field=' + f + ']'); return td ? (td.getAttribute('data-value') || '') : ''; }
+      var from = v('from_time'), to = v('to_time');
+      var name = v('priest') || '(no priest)';
+      var f = flags[name] = flags[name] || {};
+      ['mass-badge', 'bilocation-badge'].forEach(function (c) { var b = tr.querySelector('.' + c); if (b && !f[c]) f[c] = b; });
+      (by[name] = by[name] || []).push({ time: from, activity: v('activity'), centre: v('centre') });
+    });
+    var names = Object.keys(by).sort(function (a, b) {
+      // absent priests always last, then "(no priest)"
+      function rank(n) { return absent[n] !== undefined ? 2 : n === '(no priest)' ? 1 : 0; }
+      if (rank(a) !== rank(b)) return rank(a) - rank(b);
+      return a.localeCompare(b, undefined, { sensitivity: 'base' });
+    });
+    body.textContent = '';
+    names.forEach(function (name) {
+      var tr = document.createElement('tr'), th = document.createElement('td'), td = document.createElement('td');
+      th.appendChild(document.createTextNode(name));
+      var cnt = document.createElement('small');
+      cnt.textContent = ' (' + by[name].length + ')';
+      cnt.title = by[name].length + ' activit' + (by[name].length === 1 ? 'y' : 'ies');
+      th.appendChild(cnt);
+      var fl = flags[name] || {};
+      ['mass-badge', 'bilocation-badge'].forEach(function (c) {
+        if (!fl[c]) return;
+        var d = document.createElement('div'); d.appendChild(fl[c].cloneNode(true)); th.appendChild(d);
+      });
+      if (absent[name] !== undefined) {
+        var an = document.createElement('div');
+        an.className = 'absent-note';
+        an.textContent = absent[name];
+        td.appendChild(an);
+      }
+      by[name].sort(function (a, b) { return (a.time || '99').localeCompare(b.time || '99'); }).forEach(function (it) {
+        var div = document.createElement('div');
+        if (it.time) { var b = document.createElement('b'); b.textContent = it.time; div.appendChild(b); div.appendChild(document.createTextNode(' ')); }
+        div.appendChild(document.createTextNode(it.activity));
+        if (it.centre) { var s = document.createElement('small'); s.textContent = ' \u00b7 ' + it.centre; div.appendChild(s); }
+        td.appendChild(div);
+      });
+      tr.appendChild(th); tr.appendChild(td); body.appendChild(tr);
+    });
+    var n = document.getElementById('day-summary-count');
+    if (n) n.textContent = '(' + names.length + ')';
+  };
+  window.refreshDaySummary(); // initial render, so the flags (badges) are shown too
+})();
+</script>
+<?php endif; ?>
 </div>
 <script>
 (function () {
@@ -1036,10 +1208,11 @@ require __DIR__ . '/../includes/layout_top.php';
   function updateDerived(tr) {
     var date = tr.querySelector('[name=activity_date]');
     var p = date ? calendarParts(date.value) : null;
-    tr.querySelector('[data-derived=day]').textContent = p ? p.dayName.slice(0, 3) : '';
-    tr.querySelector('[data-derived=week]').textContent = p ? p.week : '';
+    var d = tr.querySelector('[data-derived=day]'), w = tr.querySelector('[data-derived=week]'), s = tr.querySelector('[data-derived=section]');
+    if (d) d.textContent = p ? p.dayName.slice(0, 3) : '';
+    if (w) w.textContent = p ? p.week : '';
     var centre = tr.querySelector('[name=centre]');
-    if (centre) tr.querySelector('[data-derived=section]').textContent = sectionOf(tr.getAttribute('data-zone'), centre.value);
+    if (s && centre) s.textContent = sectionOf(tr.getAttribute('data-zone'), centre.value);
   }
 
   function startEdit(tr, focusTd) {
@@ -1088,6 +1261,15 @@ require __DIR__ . '/../includes/layout_top.php';
         var fresh = holder.firstElementChild;
         tr.replaceWith(fresh);
         editing = null;
+        if (window.refreshDaySummary) {
+          window.refreshDaySummary();
+          // The server only re-rendered this row, but an edit can change the mass
+          // count (and so the badge) of other rows, so re-read the page for those.
+          fetch(location.href, { credentials: 'same-origin' })
+            .then(function (r) { return r.text(); })
+            .then(function (html) { window.refreshDaySummary(new DOMParser().parseFromString(html, 'text/html')); })
+            .catch(function () {});
+        }
         // green normally; red if the priest is absent, amber for a priest bilocation, purple if over the mass limit, blue if it duplicates another row
         var flashClass = res.body.absent ? 'saved-warn' : res.body.in_multiday ? 'saved-multiday' : res.body.bilocation ? 'saved-bilocation' : res.body.masses ? 'saved-masses' : res.body.no_priest ? 'saved-no-priest' : res.body.duplicate ? 'saved-dup' : 'saved';
         fresh.classList.add(flashClass);
@@ -1135,6 +1317,60 @@ require __DIR__ . '/../includes/layout_top.php';
     toggle.setAttribute('aria-pressed', on ? 'true' : 'false');
     toggle.setAttribute('aria-label', on ? 'Show filters and menu' : 'Hide filters and menu, show just the table');
     toggle.title = on ? 'Show filters and menu' : 'Hide filters and menu';
+  });
+})();
+</script>
+<script>
+// Drag the right edge of a column heading to resize it. The first drag freezes
+// every column at its current width (so the table can grow wider than its box
+// and scroll); widths are remembered per browser. Double-click an edge to reset.
+(function () {
+  var table = document.querySelector('table.act-table');
+  if (!table) return;
+  var KEY = 'actColWidths';
+  var ths = function () { return Array.prototype.slice.call(table.tHead.rows[0].cells).filter(function (th) { return !th.classList.contains('bulk-col'); }); };
+  function apply(widths) {
+    var cols = ths();
+    if (widths.length !== cols.length) return;
+    cols.forEach(function (th, i) { th.style.width = widths[i] + 'px'; });
+    table.style.width = widths.reduce(function (a, b) { return a + b; }, 0) + 'px';
+    table.style.minWidth = '0';
+  }
+  function save(widths) { try { localStorage.setItem(KEY, JSON.stringify(widths)); } catch (e) {} }
+  function reset() {
+    ths().forEach(function (th) { th.style.width = ''; });
+    table.style.width = ''; table.style.minWidth = '';
+    try { localStorage.removeItem(KEY); } catch (e) {}
+  }
+  try { var saved = JSON.parse(localStorage.getItem(KEY) || 'null'); if (Array.isArray(saved)) apply(saved.map(Number)); } catch (e) {}
+
+  var cols = ths();
+  cols.slice(0, -1).forEach(function (th, i) {
+    var h = document.createElement('span');
+    h.className = 'col-resize'; h.title = 'Drag to resize · double-click to reset all';
+    th.appendChild(h);
+    h.addEventListener('click', function (ev) { ev.stopPropagation(); }); // not a sort click
+    h.addEventListener('dblclick', function (ev) { ev.stopPropagation(); reset(); });
+    h.addEventListener('pointerdown', function (ev) {
+      ev.preventDefault(); ev.stopPropagation();
+      var all = ths();
+      var widths = all.map(function (t) { return t.getBoundingClientRect().width; });
+      apply(widths.map(Math.round));
+      var startX = ev.clientX, startW = widths[i];
+      h.setPointerCapture(ev.pointerId);
+      h.classList.add('dragging');
+      function move(e) {
+        var w = Math.max(50, Math.round(startW + e.clientX - startX));
+        var next = widths.map(Math.round); next[i] = w;
+        apply(next);
+      }
+      function up() {
+        h.classList.remove('dragging');
+        h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up);
+        save(ths().map(function (t) { return Math.round(t.getBoundingClientRect().width); }));
+      }
+      h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+    });
   });
 })();
 </script>
