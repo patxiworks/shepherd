@@ -185,8 +185,8 @@ require __DIR__ . '/../includes/layout_top.php';
 <h1>Activities</h1>
 <nav class="tabs">
   <a href="/admin/activities/index.php<?= $zq1 ?>">List</a>
-  <a href="/admin/activities/calendar.php<?= $zq1 ?>">Calendar</a>
   <a class="active" href="/admin/activities/grid.php">Grid</a>
+  <a href="/admin/activities/calendar.php<?= $zq1 ?>">Calendar</a>
   <a href="/admin/activities/dashboard.php<?= $zq1 ?>">Dashboard</a>
 </nav>
 

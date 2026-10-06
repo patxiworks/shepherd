@@ -338,9 +338,9 @@ admin gets **Users** and **Activities**. There is no Masses page: the `masses` t
 were removed (migration `018`).
 
 **Activities tabs.** (The tab strip, shared with Multi-day, is `nav.tabs` in `layout_top.php`: the tabs sit on a 2px brand-coloured base line.) The Activities section has tabs **List** (the table below,
-[`index.php`](backend/admin/activities/index.php)), **Calendar**
-([`calendar.php`](backend/admin/activities/calendar.php)), **Grid**
-([`grid.php`](backend/admin/activities/grid.php)) and **Dashboard**
+[`index.php`](backend/admin/activities/index.php)), **Grid**
+([`grid.php`](backend/admin/activities/grid.php)), **Calendar**
+([`calendar.php`](backend/admin/activities/calendar.php)) and **Dashboard**
 ([`dashboard.php`](backend/admin/activities/dashboard.php)); all use the full page
 width. The **Calendar** is a read-only view over the same
 `activities` rows: one zone at a time (a super admin picks it, the first zone by

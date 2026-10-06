@@ -199,8 +199,8 @@ require __DIR__ . '/../includes/layout_top.php';
 <h1>Activities</h1>
 <nav class="tabs">
   <a href="/admin/activities/index.php<?= $zoneId ? '?zone=' . $zoneId : '' ?>">List</a>
-  <a href="/admin/activities/calendar.php<?= $zoneId ? '?zone=' . $zoneId : '' ?>">Calendar</a>
   <a href="/admin/activities/grid.php<?= $zoneId ? '?zone=' . $zoneId : '' ?>">Grid</a>
+  <a href="/admin/activities/calendar.php<?= $zoneId ? '?zone=' . $zoneId : '' ?>">Calendar</a>
   <a class="active" href="/admin/activities/dashboard.php">Dashboard</a>
 </nav>
 
