@@ -324,7 +324,7 @@ function optimise_day(PDO $pdo, int $zoneId, string $date, ?string $scopeCentre)
         'fixed_masses' => (object) $m['fixedMasses'],
         // For the modal's priest summary: absentees (name => text) and the activities that stay as they are.
         'absent' => (object) $absent,
-        'fixed' => array_map(fn($f) => ['priest' => $f['priest'], 'from' => $f['from_time'] ? substr($f['from_time'], 0, 5) : '', 'activity' => $f['activity'], 'centre' => $f['centre']], $m['fixed']),
+        'fixed' => array_map(fn($f) => ['priest' => $f['priest'], 'from' => $f['from_time'] ? substr($f['from_time'], 0, 5) : '', 'activity' => $f['activity'], 'centre' => $f['centre']], array_values(array_filter($m['fixed'], fn($f) => isset($m['names'][opt_key($f['priest'])])))),
         'mass_limit' => $limit,
         'conflicts_before' => count($before),
         'conflicts_after' => count($after),

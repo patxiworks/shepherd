@@ -996,11 +996,11 @@ $dayValue = (isset($filters['date_from'], $filters['date_to']) && $filters['date
 // for every activity of that date with no clashes (includes/day_optimiser.php);
 // the modal shows it, lets the admin change priests, then accept or reject.
 ?>
-<button type="button" id="opt-btn" class="secondary" data-toolbar-item data-after-left title="Propose priests for this date's activities so that none of them clash">Optimise day</button>
+<button type="button" id="opt-btn" class="secondary" data-toolbar-item data-after-left title="Propose priests for this date's activities so that none of them clash">Optimise &amp; Review</button>
 <dialog class="modal" id="opt-dialog">
   <div class="card">
     <button type="button" class="modal-close" id="opt-x" aria-label="Close">&times;</button>
-    <h2>Optimise <?= e(date('d/m/Y', strtotime($dayValue))) ?></h2>
+    <h2>Proposed distribution for <?= e(date('d/m/Y', strtotime($dayValue))) ?></h2>
     <p id="opt-summary" class="hint" style="min-height:0;">Working out a proposal…</p>
     <div class="opt-legend" id="opt-legend" hidden>
       <span><i style="background:#e8f5e9"></i>Priest changed</span>
@@ -1107,6 +1107,7 @@ $dayValue = (isset($filters['date_from'], $filters['date_to']) && $filters['date
       th.appendChild(document.createTextNode(name));
       var cnt = document.createElement('small'); cnt.textContent = ' (' + by[name].length + ')'; th.appendChild(cnt);
       var total = (masses[k] || 0) + (data.fixed_masses[k] || 0);
+      if (name !== '(no priest)') { var ms = document.createElement('div'), sm0 = document.createElement('small'); sm0.textContent = 'Mass: ' + total; ms.appendChild(sm0); th.appendChild(ms); }
       function badge(cls, text, title) { var d = document.createElement('div'), b = document.createElement('span'); b.className = cls; b.textContent = text; b.title = title; d.appendChild(b); th.appendChild(d); }
       if (total > data.mass_limit) badge('mass-badge', total + ' masses', name + ' has ' + total + ' masses (maximum ' + data.mass_limit + ')');
       if (bilo[k]) badge('bilocation-badge', 'bilocation', 'Overlapping activities in different centres');

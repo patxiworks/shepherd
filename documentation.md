@@ -555,7 +555,7 @@ identity/value are never colour or angle alone.
   priests who are absent that date (from `absences`, honouring the Priest filter) are
   listed even with no activities, with "Activity (dd/mm/yyyy to dd/mm/yyyy)" in red ("Absent" if the absence has no activity); the table has no
   alternating row shading.
-- **Optimise day** (button right after "New activity", shown only when the date picker has a
+- **Optimise & Review** (modal titled "Proposed distribution for <date>"; button right after "New activity", shown only when the date picker has a
   fixed date; code in [`backend/includes/day_optimiser.php`](backend/includes/day_optimiser.php)).
   Posts `action=optimise` (zone + date) and gets JSON back: a proposed priest for every activity
   of that zone on that date (a centre admin: their centre's only), so that none of the flags
@@ -576,7 +576,7 @@ identity/value are never colour or angle alone.
   is bumped, and a message reports the changes and any remaining conflicts (accepting while
   red rows remain asks for confirmation). Next to the table the modal shows the same **"Priests on <date>"
   summary box** as the page (each priest, their activity count, the activities incl. those that stay
-  as they are in grey italics, **N masses** / **bilocation** badges, absent priests in red), rebuilt in
+  as they are in grey italics — only for the zone's own priests, so a priest of another zone who happens to be busy that day is not listed —, "Mass: N" in small print under each name (their masses that day incl. fixed ones), **N masses** / **bilocation** badges, absent priests in red), rebuilt in
   the browser on every dropdown change so it always matches the table as shown, and a colour legend
   row above the table. **Reject** just closes the modal; nothing is saved
   until Accept. Toolbar placement uses a new `data-after-left` attribute handled in
