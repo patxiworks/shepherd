@@ -169,6 +169,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') ==
     $reply(['ok' => true]);
 }
 
+$celebration = null;
+try {
+    $lit = $pdo->prepare('SELECT celebration, class, liturgical_rank, notes FROM liturgical_calendar WHERE cal_date = ?');
+    $lit->execute([$date]);
+    $celebration = $lit->fetch() ?: null;
+} catch (PDOException $ex) {
+    // calendar table not created yet
+}
 $byCell = agrid_load($pdo, $zoneId, $date, $scopeCentreName);
 $total = array_sum(array_map('count', $byCell));
 $prev = (new DateTimeImmutable($date))->modify('-1 day')->format('Y-m-d');
@@ -202,7 +210,7 @@ require __DIR__ . '/../includes/layout_top.php';
   .g-table td.g-cell { cursor: pointer; height: 44px; min-width: 130px; }
   .g-table td.g-cell:hover { outline: 2px solid var(--brand); outline-offset: -2px; }
   .g-table td.g-cell:empty::after { content: '+'; color: #d0c6e6; font-size: 16px; }
-  .g-entry { font-size: 12px; line-height: 1.3; padding: 2px 5px; margin-bottom: 3px; border-radius: 3px; border-left: 4px solid #8a6fd0; background: #f0eaff; }
+  .g-entry { font-size: 12px; line-height: 1.3; padding: 2px 5px; margin-bottom: 3px; border-radius: 3px; border-left: 4px solid #4a9a55; background: #e6f4e8; }
   .g-entry .g-time { display: block; color: #666; font-size: 11px; }
   .g-entry .g-note { display: block; color: #666; font-size: 11px; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
   .g-entry.f-none { background: #eee; border-color: #888; }
@@ -211,6 +219,12 @@ require __DIR__ . '/../includes/layout_top.php';
   .g-entry.f-bilo { background: #ffe6b3; border-color: #d08a00; }
   .g-entry.f-mass { background: #e3d3f7; border-color: #7a3fc0; }
   .g-entry.f-dup { background: #d3e6fb; border-color: #3a7bc8; }
+  .g-lit { margin: 0 0 8px; font-size: 14px; }
+  .g-palette { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; font-size: 12px; }
+  .g-pal-title { color: #666; }
+  .g-chip { background: #fff; border: 1px solid #bbb; border-radius: 12px; padding: 2px 10px; cursor: grab; user-select: none; }
+  .g-chip:hover { border-color: var(--brand); }
+  td.g-cell.g-over { outline: 2px dashed var(--brand); outline-offset: -2px; background: #faf7ff; }
   .g-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; margin: 8px 0; color: #555; }
   .g-legend span { padding: 1px 8px; border-radius: 3px; border-left: 4px solid; }
   dialog.g-dlg { border: 0; border-radius: 8px; padding: 0; width: min(720px, 94vw); box-shadow: 0 10px 40px rgba(0,0,0,.3); }
@@ -243,8 +257,7 @@ require __DIR__ . '/../includes/layout_top.php';
     <?php endif; ?>
     <a class="btn" href="?date=<?= e($prev) . $zq ?>" title="Previous day">‹</a>
     <div>
-      <label for="date">Date</label>
-      <input type="date" id="date" name="date" value="<?= e($date) ?>" style="width:160px;" onchange="this.form.submit()">
+      <input type="date" id="date" aria-label="Date" name="date" value="<?= e($date) ?>" style="width:160px;" onchange="this.form.submit()">
     </div>
     <a class="btn" href="?date=<?= e($next) . $zq ?>" title="Next day">›</a>
     <a class="btn" href="?date=<?= date('Y-m-d') . $zq ?>">Today</a>
@@ -253,8 +266,19 @@ require __DIR__ . '/../includes/layout_top.php';
   </form>
 </div>
 
+<?php if ($celebration): ?>
+<div class="g-lit"><strong><?= e($celebration['celebration']) ?></strong>
+  <?php $cr = array_filter([$celebration['class'], $celebration['liturgical_rank']], fn($v) => $v !== null && $v !== ''); if ($cr): ?>[<?= e(implode('/', $cr)) ?>]<?php endif; ?><?= $celebration['notes'] ? '. ' . e($celebration['notes']) : '' ?></div>
+<?php endif; ?>
+
+<?php if ($centres && $types): ?>
+<div class="g-palette" id="g-palette"><span class="g-pal-title">Drag a priest onto a cell:</span>
+  <?php foreach ($priestOptions as $pn): ?><span class="g-chip" draggable="true" data-priest="<?= e($pn) ?>"><?= e($pn) ?></span><?php endforeach; ?>
+</div>
+<?php endif; ?>
+
 <div class="g-legend">
-  <span style="background:#f0eaff;border-color:#8a6fd0">Assigned</span>
+  <span style="background:#e6f4e8;border-color:#4a9a55">Assigned</span>
   <span style="background:#eee;border-color:#888">No priest</span>
   <span style="background:#fbd5d5;border-color:#c0392b">Priest absent</span>
   <span style="background:#cdeeee;border-color:#1b8f8f">Priest in multi-day</span>
@@ -335,8 +359,7 @@ require __DIR__ . '/../includes/layout_top.php';
   document.getElementById('g-table').addEventListener('click', function (ev) {
     var td = ev.target.closest('td.g-cell');
     if (!td) return;
-    var tr = td.parentNode, col = td.cellIndex;
-    cur = { centre: tr.dataset.centre, type: document.getElementById('g-table').tHead.rows[0].cells[col].dataset.type };
+    cur = cellInfo(td);
     document.getElementById('g-h').textContent = cur.type + ' — ' + cur.centre;
     document.getElementById('g-sub').textContent = new Date(date + 'T00:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + '. Remove every line and save to clear the cell.';
     rows.innerHTML = '';
@@ -349,16 +372,62 @@ require __DIR__ . '/../includes/layout_top.php';
   document.getElementById('g-add').addEventListener('click', function () { addRow(); });
   document.getElementById('g-cancel').addEventListener('click', function () { dlg.close(); });
   dlg.addEventListener('click', function (ev) { if (ev.target === dlg) dlg.close(); });
+  // Drag a priest chip onto a cell: fills the first entry without a priest, else adds a new entry.
+  var dragged = null;
+  document.getElementById('g-palette').addEventListener('dragstart', function (ev) {
+    var c = ev.target.closest('.g-chip');
+    if (!c) return;
+    dragged = c.dataset.priest;
+    ev.dataTransfer.setData('text/plain', dragged);
+    ev.dataTransfer.effectAllowed = 'copy';
+  });
+  var tbl = document.getElementById('g-table');
+  tbl.addEventListener('dragover', function (ev) {
+    var td = ev.target.closest('td.g-cell');
+    if (!td || dragged === null) return;
+    ev.preventDefault();
+    Array.prototype.forEach.call(tbl.querySelectorAll('.g-over'), function (x) { if (x !== td) x.classList.remove('g-over'); });
+    td.classList.add('g-over');
+  });
+  tbl.addEventListener('dragleave', function (ev) {
+    var td = ev.target.closest('td.g-cell');
+    if (td && !td.contains(ev.relatedTarget)) td.classList.remove('g-over');
+  });
+  tbl.addEventListener('drop', function (ev) {
+    var td = ev.target.closest('td.g-cell');
+    if (!td || dragged === null) return;
+    ev.preventDefault();
+    td.classList.remove('g-over');
+    var who = dragged;
+    dragged = null;
+    var info = cellInfo(td);
+    var data = td.querySelector('.g-data');
+    var list = data ? JSON.parse(data.textContent) : [];
+    var blank = list.filter(function (e) { return !e.priest; })[0];
+    if (blank) blank.priest = who;
+    else list.push({ id: 0, priest: who, from_time: '', to_time: '', labor: '', description: '' });
+    send(info, list).catch(function (e) { alert(e.message); });
+  });
+  document.addEventListener('dragend', function () { dragged = null; });
+
+  function send(info, entries) {
+    var body = new URLSearchParams({ action: 'cell_save', zone_id: zoneId, date: date, centre: info.centre, activity: info.type, entries: JSON.stringify(entries) });
+    return fetch(location.pathname, { method: 'POST', body: body, headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'Save failed'); return j; }); })
+      .then(refresh);
+  }
+  function cellInfo(td) {
+    return { centre: td.parentNode.dataset.centre, type: document.getElementById('g-table').tHead.rows[0].cells[td.cellIndex].dataset.type };
+  }
+
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();
     var entries = Array.prototype.map.call(rows.children, function (d) {
       return { id: +d.dataset.id, priest: d.querySelector('.r-priest').value, from_time: d.querySelector('.r-from').value,
         to_time: d.querySelector('.r-to').value, labor: d.querySelector('.r-labor').value, description: d.querySelector('.r-desc').value };
     });
-    var body = new URLSearchParams({ action: 'cell_save', zone_id: zoneId, date: date, centre: cur.centre, activity: cur.type, entries: JSON.stringify(entries) });
-    fetch(location.pathname, { method: 'POST', body: body, headers: { Accept: 'application/json' } })
-      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'Save failed'); return j; }); })
-      .then(function () { dlg.close(); return refresh(); })
+    send(cur, entries)
+      .then(function () { dlg.close(); })
       .catch(function (e) { err.textContent = e.message; });
   });
 
