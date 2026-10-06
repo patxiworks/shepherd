@@ -139,6 +139,13 @@
   Array.prototype.forEach.call(document.querySelectorAll('[data-toolbar-item]'), function (el) {
     // data-before-right: goes just before the right-aligned group (e.g. before
     // Filter) and takes over the push to the right.
+    // data-after-left: goes at the end of the left-hand group (right after
+    // the last modal button, e.g. next to New activity), before the break.
+    var brk = el.hasAttribute('data-after-left') ? toolbarRow(el).querySelector('.toolbar-break') : null;
+    if (brk) {
+      brk.parentNode.insertBefore(el, brk);
+      return;
+    }
     var pushed = el.hasAttribute('data-before-right') ? toolbarRow(el).querySelector('.push-right') : null;
     if (pushed) {
       pushed.classList.remove('push-right');

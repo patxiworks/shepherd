@@ -555,6 +555,28 @@ identity/value are never colour or angle alone.
   priests who are absent that date (from `absences`, honouring the Priest filter) are
   listed even with no activities, with "Activity (dd/mm/yyyy to dd/mm/yyyy)" in red ("Absent" if the absence has no activity); the table has no
   alternating row shading.
+- **Optimise day** (button right after "New activity", shown only when the date picker has a
+  fixed date; code in [`backend/includes/day_optimiser.php`](backend/includes/day_optimiser.php)).
+  Posts `action=optimise` (zone + date) and gets JSON back: a proposed priest for every activity
+  of that zone on that date (a centre admin: their centre's only), so that none of the flags
+  remain. Other activities of the date (another zone, or outside a centre admin's centre) are not
+  changed but constrain the result. A priest may take an activity unless he is absent, in charge
+  of a multi-day activity elsewhere, or booked at an overlapping time in another centre (by a fixed
+  activity); among the proposed rows no priest gets two overlapping activities in different
+  centres or more than the mass limit (fixed masses counted). Candidates are the zone's priests
+  (`priests_by_zone()`) plus whoever the activity already has. It is a backtracking search
+  (200,000-node cap) that keeps the current priest wherever possible, then prefers the least-loaded
+  priest; if no full solution exists, as many activities as possible are assigned and the rest are
+  reported as unresolved. The **modal** shows time, centre, activity, current priest (with why it
+  was in conflict) and a **Proposed priest** dropdown listing the priests who could take it
+  (options that would clash with the other rows' current choices are marked ⚠, rows still in
+  conflict are red, changed rows green, with a live summary). **Accept** posts
+  `action=optimise_apply` (`assign[activity id]=priest`): only the priest column of that day's
+  activities is updated (scope re-checked server-side, priests must be the zone's), `zones.last_update`
+  is bumped, and a message reports the changes and any remaining conflicts (accepting while
+  red rows remain asks for confirmation). **Reject** just closes the modal; nothing is saved
+  until Accept. Toolbar placement uses a new `data-after-left` attribute handled in
+  `layout_bottom.php`.
 - **Add from source** (button before "New activity"; code in
   [`backend/includes/source_apply.php`](backend/includes/source_apply.php)).
   Takes a start and end date (max 366 days) and fills the activities from the

@@ -11,6 +11,7 @@ require __DIR__ . '/../../includes/activity_duplicates.php';
 require __DIR__ . '/../../includes/activity_bilocation.php';
 require __DIR__ . '/../../includes/activity_mass_limit.php';
 require __DIR__ . '/../../includes/activity_no_priest.php';
+require __DIR__ . '/../../includes/day_optimiser.php';
 require __DIR__ . '/../includes/flash.php';
 require __DIR__ . '/../includes/bulk.php';
 $admin = admin_require_role('super', 'zone', 'centre');
@@ -270,6 +271,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $reply(['html' => activity_row_html($row, http_build_query(activity_filters_from_qs($_POST['qs'] ?? ''))), 'absent' => !empty($row['absent_note']), 'in_multiday' => !empty($row['multiday_note']), 'duplicate' => (int) $row['duplicate_count'] > 0, 'bilocation' => !empty($row['bilocation_note']), 'masses' => (int) $row['mass_count'] > mass_limit(), 'no_priest' => empty($row['priest'])]);
     }
 
+    if ($action === 'optimise') {
+        // Proposal for one date (nothing is saved); answers with JSON.
+        $zoneId = $admin['role'] === 'super' ? (int) ($_POST['zone_id'] ?? 0) : (int) $admin['zone_id'];
+        $date = (string) ($_POST['date'] ?? '');
+        header('Content-Type: application/json; charset=utf-8');
+        if (!$zoneId || !date_parts($date)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Pick a zone and a date first.']);
+            exit;
+        }
+        echo json_encode(optimise_day($pdo, $zoneId, $date, $scopeCentreName));
+        exit;
+    }
+
     if ($action === 'from_source') {
         // Only ever the current user's own zone (a super admin has none, so
         // the zone being viewed); a centre admin only touches their centre.
@@ -349,6 +364,25 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             }
         } catch (InvalidArgumentException $ex) {
             flash('error', $ex->getMessage());
+        }
+    } elseif ($action === 'optimise_apply') {
+        $zoneId = $admin['role'] === 'super' ? (int) ($_POST['zone_id'] ?? 0) : (int) $admin['zone_id'];
+        $date = (string) ($_POST['date'] ?? '');
+        if (!$zoneId || !date_parts($date)) {
+            flash('error', 'Pick a zone and a date first.');
+        } else {
+            [$changed, $error] = apply_day_assignments($pdo, $zoneId, $date, $scopeCentreName, (array) ($_POST['assign'] ?? []));
+            if ($error !== null) {
+                flash('error', "Optimisation not applied: $error");
+            } else {
+                $left = day_conflict_count($pdo, $zoneId, $date, $scopeCentreName);
+                $message = "Optimisation applied: $changed activit" . ($changed === 1 ? 'y' : 'ies') . ' changed priest on ' . date('d/m/Y', strtotime($date));
+                if ($left) {
+                    flash('warning', "$message. $left activit" . ($left === 1 ? 'y still has' : 'ies still have') . ' a conflict.');
+                } else {
+                    flash('success', "$message. No conflicts left on that day.");
+                }
+            }
         }
     } elseif ($action === 'bulk_delete') {
         if (!empty($_POST['all_matching'])) {
@@ -948,6 +982,144 @@ $dayValue = (isset($filters['date_from'], $filters['date_to']) && $filters['date
   });
 })();
 </script>
+
+<?php if ($dayValue !== '' && $filterZone): ?>
+<?php
+// "Optimise day": only with a single date picked. The server proposes a priest
+// for every activity of that date with no clashes (includes/day_optimiser.php);
+// the modal shows it, lets the admin change priests, then accept or reject.
+?>
+<button type="button" id="opt-btn" class="secondary" data-toolbar-item data-after-left title="Propose priests for this date's activities so that none of them clash">Optimise day</button>
+<dialog class="modal" id="opt-dialog">
+  <div class="card">
+    <button type="button" class="modal-close" id="opt-x" aria-label="Close">&times;</button>
+    <h2>Optimise <?= e(date('d/m/Y', strtotime($dayValue))) ?></h2>
+    <p id="opt-summary" class="hint" style="min-height:0;">Working out a proposal…</p>
+    <div class="table-wrap" id="opt-wrap" hidden>
+      <table id="opt-table">
+        <thead><tr><th>Time</th><th>Centre</th><th>Activity</th><th>Current priest</th><th>Proposed priest</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <form method="post" id="opt-form" class="btn-row" hidden>
+      <input type="hidden" name="action" value="optimise_apply">
+      <input type="hidden" name="zone_id" value="<?= (int) $filterZone ?>">
+      <input type="hidden" name="date" value="<?= e($dayValue) ?>">
+      <input type="hidden" name="qs" value="<?= e($filterQs) ?>">
+      <span id="opt-fields"></span>
+      <button type="submit" id="opt-accept">Accept</button>
+      <button type="button" class="secondary" id="opt-reject">Reject</button>
+    </form>
+  </div>
+</dialog>
+<style>
+  #opt-table td { white-space: nowrap; }
+  #opt-table tr.changed td { background: #e8f5e9; }
+  #opt-table tr.bad td { background: #fdecea; }
+  #opt-table select { min-width: 190px; margin: 0; }
+  #opt-table .why { display: block; font-size: 12px; color: #c62828; white-space: normal; }
+  #opt-table .was-bad { color: #c62828; }
+  #opt-form .btn-row, form#opt-form { margin-top: 14px; display: flex; gap: 8px; }
+  #opt-form[hidden], #opt-wrap[hidden] { display: none; }
+</style>
+<script>
+(function () {
+  var btn = document.getElementById('opt-btn'), dlg = document.getElementById('opt-dialog');
+  if (!btn || !dlg) return;
+  var summary = document.getElementById('opt-summary'), wrap = document.getElementById('opt-wrap'),
+      form = document.getElementById('opt-form'), tbody = dlg.querySelector('tbody'),
+      accept = document.getElementById('opt-accept');
+  var data = null, sel = [];
+  function key(s) { return (s || '').trim().toLowerCase(); }
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+  // Would giving row i the priest p clash, with the other rows as they stand now?
+  function clash(i, p) {
+    if (!p) return 'no priest';
+    var r = data.rows[i], k = key(p);
+    for (var n = 0; n < r.pairs.length; n++) if (key(sel[r.pairs[n]]) === k) return 'bilocation';
+    if (r.mass) {
+      var c = (data.fixed_masses[k] || 0);
+      data.rows.forEach(function (o, j) { if (o.mass && key(sel[j]) === k) c++; });
+      if (c > data.mass_limit) return 'over the mass limit';
+    }
+    return '';
+  }
+  function render() {
+    var bad = 0, changed = 0;
+    Array.prototype.forEach.call(tbody.rows, function (tr, i) {
+      var r = data.rows[i], select = tr.querySelector('select'), why = clash(i, sel[i]);
+      if (select) {
+        Array.prototype.forEach.call(select.options, function (o) {
+          if (!o.value) return;
+          var w = o.value === sel[i] ? '' : clash(i, o.value);
+          o.textContent = o.value + (w ? ' ⚠ ' + w : '');
+        });
+      }
+      var note = tr.querySelector('.why');
+      note.textContent = why;
+      tr.classList.toggle('bad', !!why);
+      var diff = key(sel[i]) !== key(r.current);
+      tr.classList.toggle('changed', diff && !why);
+      if (why) bad++;
+      if (diff) changed++;
+    });
+    summary.textContent = 'Before: ' + data.conflicts_before + ' activit' + (data.conflicts_before === 1 ? 'y' : 'ies') + ' in conflict. '
+      + (bad ? 'As shown: ' + bad + ' still in conflict (red).' : 'As shown: no conflicts.') + ' ' + changed + ' priest change' + (changed === 1 ? '' : 's') + '.'
+      + (data.unresolved ? ' ' + data.unresolved + ' could not be given any priest.' : '');
+  }
+  function build() {
+    tbody.innerHTML = '';
+    sel = data.rows.map(function (r) { return r.proposed || ''; });
+    data.rows.forEach(function (r, i) {
+      var tr = tbody.insertRow();
+      tr.innerHTML = '<td>' + esc(r.from + (r.to ? '–' + r.to : '')) + '</td><td>' + esc(r.centre) + '</td><td>' + esc(r.activity) + '</td>'
+        + '<td class="' + (r.before.length ? 'was-bad' : '') + '">' + esc(r.current || '(none)') + (r.before.length ? '<span class="why">' + esc(r.before.join(', ')) + '</span>' : '') + '</td>'
+        + '<td><select></select><span class="why"></span></td>';
+      var s = tr.querySelector('select');
+      s.add(new Option('(no priest)', ''));
+      r.options.forEach(function (o) { s.add(new Option(o, o)); });
+      s.value = sel[i];
+      s.addEventListener('change', function () { sel[i] = s.value; render(); });
+    });
+    wrap.hidden = false; form.hidden = false;
+    render();
+  }
+  function open() {
+    data = null; tbody.innerHTML = ''; wrap.hidden = true; form.hidden = true;
+    summary.textContent = 'Working out a proposal…';
+    dlg.showModal();
+    var fd = new FormData();
+    fd.append('action', 'optimise');
+    fd.append('zone_id', form.elements.zone_id.value);
+    fd.append('date', form.elements.date.value);
+    fetch(location.pathname, { method: 'POST', body: fd, credentials: 'same-origin' })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'Failed'); return j; }); })
+      .then(function (j) {
+        data = j;
+        if (!j.rows.length) { summary.textContent = 'There are no activities on this date.'; return; }
+        build();
+      })
+      .catch(function (e) { summary.textContent = 'Could not optimise: ' + e.message; });
+  }
+  btn.addEventListener('click', open);
+  document.getElementById('opt-x').addEventListener('click', function () { dlg.close(); });
+  document.getElementById('opt-reject').addEventListener('click', function () { dlg.close(); });
+  dlg.addEventListener('click', function (ev) { if (ev.target === dlg) dlg.close(); });
+  form.addEventListener('submit', function (ev) {
+    var left = Array.prototype.filter.call(tbody.rows, function (tr) { return tr.classList.contains('bad'); }).length;
+    if (left && !confirm(left + ' activit' + (left === 1 ? 'y is' : 'ies are') + ' still in conflict. Accept anyway?')) { ev.preventDefault(); return; }
+    var box = document.getElementById('opt-fields');
+    box.innerHTML = '';
+    data.rows.forEach(function (r, i) {
+      var h = document.createElement('input');
+      h.type = 'hidden'; h.name = 'assign[' + r.id + ']'; h.value = sel[i];
+      box.appendChild(h);
+    });
+  });
+})();
+</script>
+<?php endif; ?>
 
 <?php if ($admin['role'] === 'super'): ?>
 <div class="card">
