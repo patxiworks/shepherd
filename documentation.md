@@ -388,7 +388,7 @@ server-side (centre must be the admin's, activity type regular, priests the zone
 entry is coloured by the List tab's first applicable flag (no priest, priest absent, priest
 in a multi-day activity, bilocation, over the mass limit, duplicate), using the same SQL
 select fragments as the List; a legend sits above the table. "Hide empty rows & columns"
-(remembered in `localStorage`) trims the grid to what is used that day. In the date bar, under the date text (lighter grey, smaller), the day's
+(remembered in `localStorage`) trims the grid to what is used that day. In the date bar, under the date text (lighter grey, 14px), the day's
 liturgical celebration is shown as "Celebration [Class/Rank]. Notes" from the `liturgical_calendar`
 table (nothing if it is empty for that date). A row of draggable priest chips (the zone's priests)
 sits above the grid: **dropping a chip on a cell** fills the first entry of that cell that has no
