@@ -393,7 +393,7 @@ liturgical celebration is shown as "Celebration [Rank | Class]. Notes" from the 
 table (nothing if it is empty for that date). A row of draggable priest chips (the zone's priests)
 sits above the grid: **dropping a chip on a cell** fills the first entry of that cell that has no
 priest, else adds a new entry with that priest (times blank, editable by clicking the cell), saved
-at once with the same `cell_save`. **Dragging an entry** to another cell moves it there (Alt/Option-drag copies it; the activity type follows the target column, and the entry is added to the target before it is removed from the source). The grid's chrome follows the theme colour: the centre column is a light mix of the brand colour (`color-mix` 78% brand / white) with white text, the header row 85% brand / white, the corner `--brand-dark`, borders `--tint-border`. Assigned entries are green (purple is the mass-limit colour). Tables can opt out of
+at once with the same `cell_save`. **Dragging an entry** to another cell moves it there (Alt/Option-drag copies it; the activity type follows the target column, and the entry is added to the target before it is removed from the source). The grid's chrome follows the theme colour: the centre cells are `#d0e5f0` with `#666` text, the header row 85% brand / white with white text, both at 15px, the corner `--brand-dark`, borders `--tint-border`. Assigned entries are green (purple is the mass-limit colour). Tables can opt out of
 the shared sorting/wrapping in `layout_bottom.php` with `data-no-sort` / `data-no-wrap`.
 
 The **Dashboard** is modelled on the Multi-day one: statistics over the same rows for
