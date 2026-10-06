@@ -124,6 +124,7 @@ $themeBrand = theme_brand(pastores_db());
   .flash.success { background: #e8f5e9; color: #2e7d32; }
   .flash.error { background: #fdecea; color: #c62828; }
   .flash.warning { background: #fdecea; color: #c62828; }
+  [data-toolbar-item]:not(.toolbar-placed) { display: none !important; }
   .toolbar-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
   .toolbar-row .push-right { margin-left: auto; }
   /* An invisible marker layout_bottom.php inserts right before the first

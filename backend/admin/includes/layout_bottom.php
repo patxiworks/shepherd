@@ -137,6 +137,7 @@
     if (editing) open();
   });
   Array.prototype.forEach.call(document.querySelectorAll('[data-toolbar-item]'), function (el) {
+    el.classList.add('toolbar-placed'); // shown only once moved, so it never flashes at its source position
     // data-before-right: goes just before the right-aligned group (e.g. before
     // Filter) and takes over the push to the right.
     // data-after-left: goes at the end of the left-hand group (right after

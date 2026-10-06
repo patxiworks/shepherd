@@ -955,11 +955,14 @@ require __DIR__ . '/../includes/layout_top.php';
 $dayBase = array_diff_key($filters, ['date_from' => 1, 'date_to' => 1]) + ($admin['role'] === 'super' ? ['zone' => (int) $filterZone] : []);
 $dayValue = (isset($filters['date_from'], $filters['date_to']) && $filters['date_from'] === $filters['date_to']) ? $filters['date_from'] : '';
 ?>
+<?php if ($dayValue !== '' && $filterZone): ?>
+<button type="button" id="opt-btn" class="secondary" data-toolbar-item data-after-left title="Propose priests for this date's activities so that none of them clash">Optimise &amp; Review</button>
+<?php endif; ?>
 <?php
 $dayHref = fn(string $d) => '/admin/activities/index.php?' . http_build_query($dayBase + ['date_from' => $d, 'date_to' => $d]);
 $dayLit = $dayValue !== '' ? liturgical_day_text($pdo, $dayValue) : '';
 ?>
-<span class="day-nav" data-toolbar-item data-before-right>
+<span class="day-nav" data-toolbar-item data-after-left>
   <?php if ($dayValue !== ''): ?><a class="btn secondary" href="<?= e($dayHref((new DateTimeImmutable($dayValue))->modify('-1 day')->format('Y-m-d'))) ?>" aria-label="Previous day">&lsaquo;</a><?php endif; ?>
   <label class="day-pick<?= $dayValue === '' ? ' empty' : '' ?>" title="Show only the activities of one date">
     <input type="date" id="day-pick" value="<?= e($dayValue) ?>" data-base="<?= e(http_build_query($dayBase)) ?>" aria-label="Show activities of one date">
@@ -1027,7 +1030,6 @@ $dayLit = $dayValue !== '' ? liturgical_day_text($pdo, $dayValue) : '';
 // for every activity of that date with no clashes (includes/day_optimiser.php);
 // the modal shows it, lets the admin change priests, then accept or reject.
 ?>
-<button type="button" id="opt-btn" class="secondary" data-toolbar-item data-after-left title="Propose priests for this date's activities so that none of them clash">Optimise &amp; Review</button>
 <dialog class="modal" id="opt-dialog">
   <div class="card">
     <button type="button" class="modal-close" id="opt-x" aria-label="Close">&times;</button>
