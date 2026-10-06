@@ -301,6 +301,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             if ($r['class_a_dates']) {
                 $parts[] = "Class A: added {$r['class_a_added']} Med/Ben activities on {$r['class_a_dates']} class A date" . ($r['class_a_dates'] === 1 ? '' : 's');
             }
+            if ($r['auto_added']) {
+                $parts[] = "Med/Ben/Vigil rows added automatically: {$r['auto_timed']} of {$r['auto_added']} got start/end times from source"
+                    . ($r['auto_fallback'] ? " ({$r['auto_fallback']} of them the centre's usual times, as source has none for that weekday)" : '')
+                    . ($r['auto_added'] > $r['auto_timed'] ? '; the rest have none in source and are blank' : '');
+            }
             if ($r['vigil_added']) {
                 $parts[] = "Vigil: added {$r['vigil_added']} Vigil activit" . ($r['vigil_added'] === 1 ? 'y' : 'ies') . " on {$r['vigil_dates']} date" . ($r['vigil_dates'] === 1 ? '' : 's') . ' (the Thursday before the first Friday)';
             }
@@ -453,8 +458,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     ->execute([$zoneId, ...array_values($fields)]);
                 $savedId = (int) $pdo->lastInsertId();
                 $message = 'Activity created.';
-                // Thursday before the first Friday: every centre gets a Vigil.
-                $vigilAdded = add_vigil_activities($pdo, $zoneId, (string) $fields['activity_date'], $weekStart, $scopeCentreName);
+                // Thursday before the first Friday: every centre gets a Vigil, with
+                // the times source gives that centre's Vigil.
+                $vigilAdded = add_vigil_activities($pdo, $zoneId, (string) $fields['activity_date'], $weekStart, $scopeCentreName,
+                    source_time_lookup($pdo, $zoneId, $scopeCentreName));
                 if ($vigilAdded) {
                     $message .= " Also added $vigilAdded Vigil activit" . ($vigilAdded === 1 ? 'y' : 'ies') . ' (the Thursday before the first Friday).';
                 }
@@ -995,11 +1002,25 @@ $dayValue = (isset($filters['date_from'], $filters['date_to']) && $filters['date
     <button type="button" class="modal-close" id="opt-x" aria-label="Close">&times;</button>
     <h2>Optimise <?= e(date('d/m/Y', strtotime($dayValue))) ?></h2>
     <p id="opt-summary" class="hint" style="min-height:0;">Working out a proposal…</p>
-    <div class="table-wrap" id="opt-wrap" hidden>
-      <table id="opt-table">
-        <thead><tr><th>Time</th><th>Centre</th><th>Activity</th><th>Current priest</th><th>Proposed priest</th></tr></thead>
-        <tbody></tbody>
-      </table>
+    <div class="opt-legend" id="opt-legend" hidden>
+      <span><i style="background:#e8f5e9"></i>Priest changed</span>
+      <span><i style="background:#fdecea"></i>Still in conflict</span>
+      <span><span class="mass-badge">3 masses</span> over the mass limit (<?= mass_limit() ?>)</span>
+      <span><span class="bilocation-badge">bilocation</span> overlapping times, different centres</span>
+      <span><span class="absent-badge">absent</span> priest away</span>
+      <span>⚠ in a dropdown: that priest would clash</span>
+    </div>
+    <div class="opt-layout" id="opt-wrap" hidden>
+      <div class="table-wrap">
+        <table id="opt-table">
+          <thead><tr><th>Time</th><th>Centre</th><th>Activity</th><th>Current priest</th><th>Proposed priest</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <aside class="opt-summary-box">
+        <h3>Priests on <?= e(date('D j M Y', strtotime($dayValue))) ?> <span id="opt-sum-count"></span></h3>
+        <table><tbody id="opt-sum-body"></tbody></table>
+      </aside>
     </div>
     <form method="post" id="opt-form" class="btn-row" hidden>
       <input type="hidden" name="action" value="optimise_apply">
@@ -1020,7 +1041,22 @@ $dayValue = (isset($filters['date_from'], $filters['date_to']) && $filters['date
   #opt-table .why { display: block; font-size: 12px; color: #c62828; white-space: normal; }
   #opt-table .was-bad { color: #c62828; }
   #opt-form .btn-row, form#opt-form { margin-top: 14px; display: flex; gap: 8px; }
-  #opt-form[hidden], #opt-wrap[hidden] { display: none; }
+  dialog#opt-dialog { width: min(1280px, 96vw); }
+  .opt-layout { display: flex; gap: 16px; align-items: flex-start; }
+  .opt-layout > .table-wrap { flex: 1 1 auto; min-width: 0; }
+  .opt-summary-box { flex: 0 0 300px; font-size: 13px; border: 1px solid #ceb9f3; border-radius: 8px; padding: 8px 12px; position: sticky; top: 0; max-height: 70vh; overflow-y: auto; }
+  .opt-summary-box h3 { margin: 0 0 6px; font-size: 14px; color: #673AB7; }
+  .opt-summary-box h3 span { font-weight: normal; color: #666; }
+  .opt-summary-box td { vertical-align: top; padding: 4px 6px; }
+  .opt-summary-box td:first-child { white-space: nowrap; }
+  .opt-summary-box td div { padding: 1px 0; }
+  .opt-summary-box small { color: #666; }
+  .opt-summary-box .fixed-act { color: #777; font-style: italic; }
+  .opt-summary-box .absent-note { color: #c62828; }
+  .opt-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: #444; margin-bottom: 10px; }
+  .opt-legend i { display: inline-block; width: 12px; height: 12px; border: 1px solid #bbb; vertical-align: -2px; margin-right: 4px; }
+  @media (max-width: 900px) { .opt-layout { flex-direction: column; } .opt-summary-box { flex-basis: auto; width: 100%; position: static; } }
+  #opt-form[hidden], #opt-wrap[hidden], #opt-legend[hidden] { display: none; }
 </style>
 <script>
 (function () {
@@ -1028,7 +1064,8 @@ $dayValue = (isset($filters['date_from'], $filters['date_to']) && $filters['date
   if (!btn || !dlg) return;
   var summary = document.getElementById('opt-summary'), wrap = document.getElementById('opt-wrap'),
       form = document.getElementById('opt-form'), tbody = dlg.querySelector('tbody'),
-      accept = document.getElementById('opt-accept');
+      accept = document.getElementById('opt-accept'), legend = document.getElementById('opt-legend'),
+      sumBody = document.getElementById('opt-sum-body'), sumCount = document.getElementById('opt-sum-count');
   var data = null, sel = [];
   function key(s) { return (s || '').trim().toLowerCase(); }
   function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
@@ -1045,7 +1082,50 @@ $dayValue = (isset($filters['date_from'], $filters['date_to']) && $filters['date
     }
     return '';
   }
+  // The "Priests on <date>" box for the table as it stands: each priest with
+  // their activities (including the ones that stay as they are), plus the mass,
+  // bilocation and absent flags.
+  function renderSummary() {
+    var by = {}, masses = {}, bilo = {};
+    Object.keys(data.absent).forEach(function (p) { by[p] = []; });
+    data.rows.forEach(function (r, i) {
+      var name = sel[i] || '(no priest)';
+      (by[name] = by[name] || []).push({ time: r.from, activity: r.activity, centre: r.centre });
+      if (sel[i]) {
+        if (r.mass) masses[key(name)] = (masses[key(name)] || 0) + 1;
+        if (r.pairs.some(function (j) { return key(sel[j]) === key(sel[i]); })) bilo[key(name)] = true;
+      }
+    });
+    data.fixed.forEach(function (f) {
+      (by[f.priest] = by[f.priest] || []).push({ time: f.from, activity: f.activity, centre: f.centre, fixed: true });
+    });
+    function rank(n) { return data.absent[n] !== undefined ? 2 : n === '(no priest)' ? 1 : 0; }
+    var names = Object.keys(by).sort(function (a, b) { return rank(a) - rank(b) || a.localeCompare(b, undefined, { sensitivity: 'base' }); });
+    sumBody.textContent = '';
+    names.forEach(function (name) {
+      var tr = sumBody.insertRow(), th = tr.insertCell(), td = tr.insertCell(), k = key(name);
+      th.appendChild(document.createTextNode(name));
+      var cnt = document.createElement('small'); cnt.textContent = ' (' + by[name].length + ')'; th.appendChild(cnt);
+      var total = (masses[k] || 0) + (data.fixed_masses[k] || 0);
+      function badge(cls, text, title) { var d = document.createElement('div'), b = document.createElement('span'); b.className = cls; b.textContent = text; b.title = title; d.appendChild(b); th.appendChild(d); }
+      if (total > data.mass_limit) badge('mass-badge', total + ' masses', name + ' has ' + total + ' masses (maximum ' + data.mass_limit + ')');
+      if (bilo[k]) badge('bilocation-badge', 'bilocation', 'Overlapping activities in different centres');
+      if (data.absent[name] !== undefined) {
+        var an = document.createElement('div'); an.className = 'absent-note'; an.textContent = data.absent[name]; td.appendChild(an);
+      }
+      by[name].sort(function (a, b) { return (a.time || '99').localeCompare(b.time || '99'); }).forEach(function (it) {
+        var div = document.createElement('div');
+        if (it.fixed) { div.className = 'fixed-act'; div.title = 'Not part of this optimisation'; }
+        if (it.time) { var b = document.createElement('b'); b.textContent = it.time; div.appendChild(b); div.appendChild(document.createTextNode(' ')); }
+        div.appendChild(document.createTextNode(it.activity || ''));
+        if (it.centre) { var sm = document.createElement('small'); sm.textContent = ' \u00b7 ' + it.centre; div.appendChild(sm); }
+        td.appendChild(div);
+      });
+    });
+    sumCount.textContent = '(' + names.length + ')';
+  }
   function render() {
+    renderSummary();
     var bad = 0, changed = 0;
     Array.prototype.forEach.call(tbody.rows, function (tr, i) {
       var r = data.rows[i], select = tr.querySelector('select'), why = clash(i, sel[i]);
@@ -1082,11 +1162,11 @@ $dayValue = (isset($filters['date_from'], $filters['date_to']) && $filters['date
       s.value = sel[i];
       s.addEventListener('change', function () { sel[i] = s.value; render(); });
     });
-    wrap.hidden = false; form.hidden = false;
+    wrap.hidden = false; legend.hidden = false; form.hidden = false;
     render();
   }
   function open() {
-    data = null; tbody.innerHTML = ''; wrap.hidden = true; form.hidden = true;
+    data = null; tbody.innerHTML = ''; wrap.hidden = true; legend.hidden = true; form.hidden = true;
     summary.textContent = 'Working out a proposal…';
     dlg.showModal();
     var fd = new FormData();

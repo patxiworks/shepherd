@@ -574,7 +574,11 @@ identity/value are never colour or angle alone.
   `action=optimise_apply` (`assign[activity id]=priest`): only the priest column of that day's
   activities is updated (scope re-checked server-side, priests must be the zone's), `zones.last_update`
   is bumped, and a message reports the changes and any remaining conflicts (accepting while
-  red rows remain asks for confirmation). **Reject** just closes the modal; nothing is saved
+  red rows remain asks for confirmation). Next to the table the modal shows the same **"Priests on <date>"
+  summary box** as the page (each priest, their activity count, the activities incl. those that stay
+  as they are in grey italics, **N masses** / **bilocation** badges, absent priests in red), rebuilt in
+  the browser on every dropdown change so it always matches the table as shown, and a colour legend
+  row above the table. **Reject** just closes the modal; nothing is saved
   until Accept. Toolbar placement uses a new `data-after-left` attribute handled in
   `layout_bottom.php`.
 - **Add from source** (button before "New activity"; code in
@@ -593,23 +597,35 @@ identity/value are never colour or angle alone.
   written (they were validated when they went into source).
   **Class A dates:** afterwards, every date in the range whose `class` is `A`
   in the `liturgical_calendar` table (Admin → Settings generates it) gets a
-  `Med` and a `Ben` activity for each centre of the zone (the zone's rows in
-  `centres`; only the admin's own centre for a centre admin), unless that centre already has that activity on
-  that date. These rows only have the zone, date, centre, activity and the
-  fields the form always derives (week, day, weekday, section); priest, labor,
-  times and description are blank. This happens whether or not the date has
+  `Med` and a `Ben` activity for each centre of the zone **that has a section**
+  (the zone's rows in `centres`; only the admin's own centre for a centre admin),
+  unless that centre already has that activity on
+  that date. These rows have the zone, date, centre, activity, the fields the
+  form always derives (week, day, weekday, section) and the **start / end times
+  (and duration) from source** for that centre's `Med` / `Ben` (see "Times for
+  the automatic rows" below); priest, labor and description are blank. This happens whether or not the date has
   source rows, and is skipped (with a message) if the calendar table is
   missing. `mfrequency` is not
   copied (source allows fractions like 0.33, activities doesn't). Day, weekday
   and week are set from the date as usual, and `zones.last_update` is bumped.
+- **Times for the automatic rows** (`source_time_lookup()` / `source_times_for()`
+  in `backend/includes/source_apply.php`). The class A `Med`/`Ben` rows and the
+  Vigil rows added by *Add from source* or the *New activity* form take `from`, `to` and `duration` from the
+  source rows of the **same zone, centre and activity** that have a start time:
+  the most common pair among those on the **same weekday** as the date (ties →
+  earlier start), else the most common pair over all weekdays (the activity is at a
+  fixed time for that centre), else blank. The result message says how many of the
+  automatic rows got times, how many of those used the centre's usual times
+  because source has none for that weekday, and that the rest are blank.
 - **Vigil** (code in [`backend/includes/vigil.php`](backend/includes/vigil.php)).
   The **Thursday before the first Friday of each month** (when the 1st is a
   Friday, that is the last day of the previous month, e.g. 30/04/2026) is a Vigil
   day. When activities are added — the *New activity* form or *Add from source* —
   and such a date **has activities in the zone**, every centre of the zone
-  (`centres` table; only the admin's own centre for a centre admin) that has no
-  `Vigil` that day gets a blank one: only zone, date, centre, activity `Vigil` and
-  the derived week/day/weekday/section, like the class A Med/Ben rows.
+  **that has a section** (`centres` table; only the admin's own centre for a centre
+  admin) that has no
+  `Vigil` that day gets one with only zone, date, centre, activity `Vigil`, the
+  derived week/day/weekday/section and the start/end times from source (below).
   - *New activity form:* checked for the date of the activity just created (not on
     edits, and not if the add was refused as a duplicate). The success message says
     "Also added N Vigil activities".

@@ -176,7 +176,7 @@ function day_model(PDO $pdo, int $zoneId, string $date, ?string $scopeCentre): a
     }
     $isMass = array_map(fn($it) => strcasecmp((string) $it['activity'], PASTORES_MASS_ACTIVITY) === 0, $items);
 
-    return compact('items', 'names', 'zoneNames', 'reasons', 'pairs', 'fixedMasses', 'fixedLoad', 'isMass');
+    return compact('items', 'names', 'zoneNames', 'reasons', 'pairs', 'fixedMasses', 'fixedLoad', 'isMass', 'absences', 'fixed');
 }
 
 // Reasons (strings) each item is in conflict under $assign (index => priest name or null).
@@ -297,6 +297,12 @@ function optimise_day(PDO $pdo, int $zoneId, string $date, ?string $scopeCentre)
     $proposed = $solve(false) ?? $solve(true) ?? array_fill(0, $n, null);
 
     $after = day_conflicts($m, $proposed);
+    $absent = [];
+    foreach ($m['absences'] as $k => $list) {
+        if (isset($m['zoneNames'][$k])) {
+            $absent[$m['zoneNames'][$k]] = implode('; ', array_unique(array_map(fn($a) => $a[2], $list)));
+        }
+    }
     $rows = [];
     foreach ($m['items'] as $i => $it) {
         $rows[] = [
@@ -316,6 +322,9 @@ function optimise_day(PDO $pdo, int $zoneId, string $date, ?string $scopeCentre)
     return [
         'rows' => $rows,
         'fixed_masses' => (object) $m['fixedMasses'],
+        // For the modal's priest summary: absentees (name => text) and the activities that stay as they are.
+        'absent' => (object) $absent,
+        'fixed' => array_map(fn($f) => ['priest' => $f['priest'], 'from' => $f['from_time'] ? substr($f['from_time'], 0, 5) : '', 'activity' => $f['activity'], 'centre' => $f['centre']], $m['fixed']),
         'mass_limit' => $limit,
         'conflicts_before' => count($before),
         'conflicts_after' => count($after),
