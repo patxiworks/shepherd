@@ -195,13 +195,13 @@ require __DIR__ . '/../includes/layout_top.php';
   .g-bar a.btn { padding: 6px 12px; }
   .g-bar .g-title { font-size: 18px; font-weight: 600; }
   .g-entry[draggable=true] { cursor: grab; }
-  .g-scroll { overflow: auto; max-height: 75vh; border: 1px solid #ceb9f3; border-radius: 6px; background: #fff; }
+  .g-scroll { overflow: auto; max-height: 75vh; border: 1px solid var(--tint-border); border-radius: 6px; background: #fff; }
   table.g-table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
-  .g-table th, .g-table td { border-right: 1px solid #e3d8f7; border-bottom: 1px solid #e3d8f7; padding: 4px 6px; vertical-align: top; background: #fff; }
-  .g-table thead th { position: sticky; top: 0; z-index: 2; min-width: 130px; max-width: 170px; font-size: 12px; text-align: center; white-space: normal; }
-  .g-table th.g-centre { position: sticky; top: auto; left: 0; z-index: 1; min-width: 160px; text-align: left; font-size: 13px; background: #f3edfb; }
-  .g-table thead th.g-corner { top: 0; left: 0; z-index: 3; }
-  .g-table tbody tr:hover td { background: #faf7ff; }
+  .g-table th, .g-table td { border-right: 1px solid var(--tint-border); border-bottom: 1px solid var(--tint-border); padding: 4px 6px; vertical-align: top; background: #fff; }
+  .g-table thead th { position: sticky; top: 0; z-index: 2; min-width: 130px; max-width: 170px; font-size: 12px; text-align: center; white-space: normal; background: var(--tint-1); color: var(--brand-dark); }
+  .g-table th.g-centre { position: sticky; top: auto; left: 0; z-index: 1; min-width: 160px; text-align: left; font-size: 13px; background: var(--tint-2); color: var(--brand-dark); }
+  .g-table thead th.g-corner { top: 0; left: 0; z-index: 3; background: var(--tint-2); }
+  .g-table tbody tr:hover td { background: var(--tint-stripe); }
   .g-table td.g-cell { cursor: pointer; height: 44px; min-width: 130px; }
   .g-table td.g-cell:hover { outline: 2px solid var(--brand); outline-offset: -2px; }
   .g-table td.g-cell:empty::after { content: '+'; color: #d0c6e6; font-size: 16px; }
@@ -220,7 +220,7 @@ require __DIR__ . '/../includes/layout_top.php';
   .g-pal-title { color: #666; }
   .g-chip { background: #fff; border: 1px solid #bbb; border-radius: 12px; padding: 2px 10px; cursor: grab; user-select: none; }
   .g-chip:hover { border-color: var(--brand); }
-  td.g-cell.g-over { outline: 2px dashed var(--brand); outline-offset: -2px; background: #faf7ff; }
+  td.g-cell.g-over { outline: 2px dashed var(--brand); outline-offset: -2px; background: var(--tint-stripe); }
   .g-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; margin: 8px 0; color: #555; }
   .g-legend span { padding: 1px 8px; border-radius: 3px; border-left: 4px solid; }
   dialog.g-dlg { border: 0; border-radius: 8px; padding: 0; width: min(720px, 94vw); box-shadow: 0 10px 40px rgba(0,0,0,.3); }
