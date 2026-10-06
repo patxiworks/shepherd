@@ -199,7 +199,7 @@ require __DIR__ . '/../includes/layout_top.php';
   table.g-table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
   .g-table th, .g-table td { border-right: 1px solid var(--tint-border); border-bottom: 1px solid var(--tint-border); padding: 4px 6px; vertical-align: top; background: #fff; }
   .g-table thead th { position: sticky; top: 0; z-index: 2; min-width: 130px; max-width: 170px; font-size: 12px; text-align: center; white-space: normal; background: color-mix(in srgb, var(--brand) 85%, #fff); color: #fff; }
-  .g-table th.g-centre { position: sticky; top: auto; left: 0; z-index: 1; min-width: 160px; text-align: left; font-size: 13px; background: var(--brand); color: #fff; }
+  .g-table th.g-centre { position: sticky; top: auto; left: 0; z-index: 1; min-width: 160px; text-align: left; font-size: 13px; background: color-mix(in srgb, var(--brand) 78%, #fff); color: #fff; }
   .g-table thead th.g-corner { top: 0; left: 0; z-index: 3; background: var(--brand-dark); }
   .g-table tbody tr:hover td { background: var(--tint-stripe); }
   .g-table td.g-cell { cursor: pointer; height: 44px; min-width: 130px; }
