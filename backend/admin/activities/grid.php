@@ -80,7 +80,7 @@ function agrid_cell(array $acts): string
     $entries = [];
     $html = '';
     $flag = '';
-    foreach ($acts as $a) {
+    foreach ($acts as $i => $a) {
         $cls = '';
         $tip = [];
         if (!empty($a['absent_note'])) { $cls = 'f-absent'; $tip[] = 'Priest absent: ' . $a['absent_note']; }
@@ -90,7 +90,7 @@ function agrid_cell(array $acts): string
         elseif ((int) $a['duplicate_count'] > 0) { $cls = 'f-dup'; $tip[] = 'Duplicate activity'; }
         elseif ($a['priest'] === null || $a['priest'] === '') { $cls = 'f-none'; $tip[] = 'No priest assigned'; }
         $time = agrid_time($a['from_time']) . ($a['to_time'] ? '–' . agrid_time($a['to_time']) : '');
-        $html .= '<div class="g-entry ' . $cls . '" title="' . e(implode(' · ', $tip)) . '">'
+        $html .= '<div class="g-entry ' . $cls . '" draggable="true" data-i="' . $i . '" title="' . e(implode(' · ', $tip)) . '">'
             . '<span class="g-priest">' . ($a['priest'] !== null && $a['priest'] !== '' ? e($a['priest']) : '<em>no priest</em>') . '</span>'
             . ($time !== '' ? '<span class="g-time">' . e($time) . '</span>' : '')
             . ($a['description'] ? '<span class="g-note">' . e($a['description']) . '</span>' : '')
@@ -199,7 +199,8 @@ require __DIR__ . '/../includes/layout_top.php';
 <style>
   .g-bar { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
   .g-bar a.btn { padding: 6px 12px; }
-  .g-bar .g-title { font-size: 18px; font-weight: 600; margin: 0 4px; }
+  .g-bar .g-title { font-size: 18px; font-weight: 600; }
+  .g-entry[draggable=true] { cursor: grab; }
   .g-scroll { overflow: auto; max-height: 75vh; border: 1px solid #ceb9f3; border-radius: 6px; background: #fff; }
   table.g-table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
   .g-table th, .g-table td { border-right: 1px solid #e3d8f7; border-bottom: 1px solid #e3d8f7; padding: 4px 6px; vertical-align: top; background: #fff; }
@@ -219,7 +220,8 @@ require __DIR__ . '/../includes/layout_top.php';
   .g-entry.f-bilo { background: #ffe6b3; border-color: #d08a00; }
   .g-entry.f-mass { background: #e3d3f7; border-color: #7a3fc0; }
   .g-entry.f-dup { background: #d3e6fb; border-color: #3a7bc8; }
-  .g-lit { margin: 0 0 8px; font-size: 14px; }
+  .g-lit { font-size: 14px; color: #666; margin-top: 2px; }
+  .g-daybox { margin: 0 4px; }
   .g-palette { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; font-size: 12px; }
   .g-pal-title { color: #666; }
   .g-chip { background: #fff; border: 1px solid #bbb; border-radius: 12px; padding: 2px 10px; cursor: grab; user-select: none; }
@@ -261,15 +263,16 @@ require __DIR__ . '/../includes/layout_top.php';
     </div>
     <a class="btn" href="?date=<?= e($next) . $zq ?>" title="Next day">›</a>
     <a class="btn" href="?date=<?= date('Y-m-d') . $zq ?>">Today</a>
-    <span class="g-title"><?= e((new DateTimeImmutable($date))->format('l j F Y')) ?></span>
+    <div class="g-daybox">
+      <div class="g-title"><?= e((new DateTimeImmutable($date))->format('l j F Y')) ?></div>
+      <?php if ($celebration): ?>
+      <div class="g-lit"><?= e($celebration['celebration']) ?><?php $cr = array_filter([$celebration['class'], $celebration['liturgical_rank']], fn($v) => $v !== null && $v !== ''); if ($cr): ?> [<?= e(implode('/', $cr)) ?>]<?php endif; ?><?= $celebration['notes'] ? '. ' . e($celebration['notes']) : '' ?></div>
+      <?php endif; ?>
+    </div>
     <label style="margin-left:auto;font-weight:normal;"><input type="checkbox" id="g-hide-empty"> Hide empty rows &amp; columns</label>
   </form>
 </div>
 
-<?php if ($celebration): ?>
-<div class="g-lit"><strong><?= e($celebration['celebration']) ?></strong>
-  <?php $cr = array_filter([$celebration['class'], $celebration['liturgical_rank']], fn($v) => $v !== null && $v !== ''); if ($cr): ?>[<?= e(implode('/', $cr)) ?>]<?php endif; ?><?= $celebration['notes'] ? '. ' . e($celebration['notes']) : '' ?></div>
-<?php endif; ?>
 
 <?php if ($centres && $types): ?>
 <div class="g-palette" id="g-palette"><span class="g-pal-title">Drag a priest onto a cell:</span>
@@ -377,15 +380,26 @@ require __DIR__ . '/../includes/layout_top.php';
   document.getElementById('g-palette').addEventListener('dragstart', function (ev) {
     var c = ev.target.closest('.g-chip');
     if (!c) return;
-    dragged = c.dataset.priest;
-    ev.dataTransfer.setData('text/plain', dragged);
+    dragged = { priest: c.dataset.priest };
+    ev.dataTransfer.setData('text/plain', c.dataset.priest);
     ev.dataTransfer.effectAllowed = 'copy';
   });
   var tbl = document.getElementById('g-table');
+  // Drag an entry onto another cell to move it there (hold Alt/Option to copy it).
+  tbl.addEventListener('dragstart', function (ev) {
+    var en = ev.target.closest('.g-entry');
+    if (!en) return;
+    var td = en.closest('td.g-cell');
+    dragged = { from: td, idx: +en.dataset.i };
+    ev.dataTransfer.setData('text/plain', en.textContent);
+    ev.dataTransfer.effectAllowed = 'copyMove';
+  });
+  function cellList(td) { var d = td.querySelector('.g-data'); return d ? JSON.parse(d.textContent) : []; }
   tbl.addEventListener('dragover', function (ev) {
     var td = ev.target.closest('td.g-cell');
     if (!td || dragged === null) return;
     ev.preventDefault();
+    ev.dataTransfer.dropEffect = dragged.from && !ev.altKey ? 'move' : 'copy';
     Array.prototype.forEach.call(tbl.querySelectorAll('.g-over'), function (x) { if (x !== td) x.classList.remove('g-over'); });
     td.classList.add('g-over');
   });
@@ -398,23 +412,34 @@ require __DIR__ . '/../includes/layout_top.php';
     if (!td || dragged === null) return;
     ev.preventDefault();
     td.classList.remove('g-over');
-    var who = dragged;
+    var d = dragged;
     dragged = null;
-    var info = cellInfo(td);
-    var data = td.querySelector('.g-data');
-    var list = data ? JSON.parse(data.textContent) : [];
+    var info = cellInfo(td), list = cellList(td);
+    if (d.from) {
+      if (d.from === td) return;
+      var src = cellList(d.from), moved = src[d.idx];
+      if (!moved) return;
+      list.push({ id: 0, priest: moved.priest, from_time: moved.from_time, to_time: moved.to_time, labor: moved.labor, description: moved.description });
+      var done = send(info, list, !ev.altKey);
+      if (!ev.altKey) {
+        // Target first, so a failure never loses the entry; then drop it from the source.
+        done = done.then(function () { src.splice(d.idx, 1); return send(cellInfo(d.from), src); });
+      }
+      done.catch(function (e) { alert(e.message); });
+      return;
+    }
     var blank = list.filter(function (e) { return !e.priest; })[0];
-    if (blank) blank.priest = who;
-    else list.push({ id: 0, priest: who, from_time: '', to_time: '', labor: '', description: '' });
+    if (blank) blank.priest = d.priest;
+    else list.push({ id: 0, priest: d.priest, from_time: '', to_time: '', labor: '', description: '' });
     send(info, list).catch(function (e) { alert(e.message); });
   });
-  document.addEventListener('dragend', function () { dragged = null; });
+  document.addEventListener('dragend', function () { dragged = null; Array.prototype.forEach.call(document.querySelectorAll('.g-over'), function (x) { x.classList.remove('g-over'); }); });
 
-  function send(info, entries) {
+  function send(info, entries, skipRefresh) {
     var body = new URLSearchParams({ action: 'cell_save', zone_id: zoneId, date: date, centre: info.centre, activity: info.type, entries: JSON.stringify(entries) });
     return fetch(location.pathname, { method: 'POST', body: body, headers: { Accept: 'application/json' } })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'Save failed'); return j; }); })
-      .then(refresh);
+      .then(function (j) { return skipRefresh ? j : refresh(); });
   }
   function cellInfo(td) {
     return { centre: td.parentNode.dataset.centre, type: document.getElementById('g-table').tHead.rows[0].cells[td.cellIndex].dataset.type };
