@@ -204,7 +204,7 @@ require __DIR__ . '/../includes/layout_top.php';
   .g-table tbody tr:hover td { background: var(--tint-stripe); }
   .g-table td.g-cell { cursor: pointer; height: 44px; min-width: 130px; }
   .g-table td.g-cell:hover { outline: 2px solid var(--brand); outline-offset: -2px; }
-  .g-table td.g-cell:empty::after { content: '+'; color: #d0c6e6; font-size: 16px; }
+  .g-table td.g-cell:empty::after { content: '+'; color: var(--tint-border); font-size: 16px; }
   .g-entry { font-size: 12px; line-height: 1.3; padding: 2px 5px; margin-bottom: 3px; border-radius: 3px; border-left: 4px solid #4a9a55; background: #e6f4e8; }
   .g-entry .g-time { display: block; color: #666; font-size: 11px; }
   .g-entry .g-note { display: block; color: #666; font-size: 11px; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
