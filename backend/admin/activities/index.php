@@ -841,7 +841,6 @@ require __DIR__ . '/../includes/layout_top.php';
       </div>
     </div>
     <label style="font-weight:normal;margin-top:8px;"><input type="checkbox" name="overwrite" value="1" style="width:auto;"> Overwrite existing activities in this date range</label>
-    <small class="hint" style="min-height:0;">Off (default): dates that already have activities<?= $admin['role'] === 'centre' ? ' at your centre' : '' ?> are left as they are, and only empty dates are filled. On: the existing activities of <?= $admin['role'] === 'centre' ? 'your centre' : 'this zone' ?> on the dates that have source rows are <strong>replaced</strong> (you will be asked to confirm). Dates with no source rows are left untouched. Each class A date in the range (see the liturgical calendar) also gets Med and Ben activities for <?= $admin['role'] === 'centre' ? 'your centre' : 'every centre of the zone' ?>, if they don't have them yet. Up to <?= SOURCE_APPLY_MAX_DAYS ?> days at a time.</small>
     <div class="btn-row">
       <button type="submit">Add from source</button>
     </div>
