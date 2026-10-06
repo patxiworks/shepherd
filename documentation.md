@@ -529,20 +529,25 @@ identity/value are never colour or angle alone.
   right-aligned Filter group; placed by the toolbar script via `data-toolbar-item
   data-before-right`). Choosing a date reloads the list filtered to that single date
   (`date_from = date_to`, other filters kept); clearing it removes the date filter. It
-  reads "No date" unless exactly one date is filtered (none, or a From/To range).
+  reads "No date" unless exactly one date is filtered (cleared on purpose, or a From/To range).
+  **Default is today:** opening the list with no filters (at most a zone) redirects, in the
+  browser, to today's date by the browser's clock; clearing the picker sets a
+  `sessionStorage` flag (`actShowAll`) so today isn't re-applied until a date is picked again.
   **Day summary:** with a single date filtered, a "Priests on <date>" box lists each
   priest (alphabetical, "(no priest)" last) with their activities that day (time,
   activity, centre; from the rows shown, so other filters apply). Docked right of the
-  table at ≥1200px (sticky); below that it floats bottom-right, collapsed to its title
+  table at ≥1410px (sticky; = the 1000px minimum table + 340px box + 16px gap + 32px page padding + scrollbar); below that it floats bottom-right, collapsed to its title
   until tapped, and is hidden by the zone-admin focus toggle. After an inline save it is
   rebuilt in the browser from the table rows (`window.refreshDaySummary()`), so edits
   show immediately; delete and the modal form reload the page anyway. Activities in the
   box show only their start time, and its priest column doesn't wrap. The main table
   uses fixed column widths (`table.act-table`, `table-layout: fixed`, Description takes
-  the rest) so inline editing doesn't shift the layout. **Column widths are user-resizable**: drag the
+  the rest) so inline editing doesn't shift the layout. The table is at least 1000px wide
+  (it scrolls inside its box on narrower screens) and, when columns are resized, never wider than
+  its box, i.e. the screen minus the docked summary box. **Column widths are user-resizable**: drag the
   right edge of a heading (double-click an edge to reset); the first drag freezes all
   columns at their current pixel widths (the table can then grow wider and scroll), and
-  the widths are kept in `localStorage` (`actColWidths`), per browser. The priest column
+  the widths are kept in `localStorage` (`actColWidths`), per browser. Because the frame (`.table-wrap`) changes width with the window and the summary box while a resized table has fixed pixel widths, a `ResizeObserver` rescales the columns to the frame's width (min 1000px) whenever it changes. The priest column
   shows the priest's name, their number of activities that day "(N)" and, if they are over
   the limit, the "N masses" badge and, if their activities overlap at different centres, the "bilocation" badge, each under the name (the only flags shown; copied from the rows). Absent priests are always the last rows, after "(no priest)".
   Because one edit can change the mass count of other rows, an inline save redraws the box
@@ -1113,6 +1118,21 @@ bars (black tick = average, red above 130 % of it, amber below 60 %, filterable 
 cross-zone service, priests not on the list, centres shared by 3+ priests), most/lightest
 centres and a zones table. Differences from the original: no pasted-sheet import (the data is the
 database) and no dark-mode toggle (it uses the admin theme colours).
+
+### Import of Structure tables (Settings → Import data)
+
+Super admin. One card on the Settings page imports into any table of the Structure menu —
+Zones, Centres, Sections, Labors, Activity types — from a CSV or XLSX upload or a Google
+Sheets link (same readers as the Activities/Source importers in
+[`backend/includes/activity_io.php`](backend/includes/activity_io.php); sheet must be shared
+"Anyone with the link can view"). Code: [`backend/includes/structure_import.php`](backend/includes/structure_import.php).
+First row = header, columns in any order: Zones `name`; Centres `zone`, `name`, `section`
+(optional); Sections `name`; Labors `name`; Activity types `name`, `is_multiday` (optional,
+yes/no/1/0). Import **only adds**: rows whose key already exists (name; zone + name for
+centres, case-insensitive) are skipped and nothing existing is changed. A centre's zone
+and section must already exist, so import Zones/Sections first. Invalid rows (empty or
+too-long name, unknown zone/section) are rejected and listed (first 25) under the card;
+the rest are added in one transaction. Result: "added N, already there N, rejected N".
 
 ### Admin theme
 

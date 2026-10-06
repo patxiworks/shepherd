@@ -5,6 +5,8 @@ require __DIR__ . '/../../includes/auth.php';
 require __DIR__ . '/../../includes/liturgical_calendar.php';
 require __DIR__ . '/../../includes/theme.php';
 require __DIR__ . '/../../includes/activity_mass_limit.php';
+require __DIR__ . '/../../includes/activity_io.php';
+require __DIR__ . '/../../includes/structure_import.php';
 require __DIR__ . '/../includes/flash.php';
 admin_require_role('super');
 
@@ -12,6 +14,35 @@ $pdo = pastores_db();
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $action = $_POST['action'] ?? 'save_week_start';
+
+    if ($action === 'import_structure') {
+        $table = $_POST['table'] ?? '';
+        try {
+            if (!isset(STRUCTURE_IMPORT_TABLES[$table])) {
+                throw new ImportException('Choose the table to import into.');
+            }
+            $link = trim($_POST['sheet_url'] ?? '');
+            if (!empty($_FILES['file']['name'])) {
+                $rows = uploaded_rows($_FILES['file']);
+            } elseif ($link !== '') {
+                $rows = csv_rows_from_string(google_sheet_csv($link));
+            } else {
+                throw new ImportException('Choose a CSV or XLSX file, or paste a Google Sheets link.');
+            }
+            $res = import_structure($pdo, $table, $rows);
+            $label = STRUCTURE_IMPORT_TABLES[$table][0];
+            $msg = "$label: added {$res['added']}, already there {$res['skipped']}" . ($res['rejected'] ? ", rejected {$res['rejected']}" : '') . '.';
+            flash($res['rejected'] ? 'warning' : 'success', $msg);
+            $_SESSION['structure_import_errors'] = $res['errors'];
+        } catch (ImportException $ex) {
+            flash('error', 'Import failed: ' . $ex->getMessage());
+        } catch (PDOException $ex) {
+            error_log('import_structure: ' . $ex->getMessage());
+            flash('error', 'Import failed (database error). Nothing was added.');
+        }
+        header('Location: /admin/settings/index.php');
+        exit;
+    }
 
     if ($action === 'save_theme') {
         $mode = $_POST['theme_mode'] ?? '';
@@ -98,6 +129,9 @@ try {
     // table not created yet: the card says so below
 }
 
+$importErrors = $_SESSION['structure_import_errors'] ?? [];
+unset($_SESSION['structure_import_errors']);
+
 $pageTitle = 'Settings — Pastores Admin';
 require __DIR__ . '/../includes/layout_top.php';
 ?>
@@ -130,6 +164,35 @@ require __DIR__ . '/../includes/layout_top.php';
     </small>
     <div class="btn-row">
       <button type="submit">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Import data</h2>
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="action" value="import_structure">
+    <label for="import_table">Import into</label>
+    <select id="import_table" name="table" required>
+      <option value="">Select a table…</option>
+      <?php foreach (STRUCTURE_IMPORT_TABLES as $key => [$label]): ?><option value="<?= e($key) ?>"><?= e($label) ?></option><?php endforeach; ?>
+    </select>
+    <label for="import_file">CSV or Excel (.xlsx) file</label>
+    <input type="file" id="import_file" name="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+    <label for="import_sheet">&hellip;or a Google Sheets link</label>
+    <input type="url" id="import_sheet" name="sheet_url" placeholder="https://docs.google.com/spreadsheets/d/…">
+    <small class="hint" style="min-height:0;">
+      The first row must be a header row; columns can be in any order. The sheet must be shared as "Anyone with the link can view".
+      Columns: <?php foreach (STRUCTURE_IMPORT_TABLES as [$label, , $help]): ?><br><strong><?= e($label) ?></strong>: <?= e($help) ?><?php endforeach; ?>
+      <br>Import only adds: rows that already exist are skipped and nothing existing is changed, so importing the same file twice is safe. Add zones and sections before the centres that use them.
+    </small>
+    <?php if ($importErrors): ?>
+      <ul class="hint" style="margin:8px 0 0 18px;padding:0;color:#c62828;">
+        <?php foreach ($importErrors as $m): ?><li><?= e($m) ?></li><?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+    <div class="btn-row">
+      <button type="submit">Import</button>
     </div>
   </form>
 </div>

@@ -694,7 +694,7 @@ require __DIR__ . '/../includes/layout_top.php';
   tr.editing .row-error { display: block; color: #c62828; font-size: 12px; margin-top: 4px; white-space: normal; }
   /* Fixed column widths (sized for the inline editors), so a row doesn't
      change the layout when it switches to editing. Description takes the rest. */
-  table.act-table { table-layout: fixed; width: 100%; min-width: 1080px; }
+  table.act-table { table-layout: fixed; width: 100%; min-width: 1000px; }
   table.act-table th.bulk-col { width: 36px; }
   table.act-table th.w-date { width: 140px; }
   table.act-table th.w-centre { width: 170px; }
@@ -924,7 +924,24 @@ $dayValue = (isset($filters['date_from'], $filters['date_to']) && $filters['date
 (function () {
   var input = document.getElementById('day-pick');
   if (!input) return;
+  var FLAG = 'actShowAll';   // set when the date was cleared on purpose, so today isn't re-applied
+  function dayUrl(value) {
+    var q = input.dataset.base;
+    if (value) q += (q ? '&' : '') + 'date_from=' + value + '&date_to=' + value;
+    return '/admin/activities/index.php' + (q ? '?' + q : '');
+  }
+  // Default date = today: arriving with no filters at all (only a zone, at most)
+  // opens the list on today, by the browser's clock.
+  var onlyZone = location.search.replace(/^\?/, '').split('&').every(function (p) { return p === '' || /^zone=/.test(p); });
+  var showAll = false;
+  try { showAll = sessionStorage.getItem(FLAG) === '1'; } catch (e) {}
+  if (onlyZone && !showAll) {
+    var t = new Date();
+    location.replace(dayUrl(t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0')));
+    return;
+  }
   input.addEventListener('change', function () {
+    try { if (input.value) sessionStorage.removeItem(FLAG); else sessionStorage.setItem(FLAG, '1'); } catch (e) {}
     var q = input.dataset.base;
     if (input.value) q += (q ? '&' : '') + 'date_from=' + input.value + '&date_to=' + input.value;
     location.href = '/admin/activities/index.php' + (q ? '?' + q : '');
@@ -1026,13 +1043,13 @@ if ($dayValue !== '' && absences_available($pdo)) {
   .day-summary td div { padding: 1px 0; }
   .day-summary td small { color: #666; }
   /* Large screens: docked to the right of the table, following the scroll. */
-  @media (min-width: 1200px) {
+  @media (min-width: 1410px) {
     .act-layout { display: flex; align-items: flex-start; gap: 16px; }
     .act-layout > .table-wrap { flex: 1 1 auto; min-width: 0; }
     .day-summary { flex: 0 0 340px; position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; }
   }
   /* Small screens: floating bottom-right, collapsed to its title until tapped. */
-  @media (max-width: 1199px) {
+  @media (max-width: 1409px) {
     .day-summary { position: fixed; right: 10px; bottom: 10px; z-index: 15; width: min(92vw, 360px); max-height: 60vh; overflow-y: auto; }
     body.act-focus .day-summary { display: none; }
   }
@@ -1040,7 +1057,7 @@ if ($dayValue !== '' && absences_available($pdo)) {
 <script>
 (function () {
   var d = document.getElementById('day-summary');
-  if (d && window.matchMedia('(max-width: 1199px)').matches) d.removeAttribute('open');
+  if (d && window.matchMedia('(max-width: 1409px)').matches) d.removeAttribute('open');
 
   // Rebuilds the summary from the table rows as they are now; called after an
   // inline save so an edit shows up here without reloading.
@@ -1332,9 +1349,14 @@ if ($dayValue !== '' && absences_available($pdo)) {
   function apply(widths) {
     var cols = ths();
     if (widths.length !== cols.length) return;
+    // Never wider than the space beside the summary box (the table's own box),
+    // but never narrower than the 1000px minimum either.
+    var maxW = Math.max(1000, table.parentNode.clientWidth);
+    var total = widths.reduce(function (a, b) { return a + b; }, 0);
+    if (total > maxW) widths = widths.map(function (w) { return Math.max(50, Math.floor(w * maxW / total)); });
     cols.forEach(function (th, i) { th.style.width = widths[i] + 'px'; });
     table.style.width = widths.reduce(function (a, b) { return a + b; }, 0) + 'px';
-    table.style.minWidth = '0';
+    table.style.minWidth = '1000px';
   }
   function save(widths) { try { localStorage.setItem(KEY, JSON.stringify(widths)); } catch (e) {} }
   function reset() {
@@ -1343,6 +1365,24 @@ if ($dayValue !== '' && absences_available($pdo)) {
     try { localStorage.removeItem(KEY); } catch (e) {}
   }
   try { var saved = JSON.parse(localStorage.getItem(KEY) || 'null'); if (Array.isArray(saved)) apply(saved.map(Number)); } catch (e) {}
+
+  // Once columns have fixed widths the table no longer follows its frame by
+  // itself (the frame changes with the window and with the summary box), so
+  // rescale the columns to the frame's width whenever that changes.
+  function fit() {
+    if (!table.style.width) return;   // default layout: width 100%, already follows
+    var cols = ths();
+    var widths = cols.map(function (th) { return parseFloat(th.style.width) || th.getBoundingClientRect().width; });
+    var total = widths.reduce(function (a, b) { return a + b; }, 0);
+    var target = Math.max(1000, table.parentNode.clientWidth);
+    if (Math.abs(target - total) < 2) return;
+    widths = widths.map(function (w) { return Math.max(50, Math.round(w * target / total)); });
+    cols.forEach(function (th, i) { th.style.width = widths[i] + 'px'; });
+    table.style.width = widths.reduce(function (a, b) { return a + b; }, 0) + 'px';
+  }
+  fit();
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(table.parentNode);
+  else window.addEventListener('resize', fit);
 
   var cols = ths();
   cols.slice(0, -1).forEach(function (th, i) {
@@ -1362,6 +1402,9 @@ if ($dayValue !== '' && absences_available($pdo)) {
       function move(e) {
         var w = Math.max(50, Math.round(startW + e.clientX - startX));
         var next = widths.map(Math.round); next[i] = w;
+        var maxW = Math.max(1000, table.parentNode.clientWidth);
+        var over = next.reduce(function (a, b) { return a + b; }, 0) - maxW;
+        if (over > 0) next[i] = Math.max(50, w - over);   // stop at the available width
         apply(next);
       }
       function up() {
