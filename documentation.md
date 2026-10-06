@@ -540,7 +540,7 @@ identity/value are never colour or angle alone.
   until tapped, and is hidden by the zone-admin focus toggle. After an inline save it is
   rebuilt in the browser from the table rows (`window.refreshDaySummary()`), so edits
   show immediately; delete and the modal form reload the page anyway. Activities in the
-  box show only their start time, and its priest column doesn't wrap. The main table
+  box show only their start time, and its priest column doesn't wrap. Under each priest's name it shows "Mass: N" in small print: the larger of the Mass rows shown and the server's count for that priest and day (the row's `data-masses`, which also counts other zones), so it follows edits like the rest of the box. The main table
   uses fixed column widths (`table.act-table`, `table-layout: fixed`, Description takes
   the rest) so inline editing doesn't shift the layout. The table is at least 1000px wide
   (it scrolls inside its box on narrower screens) and, when columns are resized, never wider than

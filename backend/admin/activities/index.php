@@ -220,7 +220,7 @@ function activity_row_html(array $a, string $qs = ''): string
         ? ' <span class="dup-badge" title="' . e("Identical to $dupes other activit" . ($dupes === 1 ? 'y' : 'ies') . ' (same date, centre, activity, priest and times)') . '">duplicate</span>' : '');
     ob_start();
     ?>
-<tr data-id="<?= $id ?>" data-zone="<?= $zone ?>"<?= $classes !== '' ? ' class="' . $classes . '"' : '' ?>>
+<tr data-id="<?= $id ?>" data-zone="<?= $zone ?>" data-masses="<?= $massCount ?>"<?= $classes !== '' ? ' class="' . $classes . '"' : '' ?>>
   <?= $cell('activity_date', 'date', $a['activity_date'], e($a['activity_date'])) ?>
   <?= $cell('centre', 'centre', $a['centre'], e($a['centre'])) ?>
   <?= $cell('activity', 'activity', $a['activity'], $activityText, ' data-sort="' . e($a['activity']) . '"') ?>
@@ -1328,6 +1328,10 @@ if ($dayValue !== '' && absences_available($pdo)) {
       var f = flags[name] = flags[name] || {};
       ['mass-badge', 'bilocation-badge'].forEach(function (c) { var b = tr.querySelector('.' + c); if (b && !f[c]) f[c] = b; });
       (by[name] = by[name] || []).push({ time: from, activity: v('activity'), centre: v('centre') });
+      // Masses that day: those shown here, or the server's count (which also includes other zones) if higher.
+      var isMass = v('activity').toLowerCase() === 'mass';
+      f.masses = Math.max(f.masses || 0, parseInt(tr.getAttribute('data-masses'), 10) || 0);
+      if (isMass) f.local = (f.local || 0) + 1;
     });
     var names = Object.keys(by).sort(function (a, b) {
       // absent priests always last, then "(no priest)"
@@ -1344,6 +1348,11 @@ if ($dayValue !== '' && absences_available($pdo)) {
       cnt.title = by[name].length + ' activit' + (by[name].length === 1 ? 'y' : 'ies');
       th.appendChild(cnt);
       var fl = flags[name] || {};
+      if (name !== '(no priest)') {
+        var md = document.createElement('div'), ms = document.createElement('small');
+        ms.textContent = 'Mass: ' + Math.max(fl.local || 0, fl.masses || 0);
+        md.appendChild(ms); th.appendChild(md);
+      }
       ['mass-badge', 'bilocation-badge'].forEach(function (c) {
         if (!fl[c]) return;
         var d = document.createElement('div'); d.appendChild(fl[c].cloneNode(true)); th.appendChild(d);
