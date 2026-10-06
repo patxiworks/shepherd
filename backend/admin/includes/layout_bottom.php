@@ -7,7 +7,7 @@
   // (source, activities) already wrap their own table for other reasons;
   // everyone else gets it wrapped here automatically.
   document.querySelectorAll('main table').forEach(function (table) {
-    if (table.closest('.table-wrap')) return;
+    if (table.closest('.table-wrap') || table.hasAttribute('data-no-wrap')) return;
     var wrap = document.createElement('div');
     wrap.className = 'table-wrap';
     table.parentNode.insertBefore(wrap, table);
@@ -291,7 +291,7 @@
   // sorts numerically when all its values are numbers. Empty cells always
   // sort last. Headings with no text (the actions column) aren't sortable.
   document.querySelectorAll('main table').forEach(function (table) {
-    if (!table.tHead || !table.tBodies[0]) return;
+    if (!table.tHead || !table.tBodies[0] || table.hasAttribute('data-no-sort')) return;
     var ths = Array.prototype.slice.call(table.tHead.rows[0].cells);
     var tbody = table.tBodies[0];
     ths.forEach(function (th, i) {

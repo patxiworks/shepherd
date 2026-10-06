@@ -339,7 +339,8 @@ were removed (migration `018`).
 
 **Activities tabs.** (The tab strip, shared with Multi-day, is `nav.tabs` in `layout_top.php`: the tabs sit on a 2px brand-coloured base line.) The Activities section has tabs **List** (the table below,
 [`index.php`](backend/admin/activities/index.php)), **Calendar**
-([`calendar.php`](backend/admin/activities/calendar.php)) and **Dashboard**
+([`calendar.php`](backend/admin/activities/calendar.php)), **Grid**
+([`grid.php`](backend/admin/activities/grid.php)) and **Dashboard**
 ([`dashboard.php`](backend/admin/activities/dashboard.php)); all use the full page
 width. The **Calendar** is a read-only view over the same
 `activities` rows: one zone at a time (a super admin picks it, the first zone by
@@ -371,6 +372,24 @@ In Month and Week, hovering a chip shows a tooltip (centre, activity, date and t
 group, section, priest, description) and clicking opens the activity in the List tab's
 editor. The List tab's flags (absent priest, duplicates, bilocation, mass limit) are not
 shown on the calendar.
+
+The **Grid** tab shows one date (date picker, ‹ › and Today; a super admin also picks the
+zone) as a table with every centre of the zone as a row (a centre admin: only theirs) and
+every *regular* activity type (`activity_types.is_multiday = 0`) as a column; the centre
+column and the header stay in view while scrolling. A cell lists the activities of that
+centre + type on the date (priest, times, note) and **clicking it opens an editor dialog**:
+one line per activity with Priest (the zone's priests), From, To, Group and Note, a
+"+ Add another" button (e.g. two Masses) and × per line; saving with no lines clears the
+cell. Saving posts `action=cell_save` (JSON of the cell's entries) to `grid.php`, which
+updates entries by id, inserts new ones (week/day/weekday from the date, section from the
+centre, duration = To − From, as on the List tab), deletes the ones removed, bumps
+`zones.last_update`, and the page then refreshes just the table. Scope is re-checked
+server-side (centre must be the admin's, activity type regular, priests the zone's). Each
+entry is coloured by the List tab's first applicable flag (no priest, priest absent, priest
+in a multi-day activity, bilocation, over the mass limit, duplicate), using the same SQL
+select fragments as the List; a legend sits above the table. "Hide empty rows & columns"
+(remembered in `localStorage`) trims the grid to what is used that day. Tables can opt out of
+the shared sorting/wrapping in `layout_bottom.php` with `data-no-sort` / `data-no-wrap`.
 
 The **Dashboard** is modelled on the Multi-day one: statistics over the same rows for
 one zone (a super admin picks it; zone/centre admins are locked as on the Calendar) and
@@ -1282,6 +1301,7 @@ contracts were deliberately kept identical.
 | Change how the multi-day Roll forward shifts dates or places Free/Maintenance placeholders | [`backend/includes/multiday_rollforward.php`](backend/includes/multiday_rollforward.php) (`mday_roll_plan()`, `mday_roll_apply()`; the form/preview are in `index.php`) |
 | Change bulk delete (the select icon/bar, or a page's bulk handling) | [`backend/admin/includes/layout_bottom.php`](backend/admin/includes/layout_bottom.php) (client), [`backend/admin/includes/bulk.php`](backend/admin/includes/bulk.php) (`bulk_run()`, `bulk_delete_matching()`) and each page's `$deleteOne` |
 | Change the Activities dashboard's statistics (or the shared bar/card helpers) | [`backend/admin/activities/dashboard.php`](backend/admin/activities/dashboard.php) and [`backend/admin/includes/dash.php`](backend/admin/includes/dash.php) |
+| Change the Activities Grid tab (centres × activity types for one date, its cell editor or save) | [`backend/admin/activities/grid.php`](backend/admin/activities/grid.php) |
 | Change the Activities calendar's grid, chips, tooltip or filters | [`backend/admin/activities/calendar.php`](backend/admin/activities/calendar.php) |
 | Change the multi-day list's filters, search, CSV export or import columns/validation | [`backend/admin/multiday_activities/index.php`](backend/admin/multiday_activities/index.php) (`mday_filters()`, `mday_where()`, `mday_fields()`) and [`backend/includes/multiday_io.php`](backend/includes/multiday_io.php) |
 | Change the multi-day calendar's painting, tooltip, clash detection or filters | [`backend/admin/multiday_activities/calendar.php`](backend/admin/multiday_activities/calendar.php) (helpers are the `mday_*` functions at the top) |

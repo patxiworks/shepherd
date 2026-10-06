@@ -817,6 +817,7 @@ require __DIR__ . '/../includes/layout_top.php';
 <nav class="tabs">
   <a class="active" href="/admin/activities/index.php">List</a>
   <a href="/admin/activities/calendar.php<?= $filterZone ? '?zone=' . (int) $filterZone : '' ?>">Calendar</a>
+  <a href="/admin/activities/grid.php<?= $filterZone ? '?zone=' . (int) $filterZone : '' ?>">Grid</a>
   <a href="/admin/activities/dashboard.php<?= $filterZone ? '?zone=' . (int) $filterZone : '' ?>">Dashboard</a>
 </nav>
 

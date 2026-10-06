@@ -264,6 +264,7 @@ require __DIR__ . '/../includes/layout_top.php';
 <nav class="tabs">
   <a href="/admin/activities/index.php<?= $zoneId ? '?zone=' . $zoneId : '' ?>">List</a>
   <a class="active" href="/admin/activities/calendar.php">Calendar</a>
+  <a href="/admin/activities/grid.php<?= $zoneId ? '?zone=' . $zoneId : '' ?>">Grid</a>
   <a href="/admin/activities/dashboard.php<?= $zoneId ? '?zone=' . $zoneId : '' ?>">Dashboard</a>
 </nav>
 
