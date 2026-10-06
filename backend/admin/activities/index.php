@@ -293,10 +293,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             if (!$zoneId) {
                 throw new InvalidArgumentException('Zone is required.');
             }
-            $r = apply_source_to_activities($pdo, $zoneId, (string) ($_POST['source_from'] ?? ''), (string) ($_POST['source_to'] ?? ''), $weekStart, $scopeCentreName);
+            $r = apply_source_to_activities($pdo, $zoneId, (string) ($_POST['source_from'] ?? ''), (string) ($_POST['source_to'] ?? ''), $weekStart, $scopeCentreName, !empty($_POST['overwrite']));
             $parts = [];
             if ($r['dates']) {
                 $parts[] = "Added from source: {$r['inserted']} activities on {$r['dates']} dates" . ($r['deleted'] ? " (replacing {$r['deleted']} existing)" : '');
+            }
+            if ($r['kept_dates']) {
+                $parts[] = "Left {$r['kept_dates']} date" . ($r['kept_dates'] === 1 ? '' : 's') . ' with existing activities untouched (tick "Overwrite existing activities" to replace them)';
             }
             if ($r['class_a_dates']) {
                 $parts[] = "Class A: added {$r['class_a_added']} Med/Ben activities on {$r['class_a_dates']} class A date" . ($r['class_a_dates'] === 1 ? '' : 's');
@@ -819,7 +822,7 @@ require __DIR__ . '/../includes/layout_top.php';
 
 <div class="card" data-modal data-add-label="Add from source">
   <h2>Add from source</h2>
-  <form method="post" data-zone="<?= e($sourceZoneName) ?>" onsubmit="return confirm('Replace the activities of ' + this.dataset.zone + ' on the dates in this range with the source data?');">
+  <form method="post" data-zone="<?= e($sourceZoneName) ?>" onsubmit="if (this.overwrite.checked) return confirm('Overwrite the existing activities of ' + this.dataset.zone + ' on every date in this range that has source rows? This cannot be undone.'); return true;">
     <input type="hidden" name="action" value="from_source">
     <input type="hidden" name="qs" value="<?= e($filterQs) ?>">
     <?php if ($admin['role'] === 'super'): ?><input type="hidden" name="zone_id" value="<?= (int) $filterZone ?>"><?php endif; ?>
@@ -835,7 +838,8 @@ require __DIR__ . '/../includes/layout_top.php';
         <input type="date" id="source_to" name="source_to" required>
       </div>
     </div>
-    <small class="hint" style="min-height:0;">Existing activities of <?= $admin['role'] === 'centre' ? 'your centre' : 'this zone' ?> on the dates that have source rows are <strong>replaced</strong>. Dates with no source rows are left untouched. Each class A date in the range (see the liturgical calendar) also gets Med and Ben activities for <?= $admin['role'] === 'centre' ? 'your centre' : 'every centre of the zone' ?>, if they don't have them yet. Up to <?= SOURCE_APPLY_MAX_DAYS ?> days at a time.</small>
+    <label style="font-weight:normal;margin-top:8px;"><input type="checkbox" name="overwrite" value="1" style="width:auto;"> Overwrite existing activities in this date range</label>
+    <small class="hint" style="min-height:0;">Off (default): dates that already have activities<?= $admin['role'] === 'centre' ? ' at your centre' : '' ?> are left as they are, and only empty dates are filled. On: the existing activities of <?= $admin['role'] === 'centre' ? 'your centre' : 'this zone' ?> on the dates that have source rows are <strong>replaced</strong> (you will be asked to confirm). Dates with no source rows are left untouched. Each class A date in the range (see the liturgical calendar) also gets Med and Ben activities for <?= $admin['role'] === 'centre' ? 'your centre' : 'every centre of the zone' ?>, if they don't have them yet. Up to <?= SOURCE_APPLY_MAX_DAYS ?> days at a time.</small>
     <div class="btn-row">
       <button type="submit">Add from source</button>
     </div>

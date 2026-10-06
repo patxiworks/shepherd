@@ -70,7 +70,7 @@ function source_times_for(array $lookup, string $centre, string $activity, int $
     return null;
 }
 
-// Replaces, for every date in $from..$to (yyyy-mm-dd) that has matching
+// Replaces (when $overwrite; otherwise only fills dates that have no activities yet), for every date in $from..$to (yyyy-mm-dd) that has matching
 // source rows, the zone's activities on that date with those rows. Dates
 // with no matching source row are left alone. $centre (a centre-scoped
 // admin's centre) limits both the source rows used and the activities
@@ -94,7 +94,7 @@ function source_times_for(array $lookup, string $centre, string $activity, int $
 // activity_duplicates.php) are only added once; the extra ones are skipped and
 // reported.
 //
-// Returns ['dates' => dates filled from source, 'deleted' => activities
+// Returns ['dates' => dates filled from source, 'kept_dates' => dates with source rows left alone because they already had activities (no overwrite), 'deleted' => activities
 // replaced, 'inserted' => activities added from source, 'skipped' => identical
 // source rows not added, 'skipped_list' => up to 10 of them as text,
 // 'vigil_added' => Vigil rows added, 'vigil_dates' => dates that got some,
@@ -104,7 +104,7 @@ function source_times_for(array $lookup, string $centre, string $activity, int $
 // got times from source, 'auto_fallback' => of those, how many took the
 // centre's usual times because source has none for that weekday,
 // 'calendar' => false if the liturgical_calendar table doesn't exist].
-function apply_source_to_activities(PDO $pdo, int $zoneId, string $from, string $to, string $weekStart, ?string $centre = null): array
+function apply_source_to_activities(PDO $pdo, int $zoneId, string $from, string $to, string $weekStart, ?string $centre = null, bool $overwrite = true): array
 {
     $start = DateTimeImmutable::createFromFormat('!Y-m-d', $from);
     $end = DateTimeImmutable::createFromFormat('!Y-m-d', $to);
@@ -134,6 +134,7 @@ function apply_source_to_activities(PDO $pdo, int $zoneId, string $from, string 
 
     $deleteSql = 'DELETE FROM activities WHERE zone_id = ? AND activity_date = ?' . ($centre !== null ? ' AND centre = ?' : '');
     $delete = $pdo->prepare($deleteSql);
+    $hasAny = $pdo->prepare('SELECT 1 FROM activities WHERE zone_id = ? AND activity_date = ?' . ($centre !== null ? ' AND centre = ?' : '') . ' LIMIT 1');
     $insert = $pdo->prepare(
         'INSERT INTO activities (zone_id, week, day, weekday, activity_date, centre, activity, section, labor, from_time, to_time, duration, priest, description)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
@@ -166,13 +167,21 @@ function apply_source_to_activities(PDO $pdo, int $zoneId, string $from, string 
     $times = source_time_lookup($pdo, $zoneId, $centre);
     $autoStats = ['added' => 0, 'timed' => 0, 'fallback' => 0];
 
-    $result = ['dates' => 0, 'deleted' => 0, 'inserted' => 0, 'skipped' => 0, 'skipped_list' => [], 'vigil_added' => 0, 'vigil_dates' => 0, 'class_a_dates' => count($classA), 'class_a_added' => 0, 'auto_added' => 0, 'auto_timed' => 0, 'auto_fallback' => 0, 'calendar' => $calendar];
+    $result = ['dates' => 0, 'deleted' => 0, 'kept_dates' => 0, 'inserted' => 0, 'skipped' => 0, 'skipped_list' => [], 'vigil_added' => 0, 'vigil_dates' => 0, 'class_a_dates' => count($classA), 'class_a_added' => 0, 'auto_added' => 0, 'auto_timed' => 0, 'auto_fallback' => 0, 'calendar' => $calendar];
     $pdo->beginTransaction();
     try {
         for ($d = $start; $d <= $end; $d = $d->modify('+1 day')) {
             $date = $d->format('Y-m-d');
             $parts = date_parts($date, $weekStart);
             $rows = $bySlot[$parts['week'] . '-' . $parts['weekday']] ?? [];
+            if ($rows && !$overwrite) {
+                // Not overwriting: a date that already has activities keeps them.
+                $hasAny->execute($centre !== null ? [$zoneId, $date, $centre] : [$zoneId, $date]);
+                if ($hasAny->fetchColumn()) {
+                    $rows = [];
+                    $result['kept_dates']++;
+                }
+            }
             if ($rows) {
                 $delete->execute($centre !== null ? [$zoneId, $date, $centre] : [$zoneId, $date]);
                 $result['deleted'] += $delete->rowCount();

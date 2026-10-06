@@ -587,9 +587,12 @@ identity/value are never colour or angle alone.
   [Source](#admin-panel-backendadmin) table: each date takes the source rows
   of the same zone with the same `week` (which occurrence of that day it is in
   the month) and `day` (its number in the week per the week-start setting),
-  e.g. 24/09/2026 is the 4th Thursday = week 4, day 5 (Sunday start). On every
-  date that has matching source rows, the zone's existing activities are
-  **replaced** by them (in one transaction); dates with no matching rows are
+  e.g. 24/09/2026 is the 4th Thursday = week 4, day 5 (Sunday start). The modal has an
+  **"Overwrite existing activities in this date range"** checkbox (off by default). *Off:* a date
+  that already has activities (the zone's, or the centre admin's centre's) is left as it is, and
+  only dates with none are filled; the message says how many dates were kept. *On:* submitting asks
+  for confirmation, then on every date that has matching source rows the existing activities are
+  **replaced** by them (in one transaction). Either way, dates with no matching rows are
   left untouched. Only the current user's own zone is touched (a super admin,
   who has none, uses the zone being viewed; a posted zone id is ignored for
   everyone else), and a centre admin only gets/replaces their own centre's
