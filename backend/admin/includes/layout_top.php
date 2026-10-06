@@ -68,7 +68,15 @@ $themeBrand = theme_brand(pastores_db());
      no longer clipped to match, so it was poking a small square notch past
      the wrap's rounded corners in place of the curve. */
   table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--tint-border); border-right: 1px solid var(--tint-border); font-size: 13px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--tint-border); border-right: 1px solid var(--tint-border); font-size: var(--tbl-fs, 13px); }
+  table .cell-input { font-size: var(--tbl-fs, inherit); }
+  .tbl-zoom { display: flex; justify-content: flex-end; gap: 4px; margin: 0 0 4px; }
+  .tbl-zoom-btn { background: #fff; color: var(--brand); border: 1px solid var(--tint-border); border-radius: 4px; padding: 0 7px; height: 26px; min-width: 32px; line-height: 1; cursor: pointer; font-weight: 600; font-size: 15px; }
+  .tbl-zoom-btn.small { font-size: 12px; }
+  .tbl-zoom-btn sup { font-size: 10px; vertical-align: top; position: relative; top: 1px; }
+  .tbl-zoom-btn:hover:not(:disabled) { border-color: var(--brand); background: var(--tint-1); }
+  .tbl-zoom-btn:disabled { opacity: .4; cursor: default; }
+  body.act-focus .tbl-zoom { display: none; }
   th:last-child, td:last-child { border-right: none; }
   /* Rounds the table to match .table-wrap's own 6px corners. A bulk-delete
      checkbox column (layout_bottom.php), when present, is always inserted

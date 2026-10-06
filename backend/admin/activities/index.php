@@ -766,18 +766,18 @@ require __DIR__ . '/../includes/layout_top.php';
   .legend-bilocation { background: #fff3cd; color: #8a6100; border-color: #e0c060; }
   .legend-mass-limit { background: #f1e9fb; color: #5b2fa0; border-color: #c3a8ec; }
   .legend-duplicate { background: #eaf1fb; color: #1a56a8; border-color: #9dbbe6; }
-  .absent-badge { display: inline-block; background: #fff; color: #c62828; border: 1px solid #ef9a9a; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
-  .multiday-badge { display: inline-block; background: #fff; color: #00695c; border: 1px solid #80cbc4; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
-  .no-priest-badge { display: inline-block; background: #fff; color: #37474f; border: 1px solid #b0bec5; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
+  .absent-badge { display: inline-block; background: #fff; color: #c62828; border: 1px solid #ef9a9a; border-radius: 10px; font-size: calc(var(--tbl-fs, 13px) - 2px); line-height: 1.5; padding: 0 6px; margin-left: 4px; cursor: help; }
+  .multiday-badge { display: inline-block; background: #fff; color: #00695c; border: 1px solid #80cbc4; border-radius: 10px; font-size: calc(var(--tbl-fs, 13px) - 2px); line-height: 1.5; padding: 0 6px; margin-left: 4px; cursor: help; }
+  .no-priest-badge { display: inline-block; background: #fff; color: #37474f; border: 1px solid #b0bec5; border-radius: 10px; font-size: calc(var(--tbl-fs, 13px) - 2px); line-height: 1.5; padding: 0 6px; margin-left: 4px; cursor: help; }
   tr.saved-warn td { background: #f8c9c4; }
   tr.saved-dup td { background: #cfe0f7; }
   tr.saved-multiday td { background: #b2dfdb; }
   tr.saved-bilocation td { background: #ffe08a; }
   tr.saved-masses td { background: #dccbf5; }
   tr.saved-no-priest td { background: #cfd8dc; }
-  .mass-badge { display: inline-block; background: #fff; color: #5b2fa0; border: 1px solid #c3a8ec; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
-  .bilocation-badge { display: inline-block; background: #fff; color: #8a6100; border: 1px solid #e0c060; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
-  .dup-badge { display: inline-block; background: #fff; color: #1a56a8; border: 1px solid #9dbbe6; border-radius: 10px; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 4px; cursor: help; }
+  .mass-badge { display: inline-block; background: #fff; color: #5b2fa0; border: 1px solid #c3a8ec; border-radius: 10px; font-size: calc(var(--tbl-fs, 13px) - 2px); line-height: 1.5; padding: 0 6px; margin-left: 4px; cursor: help; }
+  .bilocation-badge { display: inline-block; background: #fff; color: #8a6100; border: 1px solid #e0c060; border-radius: 10px; font-size: calc(var(--tbl-fs, 13px) - 2px); line-height: 1.5; padding: 0 6px; margin-left: 4px; cursor: help; }
+  .dup-badge { display: inline-block; background: #fff; color: #1a56a8; border: 1px solid #9dbbe6; border-radius: 10px; font-size: calc(var(--tbl-fs, 13px) - 2px); line-height: 1.5; padding: 0 6px; margin-left: 4px; cursor: help; }
   /* Zone admin, small screens only: a fixed icon (always at the same
      viewport corner, so it never scrolls away) hides everything above the
      table — including the shared top menu bar — so the table can use the

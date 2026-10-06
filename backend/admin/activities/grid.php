@@ -198,16 +198,16 @@ require __DIR__ . '/../includes/layout_top.php';
   .g-scroll { overflow: auto; max-height: 75vh; border: 1px solid var(--tint-border); border-radius: 6px; background: #fff; }
   table.g-table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
   .g-table th, .g-table td { border-right: 1px solid var(--tint-border); border-bottom: 1px solid var(--tint-border); padding: 4px 6px; vertical-align: top; background: #fff; }
-  .g-table thead th { position: sticky; top: 0; z-index: 2; min-width: 130px; max-width: 170px; font-size: 15px; text-align: center; white-space: normal; background: color-mix(in srgb, var(--brand) 85%, #fff); color: #fff; }
-  .g-table th.g-centre { position: sticky; top: auto; left: 0; z-index: 1; min-width: 160px; text-align: left; font-size: 15px; background: #d0e5f0; color: #666; }
+  .g-table thead th { position: sticky; top: 0; z-index: 2; min-width: 130px; max-width: 170px; font-size: calc(var(--tbl-fs, 13px) + 2px); text-align: center; white-space: normal; background: color-mix(in srgb, var(--brand) 85%, #fff); color: #fff; }
+  .g-table th.g-centre { position: sticky; top: auto; left: 0; z-index: 1; min-width: 160px; text-align: left; font-size: calc(var(--tbl-fs, 13px) + 2px); background: #d0e5f0; color: #666; }
   .g-table thead th.g-corner { top: 0; left: 0; z-index: 3; background: var(--brand-dark); color: #fff; }
   .g-table tbody tr:hover td { background: var(--tint-stripe); }
   .g-table td.g-cell { cursor: pointer; height: 44px; min-width: 130px; }
   .g-table td.g-cell:hover { outline: 2px solid var(--brand); outline-offset: -2px; }
   .g-table td.g-cell:empty::after { content: '+'; color: var(--tint-border); font-size: 16px; }
-  .g-entry { font-size: 12px; line-height: 1.3; padding: 2px 5px; margin-bottom: 3px; border-radius: 3px; border-left: 4px solid #4a9a55; background: #e6f4e8; }
-  .g-entry .g-time { display: block; color: #666; font-size: 11px; }
-  .g-entry .g-note { display: block; color: #666; font-size: 11px; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+  .g-entry { font-size: calc(var(--tbl-fs, 13px) - 1px); line-height: 1.3; padding: 2px 5px; margin-bottom: 3px; border-radius: 3px; border-left: 4px solid #4a9a55; background: #e6f4e8; }
+  .g-entry .g-time { display: block; color: #666; font-size: calc(var(--tbl-fs, 13px) - 2px); }
+  .g-entry .g-note { display: block; color: #666; font-size: calc(var(--tbl-fs, 13px) - 2px); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
   .g-entry.f-none { background: #eee; border-color: #888; }
   .g-entry.f-absent { background: #fbd5d5; border-color: #c0392b; }
   .g-entry.f-multi { background: #cdeeee; border-color: #1b8f8f; }

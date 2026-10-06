@@ -322,5 +322,45 @@
   });
 })();
 </script>
+<script>
+// Text size buttons at the top right of every table: A- / A+ change the table's
+// font size (--tbl-fs, 10-22px, default 13) and the choice is remembered per
+// page and table in localStorage. Skipped for tables inside dialogs and any table with data-no-zoom.
+(function () {
+  var MIN = 10, MAX = 22, DEF = 13;
+  var tables = Array.prototype.filter.call(document.querySelectorAll('main table'), function (t) {
+    return !t.closest('dialog') && !t.hasAttribute('data-no-zoom');
+  });
+  tables.forEach(function (table, n) {
+    var key = 'tblFs:' + location.pathname + ':' + n, size = DEF;
+    try { size = parseInt(localStorage.getItem(key), 10) || DEF; } catch (e) {}
+    function apply(v) {
+      size = Math.max(MIN, Math.min(MAX, v));
+      table.style.setProperty('--tbl-fs', size + 'px');
+      minus.disabled = size <= MIN;
+      plus.disabled = size >= MAX;
+      try { if (size === DEF) localStorage.removeItem(key); else localStorage.setItem(key, String(size)); } catch (e) {}
+    }
+    function btn(label, title, glyph) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'tbl-zoom-btn'; b.title = title; b.setAttribute('aria-label', label);
+      b.innerHTML = glyph;
+      return b;
+    }
+    var minus = btn('Smaller text', 'Smaller text', '<span aria-hidden="true">A</span><sup aria-hidden="true">&minus;</sup>');
+    var plus = btn('Larger text', 'Larger text', '<span aria-hidden="true">A</span><sup aria-hidden="true">+</sup>');
+    minus.classList.add('small');
+    minus.addEventListener('click', function () { apply(size - 1); });
+    plus.addEventListener('click', function () { apply(size + 1); });
+    minus.addEventListener('dblclick', function () { apply(DEF); });
+    var bar = document.createElement('div');
+    bar.className = 'tbl-zoom';
+    bar.appendChild(minus); bar.appendChild(plus);
+    var anchor = table.closest('.table-wrap') || table;
+    anchor.parentNode.insertBefore(bar, anchor);
+    apply(size);
+  });
+})();
+</script>
 </body>
 </html>

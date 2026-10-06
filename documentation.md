@@ -445,6 +445,7 @@ identity/value are never colour or angle alone.
   `.icon-btn` pencil/trash links used in place of "Edit"/"Delete" text, styled in
   `layout_top.php`; both take `title`/`aria-label` from the action name so they
   stay accessible without visible text.
+- **Table text size (every admin table).** A small **A− / A+** pair sits at the top right of each table (script at the end of `layout_bottom.php`, styles in `layout_top.php`; skipped for tables in dialogs and any table with `data-no-zoom`). It changes the table's content size, 10–22px in 1px steps (default 13px; double-click A− resets), by setting the CSS variable `--tbl-fs` on the table: `th, td` and `.cell-input` use it, as do the Activities badges and the Grid's headers/entries (relative to it). The choice is kept in `localStorage` per page and table. Hidden in the zone-admin focus mode.
 - **Responsive layout.** At `≤720px` (`layout_top.php`) the whole nav —
   dropdowns or the zone/centre admin's plain links — collapses behind a
   hamburger button (`.nav-toggle`, next to the brand); tapping it drops
