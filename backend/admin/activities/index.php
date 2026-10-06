@@ -2,6 +2,7 @@
 require __DIR__ . '/../../includes/db.php';
 require __DIR__ . '/../../includes/functions.php';
 require __DIR__ . '/../../includes/auth.php';
+require __DIR__ . '/../../includes/liturgical_day.php';
 require __DIR__ . '/../../includes/activity_io.php';
 require __DIR__ . '/../../includes/source_apply.php';
 require __DIR__ . '/../../includes/vigil.php';
@@ -954,11 +955,30 @@ require __DIR__ . '/../includes/layout_top.php';
 $dayBase = array_diff_key($filters, ['date_from' => 1, 'date_to' => 1]) + ($admin['role'] === 'super' ? ['zone' => (int) $filterZone] : []);
 $dayValue = (isset($filters['date_from'], $filters['date_to']) && $filters['date_from'] === $filters['date_to']) ? $filters['date_from'] : '';
 ?>
-<label class="day-pick<?= $dayValue === '' ? ' empty' : '' ?>" data-toolbar-item data-before-right title="Show only the activities of one date">
-  <input type="date" id="day-pick" value="<?= e($dayValue) ?>" data-base="<?= e(http_build_query($dayBase)) ?>" aria-label="Show activities of one date">
-  <span class="day-pick-empty" aria-hidden="true">No date</span>
-</label>
+<?php
+$dayHref = fn(string $d) => '/admin/activities/index.php?' . http_build_query($dayBase + ['date_from' => $d, 'date_to' => $d]);
+$dayLit = $dayValue !== '' ? liturgical_day_text($pdo, $dayValue) : '';
+?>
+<span class="day-nav" data-toolbar-item data-before-right>
+  <?php if ($dayValue !== ''): ?><a class="btn secondary" href="<?= e($dayHref((new DateTimeImmutable($dayValue))->modify('-1 day')->format('Y-m-d'))) ?>" aria-label="Previous day">&lsaquo;</a><?php endif; ?>
+  <label class="day-pick<?= $dayValue === '' ? ' empty' : '' ?>" title="Show only the activities of one date">
+    <input type="date" id="day-pick" value="<?= e($dayValue) ?>" data-base="<?= e(http_build_query($dayBase)) ?>" aria-label="Show activities of one date">
+    <span class="day-pick-empty" aria-hidden="true">No date</span>
+  </label>
+  <?php if ($dayValue !== ''): ?><a class="btn secondary" href="<?= e($dayHref((new DateTimeImmutable($dayValue))->modify('+1 day')->format('Y-m-d'))) ?>" aria-label="Next day">&rsaquo;</a><?php endif; ?>
+  <button type="button" class="secondary" id="day-today">Today</button>
+  <?php if ($dayValue !== ''): ?>
+  <span class="day-box">
+    <span class="day-text"><?= e((new DateTimeImmutable($dayValue))->format('l j F Y')) ?></span>
+    <?php if ($dayLit !== ''): ?><span class="day-lit"><?= e($dayLit) ?></span><?php endif; ?>
+  </span>
+  <?php endif; ?>
+</span>
 <style>
+  .day-nav { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .day-box { display: flex; flex-direction: column; margin-left: 4px; max-width: 460px; }
+  .day-text { font-size: 16px; font-weight: 600; }
+  .day-lit { font-size: 14px; color: #666; margin-top: 2px; }
   .day-pick { position: relative; display: inline-flex; align-items: center; margin: 0; font-weight: normal; }
   .day-pick input { width: auto; margin: 0; }
   /* No single date filtered (none, or a range): hide the dd/mm/yyyy placeholder and say "No date" instead. */
@@ -986,6 +1006,12 @@ $dayValue = (isset($filters['date_from'], $filters['date_to']) && $filters['date
     location.replace(dayUrl(t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0')));
     return;
   }
+  var todayBtn = document.getElementById('day-today');
+  if (todayBtn) todayBtn.addEventListener('click', function () {
+    var t = new Date();
+    try { sessionStorage.removeItem(FLAG); } catch (e) {}
+    location.href = dayUrl(t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'));
+  });
   input.addEventListener('change', function () {
     try { if (input.value) sessionStorage.removeItem(FLAG); else sessionStorage.setItem(FLAG, '1'); } catch (e) {}
     var q = input.dataset.base;

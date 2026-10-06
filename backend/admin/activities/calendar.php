@@ -8,6 +8,7 @@
 require __DIR__ . '/../../includes/db.php';
 require __DIR__ . '/../../includes/functions.php';
 require __DIR__ . '/../../includes/auth.php';
+require __DIR__ . '/../../includes/liturgical_day.php';
 require __DIR__ . '/../../includes/multiday_filters.php';
 $admin = admin_require_role('super', 'zone', 'centre');
 
@@ -312,6 +313,8 @@ require __DIR__ . '/../includes/layout_top.php';
 
 <style>
   .acal-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .acal-titlebox { min-width: 170px; text-align: center; }
+  .acal-lit { font-size: 14px; color: #666; margin-top: 2px; }
   .acal-head h2 { margin: 0; font-size: 18px; min-width: 170px; text-align: center; }
   .acal-head a.btn { padding: 6px 12px; }
   .acal-head .acal-count { margin-left: auto; font-size: 12px; color: #666; }
@@ -366,7 +369,10 @@ require __DIR__ . '/../includes/layout_top.php';
 <div id="mday-results">
 <div class="acal-head">
   <a class="btn secondary" href="<?= e($navUrl($prevDate)) ?>" aria-label="Previous <?= e($view) ?>">&lsaquo;</a>
-  <h2><?= e($title) ?></h2>
+  <div class="acal-titlebox">
+    <h2><?= e($title) ?></h2>
+    <?php $lit = $view === 'day' ? liturgical_day_text($pdo, $anchor->format('Y-m-d')) : ''; if ($lit !== ''): ?><div class="acal-lit"><?= e($lit) ?></div><?php endif; ?>
+  </div>
   <a class="btn secondary" href="<?= e($navUrl($nextDate)) ?>" aria-label="Next <?= e($view) ?>">&rsaquo;</a>
   <a class="btn secondary" href="<?= e($navUrl(date('Y-m-d'))) ?>">Today</a>
   <span class="acal-views">

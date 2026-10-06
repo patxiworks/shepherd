@@ -9,6 +9,7 @@
 require __DIR__ . '/../../includes/db.php';
 require __DIR__ . '/../../includes/functions.php';
 require __DIR__ . '/../../includes/auth.php';
+require __DIR__ . '/../../includes/liturgical_day.php';
 require __DIR__ . '/../../includes/absences.php';
 require __DIR__ . '/../../includes/activity_duplicates.php';
 require __DIR__ . '/../../includes/activity_bilocation.php';
@@ -169,14 +170,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') ==
     $reply(['ok' => true]);
 }
 
-$celebration = null;
-try {
-    $lit = $pdo->prepare('SELECT celebration, class, liturgical_rank, notes FROM liturgical_calendar WHERE cal_date = ?');
-    $lit->execute([$date]);
-    $celebration = $lit->fetch() ?: null;
-} catch (PDOException $ex) {
-    // calendar table not created yet
-}
+$celebration = liturgical_day_text($pdo, $date);
 $byCell = agrid_load($pdo, $zoneId, $date, $scopeCentreName);
 $total = array_sum(array_map('count', $byCell));
 $prev = (new DateTimeImmutable($date))->modify('-1 day')->format('Y-m-d');
@@ -265,9 +259,7 @@ require __DIR__ . '/../includes/layout_top.php';
     <a class="btn" href="?date=<?= date('Y-m-d') . $zq ?>">Today</a>
     <div class="g-daybox">
       <div class="g-title"><?= e((new DateTimeImmutable($date))->format('l j F Y')) ?></div>
-      <?php if ($celebration): ?>
-      <div class="g-lit"><?= e($celebration['celebration']) ?><?php $cr = array_filter([$celebration['class'], $celebration['liturgical_rank']], fn($v) => $v !== null && $v !== ''); if ($cr): ?> [<?= e(implode('/', $cr)) ?>]<?php endif; ?><?= $celebration['notes'] ? '. ' . e($celebration['notes']) : '' ?></div>
-      <?php endif; ?>
+      <?php if ($celebration !== ''): ?><div class="g-lit"><?= e($celebration) ?></div><?php endif; ?>
     </div>
     <label style="margin-left:auto;font-weight:normal;"><input type="checkbox" id="g-hide-empty"> Hide empty rows &amp; columns</label>
   </form>
