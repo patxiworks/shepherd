@@ -389,7 +389,7 @@ entry is coloured by the List tab's first applicable flag (no priest, priest abs
 in a multi-day activity, bilocation, over the mass limit, duplicate), using the same SQL
 select fragments as the List; a legend sits above the table. "Hide empty rows & columns"
 (remembered in `localStorage`) trims the grid to what is used that day. In the date bar, under the date text (lighter grey, 14px), the day's
-liturgical celebration is shown as "Celebration [Class/Rank]. Notes" from the `liturgical_calendar`
+liturgical celebration is shown as "Celebration [Rank | Class]. Notes" from the `liturgical_calendar`
 table (nothing if it is empty for that date). A row of draggable priest chips (the zone's priests)
 sits above the grid: **dropping a chip on a cell** fills the first entry of that cell that has no
 priest, else adds a new entry with that priest (times blank, editable by clicking the cell), saved
@@ -549,7 +549,7 @@ identity/value are never colour or angle alone.
   a "Filtered by …" line with a Clear link appears above the table. Filters
   are carried through Edit/Save/Delete (hidden `qs` field) so you stay on the
   filtered list.
-- **Day navigation + celebration** (List tab, `.day-nav` in `index.php`; placed at the left of the toolbar right after **Optimise & Review** via `data-after-left`; every `[data-toolbar-item]` is hidden by CSS until the toolbar script has moved it, so it no longer flashes at its source position on a long page): next to the date picker are ‹ › buttons (previous/next day; only with a single date) and **Today** (browser clock); with a single date, the date text ("Thursday 1 October 2026") is shown beside them with the liturgical celebration under it in lighter grey. The same line ("Celebration [Class/Rank]. Notes", from `liturgical_calendar`; empty if the table or the date's row is missing) comes from `liturgical_day_text()` in [`backend/includes/liturgical_day.php`](backend/includes/liturgical_day.php), shared with the Grid tab and the Calendar's **Day** view (after the Month/Week/Day switch, before the activity count; Month/Week show none).
+- **Day navigation + celebration** (List tab, `.day-nav` in `index.php`; placed at the left of the toolbar right after **Optimise & Review** via `data-after-left`; every `[data-toolbar-item]` is hidden by CSS until the toolbar script has moved it, so it no longer flashes at its source position on a long page): next to the date picker are ‹ › buttons (previous/next day; only with a single date) and **Today** (browser clock); with a single date, the date text ("Thursday 1 October 2026") is shown beside them with the liturgical celebration under it in lighter grey. The same line ("Celebration [Rank | Class]. Notes", from `liturgical_calendar`; empty if the table or the date's row is missing) comes from `liturgical_day_text()` in [`backend/includes/liturgical_day.php`](backend/includes/liturgical_day.php), shared with the Grid tab and the Calendar's **Day** view (after the Month/Week/Day switch, before the activity count; Month/Week show none).
 - **Date picker** (a `Date` calendar input right after "New activity", before the
   right-aligned Filter group; placed by the toolbar script via `data-toolbar-item
   data-before-right`). Choosing a date reloads the list filtered to that single date

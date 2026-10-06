@@ -1,6 +1,6 @@
 <?php
 // The liturgical celebration of one date, shown under the date text on the
-// Activities Grid, List and Calendar (Day) tabs: "Celebration [Class/Rank]. Notes".
+// Activities Grid, List and Calendar (Day) tabs: "Celebration [Rank | Class]. Notes".
 // Empty when the liturgical_calendar table is missing or has no row for the date.
 function liturgical_day_text(PDO $pdo, string $date): string
 {
@@ -14,6 +14,6 @@ function liturgical_day_text(PDO $pdo, string $date): string
     if (!$r) {
         return '';
     }
-    $cr = array_filter([$r['class'], $r['liturgical_rank']], fn($v) => $v !== null && $v !== '');
-    return trim((string) $r['celebration'] . ($cr ? ' [' . implode('/', $cr) . ']' : '') . ($r['notes'] ? '. ' . $r['notes'] : ''));
+    $cr = array_filter([$r['liturgical_rank'], $r['class']], fn($v) => $v !== null && $v !== '');
+    return trim((string) $r['celebration'] . ($cr ? ' [' . implode(' | ', $cr) . ']' : '') . ($r['notes'] ? '. ' . $r['notes'] : ''));
 }
