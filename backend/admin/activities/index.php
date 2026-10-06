@@ -1310,7 +1310,7 @@ if ($dayValue !== '' && absences_available($pdo)) {
 <?php if ($dayValue !== ''): ?>
 <details class="day-summary" id="day-summary" open>
   <summary>Priests on <?= e(date('D j M Y', strtotime($dayValue))) ?> <span id="day-summary-count"></span></summary>
-  <table>
+  <table data-no-zoom>
     <thead><tr><th>Priest</th><th>Activities</th></tr></thead>
     <tbody id="day-summary-body"></tbody>
   </table>

@@ -356,8 +356,18 @@
     var bar = document.createElement('div');
     bar.className = 'tbl-zoom';
     bar.appendChild(minus); bar.appendChild(plus);
-    var anchor = table.closest('.table-wrap') || table;
-    anchor.parentNode.insertBefore(bar, anchor);
+    var anchor = (table.dataset.zoomBefore && document.querySelector(table.dataset.zoomBefore)) || table.closest('.table-wrap') || table;
+    if (getComputedStyle(anchor.parentNode).display === 'flex') {
+      // Table sits in a flex row (Activities next to its summary box): keep it in
+      // its own column so the buttons stay right above it instead of becoming a flex item.
+      var host = document.createElement('div');
+      host.style.cssText = 'flex:1 1 auto;min-width:0;';
+      anchor.parentNode.insertBefore(host, anchor);
+      host.appendChild(anchor);
+      host.insertBefore(bar, anchor);
+    } else {
+      anchor.parentNode.insertBefore(bar, anchor);
+    }
     apply(size);
   });
 })();

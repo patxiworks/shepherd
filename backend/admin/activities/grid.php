@@ -272,7 +272,7 @@ require __DIR__ . '/../includes/layout_top.php';
 </div>
 <?php endif; ?>
 
-<div class="g-legend">
+<div class="g-legend" id="g-legend">
   <span style="background:#e6f4e8;border-color:#4a9a55">Assigned</span>
   <span style="background:#eee;border-color:#888">No priest</span>
   <span style="background:#fbd5d5;border-color:#c0392b">Priest absent</span>
@@ -287,7 +287,7 @@ require __DIR__ . '/../includes/layout_top.php';
   <div class="card">This zone has no centres, or there are no regular activity types yet.</div>
 <?php else: ?>
 <div id="g-wrap" class="g-scroll">
-  <table class="g-table" id="g-table" data-no-sort data-no-wrap>
+  <table class="g-table" id="g-table" data-no-sort data-no-wrap data-zoom-before="#g-legend">
     <thead>
       <tr>
         <th class="g-centre g-corner">Centre</th>
