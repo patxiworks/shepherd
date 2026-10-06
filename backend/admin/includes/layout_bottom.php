@@ -356,6 +356,13 @@
     var bar = document.createElement('div');
     bar.className = 'tbl-zoom';
     bar.appendChild(minus); bar.appendChild(plus);
+    var into = table.dataset.zoomInto && document.querySelector(table.dataset.zoomInto);
+    if (into) { // share a row with another element, pushed to its right end
+      bar.style.marginLeft = 'auto'; bar.style.marginBottom = '0';
+      into.appendChild(bar);
+      apply(size);
+      return;
+    }
     var anchor = (table.dataset.zoomBefore && document.querySelector(table.dataset.zoomBefore)) || table.closest('.table-wrap') || table;
     if (getComputedStyle(anchor.parentNode).display === 'flex') {
       // Table sits in a flex row (Activities next to its summary box): keep it in

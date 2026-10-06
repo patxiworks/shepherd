@@ -287,7 +287,7 @@ require __DIR__ . '/../includes/layout_top.php';
   <div class="card">This zone has no centres, or there are no regular activity types yet.</div>
 <?php else: ?>
 <div id="g-wrap" class="g-scroll">
-  <table class="g-table" id="g-table" data-no-sort data-no-wrap data-zoom-before="#g-legend">
+  <table class="g-table" id="g-table" data-no-sort data-no-wrap data-zoom-into="#g-palette">
     <thead>
       <tr>
         <th class="g-centre g-corner">Centre</th>
