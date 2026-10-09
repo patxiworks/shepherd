@@ -805,6 +805,7 @@ require __DIR__ . '/../includes/layout_top.php';
 </p>
 <?php endif; ?>
 <p class="table-hint">Click a row to edit it in place &middot; click a column heading to sort &middot; showing <?= count($entries) ?> entr<?= count($entries) === 1 ? 'y' : 'ies' ?><?= count($entries) >= MDAY_ROW_LIMIT ? ' (latest ' . MDAY_ROW_LIMIT . ' &mdash; filter to see the rest; export includes all)' : '' ?>.</p>
+<script>if (window.pastoresInitToolbar) window.pastoresInitToolbar(); // buttons first, before the long table is parsed</script>
 <table data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs])) ?>">
   <thead><tr><th>Zone</th><th>Centre</th><th>Activity</th><th>Section</th><th>Group</th><th>Priest</th><th>Start</th><th>End</th><th>Description</th><th>Roll rule</th><th></th></tr></thead>
   <tbody id="mday-body" data-qs="<?= e($filterQs) ?>">

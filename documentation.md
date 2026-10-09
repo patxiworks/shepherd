@@ -432,6 +432,11 @@ identity/value are never colour or angle alone.
     start** setting (Admin → Settings, super admin; default Sunday): Sunday
     start → Sun=1…Sat=7, Monday start → Mon=1…Sun=7. Changing the setting
     recalculates every existing activity (`recompute_activity_calendar()`).
+- **Toolbar build timing.** The modal buttons are built by `window.pastoresInitToolbar()` (defined
+  in `layout_top.php`, idempotent). `layout_bottom.php` calls it once the page is parsed, but the
+  pages with a long table (Activities, Source, Absences, Multi-day) call it earlier, in a small
+  script right above the table, so the buttons exist before the table is painted — otherwise they
+  vanished for a moment when a page such as `?edit=ID` was loaded.
 - **Modal forms + sortable tables (all admin pages).** Any
   `<div class="card" data-modal data-add-label="New x">` holding an
   add/edit form is turned into a `<dialog>` by the script in

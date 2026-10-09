@@ -207,6 +207,111 @@ $themeBrand = theme_brand(pastores_db());
   }
 </style>
 <noscript><style>.card[data-modal] { display: block; }</style></noscript>
+<script>
+// The modal buttons / toolbar (see below) are built by this function. layout_bottom.php
+// calls it once the page is parsed; a page with a long table calls it earlier, right
+// above the table, so the buttons are there before the table is painted (otherwise
+// they vanish for a moment when a page such as ?edit=ID is loaded). Safe to call twice.
+window.pastoresInitToolbar = function () {
+  // The buttons that open the modals (and any [data-toolbar-item], e.g. an
+  // Export link) share one row above the table. The first item marked
+  // data-align="right" and everything after it is pushed to the right.
+  var toolbar = null;
+  function toolbarRow(anchor) {
+    if (!toolbar) toolbar = document.querySelector('.toolbar-row');
+    if (!toolbar) {
+      toolbar = document.createElement('div');
+      toolbar.className = 'toolbar-row';
+      anchor.parentNode.insertBefore(toolbar, anchor);
+    }
+    return toolbar;
+  }
+  function addToToolbar(el, anchor, alignRight) {
+    var row = toolbarRow(anchor);
+    if (alignRight && !row.querySelector('.push-right')) {
+      // Invisible marker (see .toolbar-break in layout_top.php) so a narrow
+      // screen can break the row here without stretching this button itself.
+      var brk = document.createElement('span');
+      brk.className = 'toolbar-break';
+      row.appendChild(brk);
+      el.classList.add('push-right');
+    }
+    row.appendChild(el);
+  }
+
+  // A .card[data-modal] holds an add/edit form. It is moved into a <dialog>
+  // and opened by an "add" button, or straight away when the page was
+  // loaded in edit mode (data-open, from ?edit=ID). Without JS it stays a
+  // plain card on the page.
+  document.querySelectorAll('.card[data-modal]:not([data-modal-ready])').forEach(function (card) {
+    card.setAttribute('data-modal-ready', '');
+    var dlg = document.createElement('dialog');
+    dlg.className = 'modal';
+    card.parentNode.insertBefore(dlg, card);
+    dlg.appendChild(card);
+
+    var editing = card.hasAttribute('data-open');
+    var cancelLink = card.querySelector('a.btn.secondary'); // only present when editing
+    var x = document.createElement('button');
+    x.type = 'button'; x.className = 'modal-close'; x.setAttribute('aria-label', 'Close'); x.innerHTML = '&times;';
+    x.addEventListener('click', function () { dlg.close(); });
+    card.insertBefore(x, card.firstChild);
+
+    if (!cancelLink) {
+      var row = card.querySelector('.btn-row');
+      if (row) {
+        var cancel = document.createElement('button');
+        cancel.type = 'button'; cancel.className = 'secondary'; cancel.textContent = 'Cancel';
+        cancel.addEventListener('click', function () { dlg.close(); });
+        row.appendChild(cancel);
+      }
+    }
+    // Forms that trigger a file download (Export) leave the page in place,
+    // so close the modal ourselves once the download has started.
+    if (card.hasAttribute('data-close-on-submit')) {
+      var closeSoon = function () { setTimeout(function () { dlg.close(); }, 300); };
+      var form = card.querySelector('form');
+      if (form) form.addEventListener('submit', closeSoon);
+      Array.prototype.forEach.call(card.querySelectorAll('[data-close-modal]'), function (a) { a.addEventListener('click', closeSoon); });
+    }
+    // Closing an edit dialog (Esc, backdrop, X) leaves edit mode.
+    dlg.addEventListener('close', function () { if (editing && cancelLink) location.href = cancelLink.href; });
+    dlg.addEventListener('click', function (ev) { if (ev.target === dlg) dlg.close(); }); // backdrop
+
+    function open() {
+      dlg.showModal();
+      var first = card.querySelector('input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea');
+      if (first) first.focus();
+    }
+    var add = document.createElement('button');
+    add.type = 'button'; add.textContent = card.getAttribute('data-add-label') || 'Add';
+    add.className = card.getAttribute('data-button-class') || '';
+    add.addEventListener('click', open);
+    addToToolbar(add, dlg, card.hasAttribute('data-align'));
+    if (editing) open();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-toolbar-item]:not(.toolbar-placed)'), function (el) {
+    el.classList.add('toolbar-placed'); // shown only once moved, so it never flashes at its source position
+    // data-before-right: goes just before the right-aligned group (e.g. before
+    // Filter) and takes over the push to the right.
+    // data-after-left: goes at the end of the left-hand group (right after
+    // the last modal button, e.g. next to New activity), before the break.
+    var brk = el.hasAttribute('data-after-left') ? toolbarRow(el).querySelector('.toolbar-break') : null;
+    if (brk) {
+      brk.parentNode.insertBefore(el, brk);
+      return;
+    }
+    var pushed = el.hasAttribute('data-before-right') ? toolbarRow(el).querySelector('.push-right') : null;
+    if (pushed) {
+      pushed.classList.remove('push-right');
+      el.classList.add('push-right');
+      pushed.parentNode.insertBefore(el, pushed);
+      return;
+    }
+    addToToolbar(el, el, el.hasAttribute('data-align'));
+  });
+};
+</script>
 </head>
 <body>
 <?php $navRole = $_SESSION['admin_role'] ?? 'super'; ?>

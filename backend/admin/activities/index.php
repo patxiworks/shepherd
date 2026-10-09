@@ -1290,6 +1290,7 @@ if ($dayValue !== '' && absences_available($pdo)) {
 }
 ?>
 <div class="act-layout">
+<script>if (window.pastoresInitToolbar) window.pastoresInitToolbar(); // buttons first, before the long table is parsed</script>
 <div class="table-wrap">
 <table class="act-table" data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs, 'zone' => (int) $filterZone])) ?>">
   <thead><tr>
