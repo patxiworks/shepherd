@@ -560,26 +560,6 @@ require __DIR__ . '/../includes/layout_top.php';
   &middot; <a href="<?= e($clearUrl) ?>">Clear filters</a>
 </p>
 <?php endif; ?>
-<p class="table-hint">Click a row to edit it in place &middot; click a column heading to sort &middot; showing <?= count($activities) ?> source row<?= count($activities) === 1 ? '' : 's' ?><?= count($activities) >= SOURCE_ROW_LIMIT ? ' (limit ' . SOURCE_ROW_LIMIT . ' &mdash; filter to see the rest)' : '' ?>.</p>
-<script>if (window.pastoresInitToolbar) window.pastoresInitToolbar(); // buttons first, before the long table is parsed</script>
-<?= table_zoom_bar() ?>
-<div class="table-wrap">
-<table data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs])) ?>">
-  <thead><tr>
-    <th>Zone</th><th>Day</th><th>Wk</th><th>Centre</th><th>Section</th><th>Activity</th>
-    <th>Labor</th><th>Priest</th><th>Alternate priest</th><th>From</th><th>To</th><th>Duration</th><th>Description</th><th></th>
-  </tr></thead>
-  <tbody id="source-body" data-qs="<?= e($filterQs) ?>">
-  <?php foreach ($activities as $a): ?>
-    <?= source_row_html($a, $filterQs, $weekdayNames) ?>
-
-  <?php endforeach; ?>
-  <?php if (!$activities): ?>
-    <tr><td colspan="15" style="text-align:center;color:#888;"><?= $filters ? 'No source rows match these filters.' : 'No source rows yet.' ?></td></tr>
-  <?php endif; ?>
-  </tbody>
-</table>
-</div>
 <style>
   main table td { vertical-align: middle; }
   tbody tr[data-id] { cursor: pointer; }
@@ -605,6 +585,26 @@ require __DIR__ . '/../includes/layout_top.php';
   tr.saved td { background: #e8f5e9; }
   .table-hint { font-size: 12px; color: #666; margin: 0 0 8px; }
 </style>
+<p class="table-hint">Click a row to edit it in place &middot; click a column heading to sort &middot; showing <?= count($activities) ?> source row<?= count($activities) === 1 ? '' : 's' ?><?= count($activities) >= SOURCE_ROW_LIMIT ? ' (limit ' . SOURCE_ROW_LIMIT . ' &mdash; filter to see the rest)' : '' ?>.</p>
+<script>if (window.pastoresInitToolbar) window.pastoresInitToolbar(); // buttons first, before the long table is parsed</script>
+<?= table_zoom_bar() ?>
+<div class="table-wrap">
+<table data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs])) ?>">
+  <thead><tr>
+    <th>Zone</th><th>Day</th><th>Wk</th><th>Centre</th><th>Section</th><th>Activity</th>
+    <th>Labor</th><th>Priest</th><th>Alternate priest</th><th>From</th><th>To</th><th>Duration</th><th>Description</th><th></th>
+  </tr></thead>
+  <tbody id="source-body" data-qs="<?= e($filterQs) ?>">
+  <?php foreach ($activities as $a): ?>
+    <?= source_row_html($a, $filterQs, $weekdayNames) ?>
+
+  <?php endforeach; ?>
+  <?php if (!$activities): ?>
+    <tr><td colspan="15" style="text-align:center;color:#888;"><?= $filters ? 'No source rows match these filters.' : 'No source rows yet.' ?></td></tr>
+  <?php endif; ?>
+  </tbody>
+</table>
+</div>
 <script>
 (function () {
   var centres = <?= json_encode($allCentres) ?>;           // {zone_id, name, section}

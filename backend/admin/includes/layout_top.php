@@ -115,6 +115,7 @@ $themeBrand = theme_brand(pastores_db());
   label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
   input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
   textarea { min-height: 70px; }
+  .table-hint { font-size: 12px; color: #666; margin: 0 0 8px; }
   .hint { display: block; font-size: 12px; color: #666; margin-top: 4px; min-height: 1.3em; }
   .row { display: flex; gap: 12px; flex-wrap: wrap; }
   .row > div { flex: 1; min-width: 160px; }

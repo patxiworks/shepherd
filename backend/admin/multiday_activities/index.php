@@ -804,20 +804,6 @@ require __DIR__ . '/../includes/layout_top.php';
   &middot; <a href="<?= e($clearUrl) ?>">Clear filters</a>
 </p>
 <?php endif; ?>
-<p class="table-hint">Click a row to edit it in place &middot; click a column heading to sort &middot; showing <?= count($entries) ?> entr<?= count($entries) === 1 ? 'y' : 'ies' ?><?= count($entries) >= MDAY_ROW_LIMIT ? ' (latest ' . MDAY_ROW_LIMIT . ' &mdash; filter to see the rest; export includes all)' : '' ?>.</p>
-<script>if (window.pastoresInitToolbar) window.pastoresInitToolbar(); // buttons first, before the long table is parsed</script>
-<?= table_zoom_bar() ?>
-<table data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs])) ?>">
-  <thead><tr><th>Zone</th><th>Centre</th><th>Activity</th><th>Section</th><th>Group</th><th>Priest</th><th>Start</th><th>End</th><th>Description</th><th>Roll rule</th><th></th></tr></thead>
-  <tbody id="mday-body" data-qs="<?= e($filterQs) ?>">
-  <?php foreach ($entries as $m): ?>
-    <?= mday_row_html($m, $filterQs) ?>
-  <?php endforeach; ?>
-  <?php if (!$entries): ?>
-    <tr><td colspan="11" style="color:#888;"><?= $filters ? 'No multi-day activities match these filters.' : 'No multi-day activities recorded.' ?></td></tr>
-  <?php endif; ?>
-  </tbody>
-</table>
 <style>
   tbody#mday-body tr[data-id] { cursor: pointer; }
   /* No padding: the .cell-input below fills the cell edge-to-edge (its own
@@ -841,6 +827,20 @@ require __DIR__ . '/../includes/layout_top.php';
   form.mday-search { margin: 0; }
   form.mday-search input { width: 220px; padding: 6px 10px; font-size: 13px; }
 </style>
+<p class="table-hint">Click a row to edit it in place &middot; click a column heading to sort &middot; showing <?= count($entries) ?> entr<?= count($entries) === 1 ? 'y' : 'ies' ?><?= count($entries) >= MDAY_ROW_LIMIT ? ' (latest ' . MDAY_ROW_LIMIT . ' &mdash; filter to see the rest; export includes all)' : '' ?>.</p>
+<script>if (window.pastoresInitToolbar) window.pastoresInitToolbar(); // buttons first, before the long table is parsed</script>
+<?= table_zoom_bar() ?>
+<table data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs])) ?>">
+  <thead><tr><th>Zone</th><th>Centre</th><th>Activity</th><th>Section</th><th>Group</th><th>Priest</th><th>Start</th><th>End</th><th>Description</th><th>Roll rule</th><th></th></tr></thead>
+  <tbody id="mday-body" data-qs="<?= e($filterQs) ?>">
+  <?php foreach ($entries as $m): ?>
+    <?= mday_row_html($m, $filterQs) ?>
+  <?php endforeach; ?>
+  <?php if (!$entries): ?>
+    <tr><td colspan="11" style="color:#888;"><?= $filters ? 'No multi-day activities match these filters.' : 'No multi-day activities recorded.' ?></td></tr>
+  <?php endif; ?>
+  </tbody>
+</table>
 <script>
 (function () {
   var centres = <?= json_encode($allCentres) ?>; // {zone_id, name}

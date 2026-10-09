@@ -441,6 +441,9 @@ identity/value are never colour or angle alone.
   (`includes/functions.php`) right before the table, and the zoom script in `layout_bottom.php`
   just wires up that bar (`data-zoom-static`) instead of creating one. On Activities the table
   and its bar sit in `.act-main`, the flex item beside the day summary box.
+  Page `<style>` blocks must come *before* the table too (Source and Multi-day had theirs after it),
+  and the `.table-hint` line style is global in `layout_top.php`: otherwise the hint line under the
+  toolbar was drawn at the default 16px until the late style arrived, then shrank to 12px.
 - **Modal forms + sortable tables (all admin pages).** Any
   `<div class="card" data-modal data-add-label="New x">` holding an
   add/edit form is turned into a `<dialog>` by the script in
