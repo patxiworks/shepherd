@@ -1290,6 +1290,7 @@ if ($dayValue !== '' && absences_available($pdo)) {
 }
 ?>
 <div class="act-layout">
+<?= bulk_toggle_button() ?>
 <script>if (window.pastoresInitToolbar) window.pastoresInitToolbar(); // buttons first, before the long table is parsed</script>
 <div class="act-main">
 <?= table_zoom_bar() ?>

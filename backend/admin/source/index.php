@@ -603,6 +603,7 @@ require __DIR__ . '/../includes/layout_top.php';
   .table-hint { font-size: 12px; color: #666; margin: 0 0 8px; }
 </style>
 <p class="table-hint">Click a row to edit it in place &middot; click a column heading to sort &middot; showing <?= count($activities) ?> source row<?= count($activities) === 1 ? '' : 's' ?><?= count($activities) >= SOURCE_ROW_LIMIT ? ' (limit ' . SOURCE_ROW_LIMIT . ' &mdash; filter to see the rest)' : '' ?>.</p>
+<?= bulk_toggle_button() ?>
 <script>if (window.pastoresInitToolbar) window.pastoresInitToolbar(); // buttons first, before the long table is parsed</script>
 <?= table_zoom_bar() ?>
 <div class="table-wrap">

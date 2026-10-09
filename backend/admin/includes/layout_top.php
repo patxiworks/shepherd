@@ -158,6 +158,11 @@ $themeBrand = theme_brand(pastores_db());
   dialog.modal .card { margin: 0; box-shadow: none; position: relative; max-height: 90vh; overflow: auto; }
   dialog.modal .card h2 { padding-right: 32px; }
   .modal-close { position: absolute; top: 12px; right: 14px; background: none; color: #666; font-size: 24px; line-height: 1; padding: 0 6px; }
+  /* The long-table pages show the sort cue from the first paint (the script that adds
+     .sortable-th runs after the table is parsed); :where() keeps these at the lowest
+     specificity so the rules below still win. */
+  :where(table[data-bulk-total] thead th:not(:empty):not(.bulk-col)) { cursor: pointer; user-select: none; white-space: nowrap; }
+  :where(table[data-bulk-total] thead th:not(:empty):not(.bulk-col))::after { content: ' \21C5'; color: #bbb; font-size: 11px; }
   th.sortable-th { cursor: pointer; user-select: none; white-space: nowrap; }
   th.sortable-th::after { content: ' \21C5'; color: #bbb; font-size: 11px; }
   th.sortable-th[aria-sort=ascending]::after { content: ' \25B2'; color: var(--brand); }
@@ -295,6 +300,12 @@ window.pastoresInitToolbar = function () {
     el.classList.add('toolbar-placed'); // shown only once moved, so it never flashes at its source position
     // data-before-right: goes just before the right-aligned group (e.g. before
     // Filter) and takes over the push to the right.
+    // data-toolbar-first: goes at the very start of the row (the bulk-select icon).
+    if (el.hasAttribute('data-toolbar-first')) {
+      var first = toolbarRow(el);
+      first.insertBefore(el, first.firstChild);
+      return;
+    }
     // data-after-left: goes at the end of the left-hand group (right after
     // the last modal button, e.g. next to New activity), before the break.
     var brk = el.hasAttribute('data-after-left') ? toolbarRow(el).querySelector('.toolbar-break') : null;

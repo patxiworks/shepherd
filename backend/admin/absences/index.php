@@ -188,6 +188,7 @@ require __DIR__ . '/../includes/layout_top.php';
   </form>
 </div>
 
+<?= bulk_toggle_button() ?>
 <script>if (window.pastoresInitToolbar) window.pastoresInitToolbar(); // buttons first, before the long table is parsed</script>
 <?= table_zoom_bar() ?>
 <table data-bulk-total="<?= $bulkTotal ?>">

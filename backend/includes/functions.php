@@ -262,3 +262,13 @@ function table_zoom_bar(): string
         . '<button type="button" class="tbl-zoom-btn" title="Larger text" aria-label="Larger text"><span aria-hidden="true">A</span><sup aria-hidden="true">+</sup></button>'
         . '</div>' . "\n";
 }
+
+// The "select rows to delete" icon that sits first in a table page's toolbar (see the
+// bulk delete script in admin/includes/layout_bottom.php, which wires it up). Pages with
+// a long table echo it before the table so it is there from the first paint.
+function bulk_toggle_button(): string
+{
+    return '<button type="button" class="bulk-toggle" data-toolbar-item data-toolbar-first data-bulk-static title="Select rows to delete" aria-label="Select rows to delete" aria-pressed="false">'
+        . '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><path d="M5 6.5l1.5 1.5L9 5"/><path d="M14 5h7M14 8h5"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 16h7M14 19h5"/></svg>'
+        . "</button>\n";
+}

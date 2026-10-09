@@ -115,11 +115,15 @@
       var anchor = table.closest('.table-wrap') || table;
       anchor.parentNode.insertBefore(toolbar, anchor);
     }
-    var toggle = document.createElement('button');
-    toggle.type = 'button'; toggle.className = 'bulk-toggle';
+    // The page may already have echoed the icon (bulk_toggle_button(), shown from the first paint).
+    var toggle = document.querySelector('button.bulk-toggle[data-bulk-static]:not([data-claimed])');
+    if (toggle) toggle.setAttribute('data-claimed', '');
+    var fresh = !toggle;
+    if (fresh) toggle = document.createElement('button');
+    toggle.type = 'button'; if (fresh) toggle.className = 'bulk-toggle';
     toggle.title = 'Select rows to delete'; toggle.setAttribute('aria-label', 'Select rows to delete'); toggle.setAttribute('aria-pressed', 'false');
-    toggle.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><path d="M5 6.5l1.5 1.5L9 5"/><path d="M14 5h7M14 8h5"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 16h7M14 19h5"/></svg>';
-    toolbar.insertBefore(toggle, toolbar.firstChild);
+    if (fresh) toggle.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><path d="M5 6.5l1.5 1.5L9 5"/><path d="M14 5h7M14 8h5"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 16h7M14 19h5"/></svg>';
+    if (fresh) toolbar.insertBefore(toggle, toolbar.firstChild);
     var bar = document.createElement('div');
     bar.className = 'bulk-bar'; bar.hidden = true;
     bar.innerHTML = '<span class="bulk-count">0 selected</span> <a href="#" class="bulk-all" hidden></a> <button type="button" class="danger bulk-delete" disabled>Delete selected</button> <button type="button" class="secondary bulk-cancel">Cancel</button>';
@@ -193,6 +197,8 @@
       ev.stopPropagation();
     }, true);
   });
+  // An echoed icon no table claimed (nothing deletable on the page) isn't needed.
+  Array.prototype.forEach.call(document.querySelectorAll('button.bulk-toggle[data-bulk-static]:not([data-claimed])'), function (b) { b.remove(); });
 
   // Click a column heading to sort by it; click again to reverse. Values
   // come from a cell's data-sort if it has one, else its text. A column

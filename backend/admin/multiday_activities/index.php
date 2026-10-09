@@ -828,6 +828,7 @@ require __DIR__ . '/../includes/layout_top.php';
   form.mday-search input { width: 220px; padding: 6px 10px; font-size: 13px; }
 </style>
 <p class="table-hint">Click a row to edit it in place &middot; click a column heading to sort &middot; showing <?= count($entries) ?> entr<?= count($entries) === 1 ? 'y' : 'ies' ?><?= count($entries) >= MDAY_ROW_LIMIT ? ' (latest ' . MDAY_ROW_LIMIT . ' &mdash; filter to see the rest; export includes all)' : '' ?>.</p>
+<?= bulk_toggle_button() ?>
 <script>if (window.pastoresInitToolbar) window.pastoresInitToolbar(); // buttons first, before the long table is parsed</script>
 <?= table_zoom_bar() ?>
 <table data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs])) ?>">
