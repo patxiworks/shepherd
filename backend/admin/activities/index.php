@@ -1291,6 +1291,8 @@ if ($dayValue !== '' && absences_available($pdo)) {
 ?>
 <div class="act-layout">
 <script>if (window.pastoresInitToolbar) window.pastoresInitToolbar(); // buttons first, before the long table is parsed</script>
+<div class="act-main">
+<?= table_zoom_bar() ?>
 <div class="table-wrap">
 <table class="act-table" data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs, 'zone' => (int) $filterZone])) ?>">
   <thead><tr>
@@ -1307,6 +1309,7 @@ if ($dayValue !== '' && absences_available($pdo)) {
   <?php endif; ?>
   </tbody>
 </table>
+</div>
 </div>
 <?php if ($dayValue !== ''): ?>
 <details class="day-summary" id="day-summary" open>
@@ -1331,7 +1334,7 @@ if ($dayValue !== '' && absences_available($pdo)) {
   /* Large screens: docked to the right of the table, following the scroll. */
   @media (min-width: 1410px) {
     .act-layout { display: flex; align-items: flex-start; gap: 16px; }
-    .act-layout > .table-wrap { flex: 1 1 auto; min-width: 0; }
+    .act-layout > .act-main { flex: 1 1 auto; min-width: 0; }
     .day-summary { flex: 0 0 340px; position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; }
   }
   /* Small screens: floating bottom-right, collapsed to its title until tapped. */

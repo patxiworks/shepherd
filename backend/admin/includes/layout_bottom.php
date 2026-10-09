@@ -254,12 +254,22 @@
       b.innerHTML = glyph;
       return b;
     }
-    var minus = btn('Smaller text', 'Smaller text', '<span aria-hidden="true">A</span><sup aria-hidden="true">&minus;</sup>');
-    var plus = btn('Larger text', 'Larger text', '<span aria-hidden="true">A</span><sup aria-hidden="true">+</sup>');
+    // A bar the page already echoed (table_zoom_bar(), so the buttons show from the
+    // first paint) sits right before the table or its .table-wrap: wire that one up.
+    var lead = table.closest('.table-wrap') || table;
+    var ready = lead.previousElementSibling;
+    ready = ready && ready.hasAttribute('data-zoom-static') && !ready.hasAttribute('data-zoom-ready') ? ready : null;
+    var minus = ready ? ready.children[0] : btn('Smaller text', 'Smaller text', '<span aria-hidden="true">A</span><sup aria-hidden="true">&minus;</sup>');
+    var plus = ready ? ready.children[1] : btn('Larger text', 'Larger text', '<span aria-hidden="true">A</span><sup aria-hidden="true">+</sup>');
     minus.classList.add('small');
     minus.addEventListener('click', function () { apply(size - 1); });
     plus.addEventListener('click', function () { apply(size + 1); });
     minus.addEventListener('dblclick', function () { apply(DEF); });
+    if (ready) {
+      ready.setAttribute('data-zoom-ready', '');
+      apply(size);
+      return;
+    }
     var bar = document.createElement('div');
     bar.className = 'tbl-zoom';
     bar.appendChild(minus); bar.appendChild(plus);

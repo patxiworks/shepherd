@@ -250,3 +250,15 @@ function render_datalist(string $id, array $options): void
     }
     echo '</datalist>';
 }
+
+// The "A- / A+" text size buttons above a table (see the zoom script in
+// admin/includes/layout_bottom.php, which wires them up). Pages with a long table
+// echo this right before it so the buttons are on screen from the first paint
+// instead of appearing once the whole table has been parsed.
+function table_zoom_bar(): string
+{
+    return '<div class="tbl-zoom" data-zoom-static>'
+        . '<button type="button" class="tbl-zoom-btn small" title="Smaller text" aria-label="Smaller text"><span aria-hidden="true">A</span><sup aria-hidden="true">&minus;</sup></button>'
+        . '<button type="button" class="tbl-zoom-btn" title="Larger text" aria-label="Larger text"><span aria-hidden="true">A</span><sup aria-hidden="true">+</sup></button>'
+        . '</div>' . "\n";
+}

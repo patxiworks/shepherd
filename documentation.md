@@ -437,6 +437,10 @@ identity/value are never colour or angle alone.
   pages with a long table (Activities, Source, Absences, Multi-day) call it earlier, in a small
   script right above the table, so the buttons exist before the table is painted — otherwise they
   vanished for a moment when a page such as `?edit=ID` was loaded.
+  The A-/A+ text size buttons work the same way: those pages echo `table_zoom_bar()`
+  (`includes/functions.php`) right before the table, and the zoom script in `layout_bottom.php`
+  just wires up that bar (`data-zoom-static`) instead of creating one. On Activities the table
+  and its bar sit in `.act-main`, the flex item beside the day summary box.
 - **Modal forms + sortable tables (all admin pages).** Any
   `<div class="card" data-modal data-add-label="New x">` holding an
   add/edit form is turned into a `<dialog>` by the script in
