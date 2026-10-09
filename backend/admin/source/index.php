@@ -561,6 +561,23 @@ require __DIR__ . '/../includes/layout_top.php';
 </p>
 <?php endif; ?>
 <style>
+  /* Fixed layout with set column widths: with the automatic layout the columns kept
+     re-sizing while a long table loaded (and again as the page's scripts added the
+     sort arrows), so the table visibly jumped when the page reloaded, e.g. on Edit.
+     Description takes the rest. */
+  table.src-table { table-layout: fixed; width: 100%; min-width: 1600px; }
+  table.src-table th.bulk-col { width: 36px; }
+  table.src-table th.w-zone { width: 110px; }
+  table.src-table th.w-num { width: 86px; }
+  table.src-table th.w-centre { width: 130px; }
+  table.src-table th.w-section { width: 90px; }
+  table.src-table th.w-activity { width: 130px; }
+  table.src-table th.w-labor { width: 90px; }
+  table.src-table th.w-priest { width: 150px; }
+  table.src-table th.w-time { width: 100px; }
+  table.src-table th.w-actions { width: 84px; }
+  table.src-table td { overflow-wrap: anywhere; }
+  table.src-table tr.editing .cell-input { min-width: 0; }
   main table td { vertical-align: middle; }
   tbody tr[data-id] { cursor: pointer; }
   td[data-type=time], td[data-type=day], td[data-type=week], td[data-derived] { white-space: nowrap; }
@@ -589,10 +606,10 @@ require __DIR__ . '/../includes/layout_top.php';
 <script>if (window.pastoresInitToolbar) window.pastoresInitToolbar(); // buttons first, before the long table is parsed</script>
 <?= table_zoom_bar() ?>
 <div class="table-wrap">
-<table data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs])) ?>">
+<table class="src-table" data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs])) ?>">
   <thead><tr>
-    <th>Zone</th><th>Day</th><th>Wk</th><th>Centre</th><th>Section</th><th>Activity</th>
-    <th>Labor</th><th>Priest</th><th>Alternate priest</th><th>From</th><th>To</th><th>Duration</th><th>Description</th><th></th>
+    <th class="w-zone">Zone</th><th class="w-num">Day</th><th class="w-num">Wk</th><th class="w-centre">Centre</th><th class="w-section">Section</th><th class="w-activity">Activity</th>
+    <th class="w-labor">Labor</th><th class="w-priest">Priest</th><th class="w-priest">Alternate priest</th><th class="w-time">From</th><th class="w-time">To</th><th class="w-time">Duration</th><th>Description</th><th class="w-actions"></th>
   </tr></thead>
   <tbody id="source-body" data-qs="<?= e($filterQs) ?>">
   <?php foreach ($activities as $a): ?>

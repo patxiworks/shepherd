@@ -444,6 +444,10 @@ identity/value are never colour or angle alone.
   Page `<style>` blocks must come *before* the table too (Source and Multi-day had theirs after it),
   and the `.table-hint` line style is global in `layout_top.php`: otherwise the hint line under the
   toolbar was drawn at the default 16px until the late style arrived, then shrank to 12px.
+  The Source table (`table.src-table`) uses `table-layout: fixed` with set column widths (Description
+  takes the rest, minimum table width 1600px, so it scrolls inside its box on narrower screens): with
+  the automatic layout its columns kept resizing while the 2,000+ rows loaded and when the page's
+  scripts added the sort arrows, so the table visibly jumped on every reload (e.g. clicking Edit).
 - **Modal forms + sortable tables (all admin pages).** Any
   `<div class="card" data-modal data-add-label="New x">` holding an
   add/edit form is turned into a `<dialog>` by the script in
