@@ -142,10 +142,10 @@ zones (id, name, last_update)
   └─ users (id, zone_id, name, centre, section, passcode_hash, role)  -- the ZoneUser login accounts
   └─ activities (id, zone_id, unit, week, day, weekday, activity_date,
                  centre, activity, section, labor, from_time, to_time,
-                 duration, mfrequency, priest, description)
+                 duration, mfrequency, priest, alt_priest, description)
 
 source (id, zone_id, unit, week, day, centre, activity, section, labor,
-        from_time, to_time, duration, mfrequency, priest, description)
+        from_time, to_time, duration, mfrequency, priest, alt_priest, description)
                              -- super-admin only; like activities, but `day` is
                              -- the numeric weekday and there is no date
                              -- (see "Source" below)
@@ -590,8 +590,9 @@ identity/value are never colour or angle alone.
   of a multi-day activity elsewhere, or booked at an overlapping time in another centre (by a fixed
   activity); among the proposed rows no priest gets two overlapping activities in different
   centres or more than the mass limit (fixed masses counted). Candidates are the zone's priests
-  (`priests_by_zone()`) plus whoever the activity already has. It is a backtracking search
-  (200,000-node cap) that keeps the current priest wherever possible, then prefers the least-loaded
+  (`priests_by_zone()`) plus whoever the activity already has (main or alternate). It is a backtracking search
+  (200,000-node cap) that keeps the current priest wherever possible, else tries the activity's **alternate priest**
+  (`activities.alt_priest`, copied from Source; marked "(alternate)" in the dropdown), then the least-loaded
   priest; if no full solution exists, as many activities as possible are assigned and the rest are
   reported as unresolved. The **modal** shows time, centre, activity, current priest (with why it
   was in conflict) and a **Proposed priest** dropdown listing the priests who could take it
@@ -839,6 +840,14 @@ from Activities:
 - **All zones in one table**, with a Zone column instead of a zone picker;
   there's a Zone filter (Filter/Export modals). Shows up to 5,000 rows.
   Zone is changed via the Edit modal, not inline.
+- **Alternate priest (`alt_priest`, migration `019`).** A substitute for the row's main
+  priest, picked from the same zone priest list and validated like `priest` (form,
+  inline editor, import and export column `alt_priest`; renaming a priest cascades, and
+  a priest used only as an alternate still counts as "in use"). It has its own
+  "Alternate priest" column on the Source table. **Add from source** copies it into the
+  `activities.alt_priest` column it creates, but the Activities table, filters, export and
+  forms do not show or touch it (an edit keeps it). Its only use is **Optimise & Review**,
+  which tries it right after the main priest.
 - **Source only holds values that exist in the lookup tables.** `centre`,
   `priest`, `activity` and `labor` are text (as in activities), but they must
   be entries of `centres` (of the row's zone), `priests` (of the row's zone),

@@ -1166,7 +1166,7 @@ $dayLit = $dayValue !== '' ? liturgical_day_text($pdo, $dayValue) : '';
         Array.prototype.forEach.call(select.options, function (o) {
           if (!o.value) return;
           var w = o.value === sel[i] ? '' : clash(i, o.value);
-          o.textContent = o.value + (w ? ' ⚠ ' + w : '');
+          o.textContent = o.value + (key(o.value) === key(r.alt) ? ' (alternate)' : '') + (w ? ' ⚠ ' + w : '');
         });
       }
       var note = tr.querySelector('.why');

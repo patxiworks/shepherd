@@ -118,7 +118,7 @@ function apply_source_to_activities(PDO $pdo, int $zoneId, string $from, string 
         throw new InvalidArgumentException('Choose a range of at most ' . SOURCE_APPLY_MAX_DAYS . ' days.');
     }
 
-    $sql = 'SELECT week, day, centre, activity, section, labor, from_time, to_time, duration, priest, description
+    $sql = 'SELECT week, day, centre, activity, section, labor, from_time, to_time, duration, priest, alt_priest, description
             FROM source WHERE zone_id = ?';
     $args = [$zoneId];
     if ($centre !== null) {
@@ -136,8 +136,8 @@ function apply_source_to_activities(PDO $pdo, int $zoneId, string $from, string 
     $delete = $pdo->prepare($deleteSql);
     $hasAny = $pdo->prepare('SELECT 1 FROM activities WHERE zone_id = ? AND activity_date = ?' . ($centre !== null ? ' AND centre = ?' : '') . ' LIMIT 1');
     $insert = $pdo->prepare(
-        'INSERT INTO activities (zone_id, week, day, weekday, activity_date, centre, activity, section, labor, from_time, to_time, duration, priest, description)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        'INSERT INTO activities (zone_id, week, day, weekday, activity_date, centre, activity, section, labor, from_time, to_time, duration, priest, alt_priest, description)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     );
 
     // Class A dates in the range, and the centres that get the Med / Ben rows.
@@ -199,7 +199,7 @@ function apply_source_to_activities(PDO $pdo, int $zoneId, string $from, string 
                     $seen[$key] = true;
                     $insert->execute([
                         $zoneId, $parts['week'], $parts['day'], $parts['weekday'], $date, $r['centre'], $r['activity'],
-                        $r['section'], $r['labor'], $r['from_time'], $r['to_time'], $r['duration'], $r['priest'], $r['description'],
+                        $r['section'], $r['labor'], $r['from_time'], $r['to_time'], $r['duration'], $r['priest'], $r['alt_priest'], $r['description'],
                     ]);
                     $result['inserted']++;
                 }

@@ -5,5 +5,5 @@ lookup_admin_page([
     'plural' => 'Priests',
     'singular' => 'priest',
     'zone' => true,
-    'used_in' => [['activities', 'priest'], ['source', 'priest'], ['absences', 'priest'], ['multiday_activities', 'priest']],
+    'used_in' => [['activities', 'priest'], ['source', 'priest'], ['activities', 'alt_priest'], ['source', 'alt_priest'], ['absences', 'priest'], ['multiday_activities', 'priest']],
 ]);

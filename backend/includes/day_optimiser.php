@@ -45,8 +45,11 @@ function opt_key(?string $priest): string
 // Everything the solver needs about one date of one zone.
 function day_model(PDO $pdo, int $zoneId, string $date, ?string $scopeCentre): array
 {
+    // alt_priest: the alternate / substitute from Source (migration 019); tried right after the main priest.
+    $hasAlt = (bool) $pdo->query("SHOW COLUMNS FROM activities LIKE 'alt_priest'")->fetchColumn();
     $stmt = $pdo->prepare(
-        "SELECT id, zone_id, centre, activity, from_time, to_time, priest FROM activities
+        'SELECT id, zone_id, centre, activity, from_time, to_time, priest, ' . ($hasAlt ? 'alt_priest' : 'NULL AS alt_priest') . "
+         FROM activities
          WHERE activity_date = ? AND (zone_id = ? OR (priest IS NOT NULL AND priest <> ''))
          ORDER BY from_time, centre, id"
     );
@@ -74,6 +77,9 @@ function day_model(PDO $pdo, int $zoneId, string $date, ?string $scopeCentre): a
     foreach ($items as $it) {
         if (!empty($it['priest'])) {
             $names[opt_key($it['priest'])] = $names[opt_key($it['priest'])] ?? $it['priest'];
+        }
+        if (!empty($it['alt_priest'])) {
+            $names[opt_key($it['alt_priest'])] = $names[opt_key($it['alt_priest'])] ?? $it['alt_priest'];
         }
     }
 
@@ -231,7 +237,7 @@ function optimise_day(PDO $pdo, int $zoneId, string $date, ?string $scopeCentre)
                 continue;
             }
             // Only the zone's priests, and whoever the activity already has.
-            if (isset($m['zoneNames'][$k]) || opt_key($it['priest']) === $k) {
+            if (isset($m['zoneNames'][$k]) || opt_key($it['priest']) === $k || opt_key($it['alt_priest']) === $k) {
                 $domain[$i][$k] = $name;
             }
         }
@@ -258,9 +264,12 @@ function optimise_day(PDO $pdo, int $zoneId, string $date, ?string $scopeCentre)
             }
             $i = $vars[$idx];
             $cands = $domain[$i];
+            // Order: the main priest, then the alternate, then the least loaded.
             $cur = opt_key($current[$i]);
-            uksort($cands, function ($a, $b) use ($cur, $load) {
-                return [$a === $cur ? 0 : 1, $load[$a] ?? 0, $a] <=> [$b === $cur ? 0 : 1, $load[$b] ?? 0, $b];
+            $alt = opt_key($m['items'][$i]['alt_priest'] ?? null);
+            $rank = fn($k) => $k === $cur ? 0 : ($alt !== '' && $k === $alt ? 1 : 2);
+            uksort($cands, function ($a, $b) use ($rank, $load) {
+                return [$rank($a), $load[$a] ?? 0, $a] <=> [$rank($b), $load[$b] ?? 0, $b];
             });
             foreach ($cands as $k => $name) {
                 $clash = false;
@@ -313,6 +322,7 @@ function optimise_day(PDO $pdo, int $zoneId, string $date, ?string $scopeCentre)
             'to' => $it['to_time'] ? substr($it['to_time'], 0, 5) : '',
             'mass' => $m['isMass'][$i],
             'current' => $current[$i],
+            'alt' => $it['alt_priest'] ?: null,
             'before' => $before[$i] ?? [],
             'proposed' => $proposed[$i],
             'options' => array_values($domain[$i]),

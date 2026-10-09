@@ -90,13 +90,13 @@ function source_fields(PDO $pdo, int $zoneId, ?int $id, array $in): array
 
     $current = [];
     if ($id) {
-        $stmt = $pdo->prepare('SELECT zone_id, centre, activity, labor, priest FROM source WHERE id = ?');
+        $stmt = $pdo->prepare('SELECT zone_id, centre, activity, labor, priest, alt_priest FROM source WHERE id = ?');
         $stmt->execute([$id]);
         $current = $stmt->fetch() ?: [];
     }
     $sameZone = $current && (int) $current['zone_id'] === $zoneId;
     $want = [];
-    foreach (['centre', 'activity', 'labor', 'priest'] as $f) {
+    foreach (['centre', 'activity', 'labor', 'priest', 'alt_priest'] as $f) {
         $want[$f] = trim($in[$f] ?? '');
     }
     [$v, $problems] = source_resolve(source_lookups($pdo), $zoneId, $want);
@@ -107,7 +107,7 @@ function source_fields(PDO $pdo, int $zoneId, ?int $id, array $in): array
             $legacyCentre = $legacyCentre || $field === 'centre';
             continue;
         }
-        throw new InvalidArgumentException(ucfirst($message) . '. Add it under Admin > ' . ['centre' => 'Centres', 'activity' => 'Activity types', 'labor' => 'Labors', 'priest' => 'Priests'][$field] . ' first.');
+        throw new InvalidArgumentException(ucfirst($message) . '. Add it under Admin > ' . ['centre' => 'Centres', 'activity' => 'Activity types', 'labor' => 'Labors', 'priest' => 'Priests', 'alt_priest' => 'Priests'][$field] . ' first.');
     }
     if ($legacyCentre) {
         // Centre isn't in the centres list (legacy row kept above): leave the section as it was.
@@ -127,6 +127,7 @@ function source_fields(PDO $pdo, int $zoneId, ?int $id, array $in): array
         'to_time' => ($in['to_time'] ?? '') ?: null,
         'duration' => ($in['duration'] ?? '') ?: null,
         'priest' => $v['priest'],
+        'alt_priest' => $v['alt_priest'],
         'description' => trim($in['description'] ?? '') ?: null,
     ];
 }
@@ -152,6 +153,7 @@ function source_row_html(array $a, string $qs = '', array $weekdayNames = []): s
   <?= $cell('activity', 'activity', $a['activity'], e($a['activity'])) ?>
   <?= $cell('labor', 'labor', $a['labor'], e($a['labor'])) ?>
   <?= $cell('priest', 'priest', $a['priest'], e($a['priest'])) ?>
+  <?= $cell('alt_priest', 'priest', $a['alt_priest'], e($a['alt_priest'])) ?>
   <?= $cell('from_time', 'time', $a['from_time'] ? substr($a['from_time'], 0, 5) : '', $t($a['from_time'])) ?>
   <?= $cell('to_time', 'time', $a['to_time'] ? substr($a['to_time'], 0, 5) : '', $t($a['to_time'])) ?>
   <?= $cell('duration', 'time', $a['duration'] ? substr($a['duration'], 0, 5) : '', $t($a['duration'])) ?>
@@ -436,6 +438,10 @@ require __DIR__ . '/../includes/layout_top.php';
         <label for="priest">Priest</label>
         <?php render_select('priest', 'priest', $formPriests, $editing['priest'] ?? null, 'Select a priest'); ?>
       </div>
+      <div>
+        <label for="alt_priest">Alternate priest</label>
+        <?php render_select('alt_priest', 'alt_priest', $formPriests, $editing['alt_priest'] ?? null, 'Select a priest'); ?>
+      </div>
     </div>
     <div class="row">
       <div>
@@ -488,7 +494,7 @@ require __DIR__ . '/../includes/layout_top.php';
     <ul class="hint" style="margin:8px 0 0 18px;padding:0;">
       <li>Each row needs a <em>week</em> (1&ndash;5, which occurrence of the day in the month) and a <em>day</em> (1&ndash;7, the number in the week per Settings).</li>
       <li>The zone comes from the <em>zone</em> column, else the <em>unit</em> column, and must already exist in Zones. Empty = the zone currently filtered on.</li>
-      <li>Centre (of that zone), priest (of that zone), activity and labor must already exist in the admin lists (spelling and case are matched loosely); rows with unknown values are reported and skipped. The section is the centre's. Other columns are ignored.</li>
+      <li>Centre (of that zone), priest (of that zone), activity and labor must already exist in the admin lists (spelling and case are matched loosely); rows with unknown values are reported and skipped. The optional <em>alt_priest</em> (alternate / substitute priest) is checked the same way. The section is the centre's. Other columns are ignored.</li>
       <li>Rows that already exist are skipped, so importing the same file twice is safe.</li>
     </ul>
     <div class="btn-row">
@@ -559,7 +565,7 @@ require __DIR__ . '/../includes/layout_top.php';
 <table data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs])) ?>">
   <thead><tr>
     <th>Zone</th><th>Day</th><th>Wk</th><th>Centre</th><th>Section</th><th>Activity</th>
-    <th>Labor</th><th>Priest</th><th>From</th><th>To</th><th>Duration</th><th>Description</th><th></th>
+    <th>Labor</th><th>Priest</th><th>Alternate priest</th><th>From</th><th>To</th><th>Duration</th><th>Description</th><th></th>
   </tr></thead>
   <tbody id="source-body" data-qs="<?= e($filterQs) ?>">
   <?php foreach ($activities as $a): ?>
@@ -567,7 +573,7 @@ require __DIR__ . '/../includes/layout_top.php';
 
   <?php endforeach; ?>
   <?php if (!$activities): ?>
-    <tr><td colspan="14" style="text-align:center;color:#888;"><?= $filters ? 'No source rows match these filters.' : 'No source rows yet.' ?></td></tr>
+    <tr><td colspan="15" style="text-align:center;color:#888;"><?= $filters ? 'No source rows match these filters.' : 'No source rows yet.' ?></td></tr>
   <?php endif; ?>
   </tbody>
 </table>
@@ -614,6 +620,7 @@ require __DIR__ . '/../includes/layout_top.php';
   var zoneSel = document.getElementById('zone_id');
   var centreSel = document.getElementById('centre');
   var priestSel = document.getElementById('priest');
+  var altPriestSel = document.getElementById('alt_priest');
   var sectionHint = document.getElementById('section_hint');
 
   function formZone() { return zoneSel ? parseInt(zoneSel.value, 10) : <?= (int) $formZoneId ?>; }
@@ -638,6 +645,7 @@ require __DIR__ . '/../includes/layout_top.php';
     zoneSel.addEventListener('change', function () {
       if (centreSel) refill(centreSel, centres, 'Select a centre');
       refill(priestSel, priests, 'Select a priest');
+      refill(altPriestSel, priests, 'Select a priest');
       showSectionHint();
     });
   }

@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS activities (
   duration TIME NULL,
   mfrequency SMALLINT NULL,
   priest VARCHAR(150) NULL,
+  alt_priest VARCHAR(150) NULL,  -- alternate / substitute priest (migrate/019)
   description TEXT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -98,6 +99,7 @@ CREATE TABLE IF NOT EXISTS source (
   duration TIME NULL,
   mfrequency DECIMAL(4,2) NULL,
   priest VARCHAR(150) NULL,
+  alt_priest VARCHAR(150) NULL,  -- alternate / substitute priest (migrate/019)
   description TEXT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

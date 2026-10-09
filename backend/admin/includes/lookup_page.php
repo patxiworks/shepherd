@@ -108,13 +108,16 @@ function lookup_admin_page(array $cfg): void
                             // The zones whose source rows use this entry must stay among
                             // its zones (home + also serves in), or those rows would no
                             // longer match the lists.
-                            $sourceCol = null;
+                            $sourceCols = [];
                             foreach ($cfg['used_in'] as [$t, $col]) {
-                                $sourceCol = $t === 'source' ? $col : $sourceCol;
+                                if ($t === 'source') {
+                                    $sourceCols[] = $col;
+                                }
                             }
-                            if ($sourceCol !== null) {
-                                $stmt = $pdo->prepare("SELECT z.id, z.name FROM source s JOIN zones z ON z.id = s.zone_id WHERE s.$sourceCol = ? GROUP BY z.id, z.name ORDER BY z.name");
-                                $stmt->execute([$oldName]);
+                            if ($sourceCols) {
+                                $stmt = $pdo->prepare('SELECT z.id, z.name FROM source s JOIN zones z ON z.id = s.zone_id WHERE '
+                                    . implode(' OR ', array_map(fn($c) => "s.$c = ?", $sourceCols)) . ' GROUP BY z.id, z.name ORDER BY z.name');
+                                $stmt->execute(array_fill(0, count($sourceCols), $oldName));
                                 $lost = array_filter($stmt->fetchAll(), fn($z) => (int) $z['id'] !== $zoneId && !in_array((int) $z['id'], $extraZones, true));
                                 if ($lost) {
                                     $pdo->rollBack();

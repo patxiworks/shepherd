@@ -8,7 +8,7 @@
 // the centres, priests, activity_types, labors and sections tables (see
 // source_resolve()), so source can't drift away from those lists.
 
-const SOURCE_IO_COLUMNS = ['zone', 'week', 'day', 'centre', 'activity', 'section', 'labor', 'priest', 'from', 'to', 'duration', 'mfrequency', 'description'];
+const SOURCE_IO_COLUMNS = ['zone', 'week', 'day', 'centre', 'activity', 'section', 'labor', 'priest', 'alt_priest', 'from', 'to', 'duration', 'mfrequency', 'description'];
 
 // Header names the importer understands: the columns above, plus `unit`,
 // which the pastoral spreadsheet uses for the zone.
@@ -42,11 +42,11 @@ function source_lookups(PDO $pdo): array
 // lookup data (see source_lookups()) for its zone. Empty values are fine.
 // The section is not entered: it comes from the centre's section.
 // Returns [values, problems]: values are the stored spellings (centre,
-// activity, labor, priest, section), problems a list of
+// activity, labor, priest, alt_priest, section), problems a list of
 // [field, text, message] for each value that isn't in its list.
 function source_resolve(array $lk, int $zoneId, array $in): array
 {
-    $values = ['centre' => null, 'activity' => null, 'labor' => null, 'priest' => null, 'section' => null];
+    $values = ['centre' => null, 'activity' => null, 'labor' => null, 'priest' => null, 'alt_priest' => null, 'section' => null];
     $problems = [];
     $find = function (string $field, ?string $raw, ?array $list, string $where) use (&$values, &$problems) {
         $raw = trim((string) $raw);
@@ -55,7 +55,7 @@ function source_resolve(array $lk, int $zoneId, array $in): array
         }
         $hit = $list[mb_strtolower($raw)] ?? null;
         if ($hit === null) {
-            $problems[] = [$field, $raw, "unknown $field \"$raw\"$where"];
+            $problems[] = [$field, $raw, 'unknown ' . ($field === 'alt_priest' ? 'alternate priest' : $field) . " \"$raw\"$where"];
         }
         return $hit;
     };
@@ -68,6 +68,7 @@ function source_resolve(array $lk, int $zoneId, array $in): array
     $values['activity'] = $find('activity', $in['activity'] ?? null, $lk['types'], '');
     $values['labor'] = $find('labor', $in['labor'] ?? null, $lk['labors'], '');
     $values['priest'] = $find('priest', $in['priest'] ?? null, $lk['priests'][$zoneId] ?? [], $inZone);
+    $values['alt_priest'] = $find('alt_priest', $in['alt_priest'] ?? null, $lk['priests'][$zoneId] ?? [], $inZone);
     return [$values, $problems];
 }
 
@@ -102,11 +103,11 @@ function import_source(PDO $pdo, array $rows, int $defaultZoneId): array
 
     $dupe = $pdo->prepare(
         'SELECT 1 FROM source WHERE zone_id = ? AND week <=> ? AND day <=> ? AND centre <=> ? AND activity <=> ?
-           AND from_time <=> ? AND to_time <=> ? AND priest <=> ? AND description <=> ? LIMIT 1'
+           AND from_time <=> ? AND to_time <=> ? AND priest <=> ? AND alt_priest <=> ? AND description <=> ? LIMIT 1'
     );
     $insert = $pdo->prepare(
-        'INSERT INTO source (zone_id, week, day, centre, activity, section, labor, from_time, to_time, duration, mfrequency, priest, description)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        'INSERT INTO source (zone_id, week, day, centre, activity, section, labor, from_time, to_time, duration, mfrequency, priest, alt_priest, description)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     );
 
     $report = ['imported' => 0, 'duplicates' => 0, 'errors' => [], 'error_count' => 0, 'unknown' => [], 'zones' => [], 'cleared_durations' => 0];
@@ -151,14 +152,14 @@ function import_source(PDO $pdo, array $rows, int $defaultZoneId): array
 
             // centre, activity, labor, priest: must be in the admin lists
             // (the section is the centre's, so a `section` column is ignored)
-            $values = ['centre' => null, 'activity' => null, 'labor' => null, 'priest' => null, 'section' => null];
+            $values = ['centre' => null, 'activity' => null, 'labor' => null, 'priest' => null, 'alt_priest' => null, 'section' => null];
             if ($zoneId) {
                 [$values, $lookupProblems] = source_resolve($lk, $zoneId, [
                     'centre' => $get($row, 'centre'), 'activity' => $get($row, 'activity'),
-                    'labor' => $get($row, 'labor'), 'priest' => $get($row, 'priest'),
+                    'labor' => $get($row, 'labor'), 'priest' => $get($row, 'priest'), 'alt_priest' => $get($row, 'alt_priest'),
                 ]);
                 foreach ($lookupProblems as [$field, $text, $message]) {
-                    $report['unknown'][$field][$text . ($zoneId && in_array($field, ['centre', 'priest'], true) ? ' (in ' . $lk['zone_names'][$zoneId] . ')' : '')] = true;
+                    $report['unknown'][$field === 'alt_priest' ? 'priest' : $field][$text . ($zoneId && in_array($field, ['centre', 'priest', 'alt_priest'], true) ? ' (in ' . $lk['zone_names'][$zoneId] . ')' : '')] = true;
                     $problems[] = $message;
                 }
             }
@@ -200,7 +201,7 @@ function import_source(PDO $pdo, array $rows, int $defaultZoneId): array
             }
 
             $cleared = $badDuration;
-            $key = [$zoneId, $week, $day, $values['centre'], $values['activity'], $times['from'], $times['to'], $values['priest'], $description];
+            $key = [$zoneId, $week, $day, $values['centre'], $values['activity'], $times['from'], $times['to'], $values['priest'], $values['alt_priest'], $description];
             $dupe->execute($key);
             $keyStr = implode('|', array_map('strval', $key));
             if (isset($seen[$keyStr]) || $dupe->fetchColumn()) {
@@ -211,7 +212,7 @@ function import_source(PDO $pdo, array $rows, int $defaultZoneId): array
 
             $insert->execute([
                 $zoneId, $week, $day, $values['centre'], $values['activity'], $values['section'], $values['labor'],
-                $times['from'], $times['to'], $times['duration'], $freq, $values['priest'], $description,
+                $times['from'], $times['to'], $times['duration'], $freq, $values['priest'], $values['alt_priest'], $description,
             ]);
             $report['imported']++;
             $report['cleared_durations'] += $cleared ? 1 : 0;
@@ -240,7 +241,7 @@ function export_source_csv(iterable $rows, string $filename): void
     foreach ($rows as $a) {
         fputcsv($out, [
             export_text($a['zone_name']), $a['week'], $a['day'],
-            export_text($a['centre']), export_text($a['activity']), export_text($a['section']), export_text($a['labor']), export_text($a['priest']),
+            export_text($a['centre']), export_text($a['activity']), export_text($a['section']), export_text($a['labor']), export_text($a['priest']), export_text($a['alt_priest'] ?? null),
             $hm($a['from_time']), $hm($a['to_time']), $hm($a['duration']), $a['mfrequency'], export_text($a['description']),
         ], ',', '"', '');
     }
