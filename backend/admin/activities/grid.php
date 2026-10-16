@@ -173,8 +173,14 @@ function agrid_cell(array $acts, array $slots): string
     $entries = [];
     foreach ($items as $i => $it) {
         $has = $it['e']['priest'] !== '';
+        if ($it['e']['virtual']) {
+            // Planned but unassigned: just a '+' (still a drop target, carries its index).
+            $html .= '<div class="g-slot" data-i="' . $i . '" title="Drop a priest here, or click to edit">+</div>';
+            $entries[] = $it['e'];
+            continue;
+        }
         $html .= '<div class="g-entry ' . $it['cls'] . '"' . ($has ? ' draggable="true"' : '') . ' data-i="' . $i . '" title="' . e(implode(' · ', $it['tip'])) . '">'
-            . '<span class="g-priest">' . ($has ? e($it['e']['priest']) : '<em>' . ($it['e']['virtual'] ? 'unassigned' : 'no priest') . '</em>') . '</span>'
+            . '<span class="g-priest">' . ($has ? e($it['e']['priest']) : '<em>no priest</em>') . '</span>'
             . ($it['note'] ? '<span class="g-note">' . e($it['note']) . '</span>' : '')
             . '</div>';
         $entries[] = $it['e'];
@@ -288,11 +294,11 @@ require __DIR__ . '/../includes/layout_top.php';
   .g-table tbody tr:hover td { background: var(--tint-stripe); }
   .g-table td.g-cell { cursor: pointer; height: 44px; min-width: 130px; }
   .g-table td.g-cell:hover { outline: 2px solid var(--brand); outline-offset: -2px; }
-  .g-table td.g-cell.g-off, .g-table tbody tr:hover td.g-cell.g-off { cursor: not-allowed; background: repeating-linear-gradient(45deg, #f4f4f4, #f4f4f4 6px, #ebebeb 6px, #ebebeb 12px); }
+  .g-table td.g-cell.g-off, .g-table tbody tr:hover td.g-cell.g-off { cursor: not-allowed; background: #f0f0f0; }
+  .g-slot { color: #c4bcd6; font-size: 16px; line-height: 1.2; padding-left: 2px; margin-bottom: 3px; }
   .g-table td.g-cell.g-off:hover { outline: none; }
   .g-entry { font-size: calc(var(--tbl-fs, 13px) - 1px); line-height: 1.3; padding: 2px 5px; margin-bottom: 3px; border-radius: 3px; border-left: 4px solid #4a9a55; background: #e6f4e8; }
   .g-entry .g-note { display: block; color: #666; font-size: calc(var(--tbl-fs, 13px) - 2px); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
-  .g-entry.f-plan { background: #fff; border: 1px dashed #999; border-left: 4px solid #bbb; color: #888; }
   .g-entry.f-none { background: #eee; border-color: #888; }
   .g-entry.f-absent { background: #fbd5d5; border-color: #c0392b; }
   .g-entry.f-multi { background: #cdeeee; border-color: #1b8f8f; }
@@ -359,14 +365,14 @@ require __DIR__ . '/../includes/layout_top.php';
 
 <div class="g-legend" id="g-legend">
   <span style="background:#e6f4e8;border-color:#4a9a55">Assigned</span>
-  <span style="background:#fff;border-color:#bbb">Unassigned (planned)</span>
+  <span style="border-color:transparent"><span style="color:#aaa;padding:0;border:0;font-size:15px;">+</span> Unassigned</span>
   <span style="background:#eee;border-color:#888">No priest</span>
   <span style="background:#fbd5d5;border-color:#c0392b">Priest absent</span>
   <span style="background:#cdeeee;border-color:#1b8f8f">Priest in multi-day</span>
   <span style="background:#ffe6b3;border-color:#d08a00">Bilocation</span>
   <span style="background:#e3d3f7;border-color:#7a3fc0">Over mass limit</span>
   <span style="background:#d3e6fb;border-color:#3a7bc8">Duplicate</span>
-  <span style="background:repeating-linear-gradient(45deg,#f4f4f4,#f4f4f4 4px,#e4e4e4 4px,#e4e4e4 8px);border-color:#ccc">Not scheduled</span>
+  <span style="background:#f0f0f0;border-color:#ccc">Not scheduled</span>
   <span style="margin-left:auto;border:0;"><?= $total ?> activit<?= $total === 1 ? 'y' : 'ies' ?> on this day · click a cell to edit</span>
 </div>
 
@@ -499,7 +505,7 @@ require __DIR__ . '/../includes/layout_top.php';
     if (!td || dragged === null) return;
     ev.preventDefault();
     td.classList.remove('g-over');
-    var d = dragged, entEl = ev.target.closest('.g-entry');
+    var d = dragged, entEl = ev.target.closest('.g-entry, .g-slot');
     dragged = null;
     if (d.from === td && !entEl) return;
     var info = cellInfo(td), list = cellList(td), target;
@@ -562,7 +568,7 @@ require __DIR__ . '/../includes/layout_top.php';
     var ncols = t.tHead.rows[0].cells.length, used = [];
     Array.prototype.forEach.call(t.tBodies[0].rows, function (tr) {
       var any = false;
-      for (var i = 1; i < ncols; i++) if (tr.cells[i].querySelector('.g-entry')) { any = true; used[i] = true; }
+      for (var i = 1; i < ncols; i++) if (tr.cells[i].querySelector('.g-entry, .g-slot')) { any = true; used[i] = true; }
       tr.style.display = on && !any ? 'none' : '';
     });
     for (var i = 1; i < ncols; i++) {

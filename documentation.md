@@ -388,16 +388,16 @@ server-side (centre must be the admin's, activity type regular, priests the zone
 entry is coloured by the List tab's first applicable flag (no priest, priest absent, priest
 in a multi-day activity, bilocation, over the mass limit, duplicate), using the same SQL
 select fragments as the List; a legend sits above the table. "Hide empty rows & columns"
-(remembered in `localStorage`) trims the grid to what is used that day. In the date bar, under the date text (lighter grey, 14px), the day's
+(remembered in `localStorage`) trims the grid to the rows/columns that have an entry or a planned slot that day. In the date bar, under the date text (lighter grey, 14px), the day's
 liturgical celebration is shown as "Celebration [Rank | Class]. Notes" from the `liturgical_calendar`
 table (nothing if it is empty for that date). **Which cells exist, and their times.** The grid is driven by the Source table:
 a cell is *available* when source has rows for that zone, centre and activity on the
 date (same week + day matching as Add from source), or, for Med/Ben on class A dates and
 Vigil on Vigil dates, when source gives that centre usual times (`source_time_lookup()` /
 `source_times_for()`), or when the cell already has stored activities. Every other cell is
-**disabled** (hatched, "Not scheduled", not clickable, no drop; the server refuses saves
+**disabled** (plain light grey `#f0f0f0`, "Not scheduled", not clickable, no drop; the server refuses saves
 to it). Each planned source slot (distinct from/to pair; two Masses = two slots) not yet
-stored shows as a dashed **unassigned** entry that already carries the source's from/to
+stored shows as a blank cell with a faint **+** at the top left (one `+` per slot; still a drop target) that already carries the source's from/to
 times, group and note; **the times are never shown in the cell, only in the editor**.
 A row of draggable priest chips (the zone's priests) sits above the grid and the grid
 only sets the priest: **dropping a chip on a cell** assigns that priest to the entry
@@ -405,7 +405,7 @@ dropped on, else the first unassigned one, else the only one (with several all a
 drop on the entry to replace it); an unassigned slot is created as a real activity with
 the source times at that moment (`cell_save`), an unassigned slot that is never given a
 priest is never stored. **Dragging an assigned entry** to another cell moves its priest
-(the source entry becomes "no priest"; Alt/Option copies; within a cell it swaps). The grid's chrome follows the theme colour: the centre cells are `#d0e5f0` with `#666` text, the header row 85% brand / white with white text, both at 15px, the corner `--brand-dark`, borders `--tint-border`. Assigned entries are green, unassigned planned ones white/dashed (purple is the mass-limit colour). Tables can opt out of
+(the source entry becomes "no priest"; Alt/Option copies; within a cell it swaps). The grid's chrome follows the theme colour: the centre cells are `#d0e5f0` with `#666` text, the header row 85% brand / white with white text, both at 15px, the corner `--brand-dark`, borders `--tint-border`. Assigned entries are green, unassigned planned slots a plain `+` (purple is the mass-limit colour). Tables can opt out of
 the shared sorting/wrapping in `layout_bottom.php` with `data-no-sort` / `data-no-wrap`.
 
 The **Dashboard** is modelled on the Multi-day one: statistics over the same rows for
