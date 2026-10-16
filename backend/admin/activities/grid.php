@@ -15,6 +15,8 @@ require __DIR__ . '/../../includes/activity_duplicates.php';
 require __DIR__ . '/../../includes/activity_bilocation.php';
 require __DIR__ . '/../../includes/activity_mass_limit.php';
 require __DIR__ . '/../../includes/activity_multiday_busy.php';
+require __DIR__ . '/../../includes/source_apply.php';
+require __DIR__ . '/../../includes/vigil.php';
 $admin = admin_require_role('super', 'zone', 'centre');
 
 $pdo = pastores_db();
@@ -75,13 +77,81 @@ function agrid_time(?string $t): string
     return $t ? substr($t, 0, 5) : '';
 }
 
-// One cell's HTML (also the JSON the editor starts from, in data-entries).
-function agrid_cell(array $acts): string
+// The activities the source table plans for the date: centre\0activity => list of
+// ['from_time', 'to_time', 'labor', 'description'] (HH:MM), one per distinct time pair.
+// Source rows are matched by week + day like Add from source; on class A dates
+// Med / Ben, and on Vigil dates Vigil, take the centre's usual times, as the
+// automatic rows do. A cell with no slot (and no activity yet) is "not scheduled".
+function agrid_slots(PDO $pdo, int $zoneId, string $date, string $weekStart, array $centres, array $types): array
 {
-    $entries = [];
-    $html = '';
-    $flag = '';
-    foreach ($acts as $i => $a) {
+    $parts = date_parts($date, $weekStart);
+    $stmt = $pdo->prepare('SELECT centre, activity, labor, from_time, to_time, description FROM source WHERE zone_id = ? AND week = ? AND day = ? ORDER BY from_time, id');
+    $stmt->execute([$zoneId, $parts['week'], $parts['weekday']]);
+    $slots = [];
+    foreach ($stmt as $r) {
+        $slot = ['from_time' => agrid_time($r['from_time']), 'to_time' => agrid_time($r['to_time']), 'labor' => $r['labor'] ?? '', 'description' => $r['description'] ?? ''];
+        $key = $r['centre'] . "\0" . $r['activity'];
+        foreach ($slots[$key] ?? [] as $have) {
+            if ($have['from_time'] === $slot['from_time'] && $have['to_time'] === $slot['to_time']) {
+                continue 2;
+            }
+        }
+        $slots[$key][] = $slot;
+    }
+
+    $auto = [];
+    try {
+        $cal = $pdo->prepare("SELECT 1 FROM liturgical_calendar WHERE cal_date = ? AND class = 'A'");
+        $cal->execute([$date]);
+        if ($cal->fetchColumn()) {
+            $auto = ['Med', 'Ben'];
+        }
+    } catch (PDOException $ex) {
+        // no liturgical calendar yet
+    }
+    if (is_vigil_date($date)) {
+        $auto[] = PASTORES_VIGIL_ACTIVITY;
+    }
+    if ($auto) {
+        $lookup = source_time_lookup($pdo, $zoneId);
+        foreach ($centres as $c) {
+            if (($c['section'] ?? '') === '') {
+                continue; // centres without a section never get automatic rows
+            }
+            foreach ($auto as $act) {
+                $key = $c['name'] . "\0" . $act;
+                $t = !isset($slots[$key]) && in_array($act, $types, true) ? source_times_for($lookup, $c['name'], $act, $parts['weekday']) : null;
+                if ($t) {
+                    $slots[$key][] = ['from_time' => agrid_time($t['from_time']), 'to_time' => agrid_time($t['to_time']), 'labor' => '', 'description' => ''];
+                }
+            }
+        }
+    }
+    return $slots;
+}
+
+// One cell's HTML. $acts are the stored activities, $slots the source's planned
+// ones; a planned slot with no stored activity shows as "unassigned" and carries
+// the source times (not displayed, only in the editor) so that dropping a priest
+// on it creates the activity with those times. The JSON holds every entry.
+// A cell with neither is "not scheduled" and is disabled.
+function agrid_cell(array $acts, array $slots): string
+{
+    if (!$acts && !$slots) {
+        return '';
+    }
+    $items = [];
+    $free = $slots;
+    foreach ($acts as $a) {
+        foreach ($free as $k => $sl) {
+            if ($sl['from_time'] === agrid_time($a['from_time']) && $sl['to_time'] === agrid_time($a['to_time'])) {
+                unset($free[$k]);
+                continue 2;
+            }
+        }
+        array_shift($free); // an edited activity uses up one planned slot
+    }
+    foreach ($acts as $a) {
         $cls = '';
         $tip = [];
         if (!empty($a['absent_note'])) { $cls = 'f-absent'; $tip[] = 'Priest absent: ' . $a['absent_note']; }
@@ -90,16 +160,26 @@ function agrid_cell(array $acts): string
         elseif ((int) $a['mass_count'] > mass_limit()) { $cls = 'f-mass'; $tip[] = $a['priest'] . ' has ' . (int) $a['mass_count'] . ' masses (maximum ' . mass_limit() . ')'; }
         elseif ((int) $a['duplicate_count'] > 0) { $cls = 'f-dup'; $tip[] = 'Duplicate activity'; }
         elseif ($a['priest'] === null || $a['priest'] === '') { $cls = 'f-none'; $tip[] = 'No priest assigned'; }
-        $time = agrid_time($a['from_time']) . ($a['to_time'] ? '–' . agrid_time($a['to_time']) : '');
-        $html .= '<div class="g-entry ' . $cls . '" draggable="true" data-i="' . $i . '" title="' . e(implode(' · ', $tip)) . '">'
-            . '<span class="g-priest">' . ($a['priest'] !== null && $a['priest'] !== '' ? e($a['priest']) : '<em>no priest</em>') . '</span>'
-            . ($time !== '' ? '<span class="g-time">' . e($time) . '</span>' : '')
-            . ($a['description'] ? '<span class="g-note">' . e($a['description']) . '</span>' : '')
-            . '</div>';
-        $entries[] = ['id' => (int) $a['id'], 'priest' => $a['priest'] ?? '', 'from_time' => agrid_time($a['from_time']), 'to_time' => agrid_time($a['to_time']),
-            'labor' => $a['labor'] ?? '', 'description' => $a['description'] ?? ''];
+        $items[] = ['cls' => $cls, 'tip' => $tip, 'note' => $a['description'] ?? '', 'sort' => agrid_time($a['from_time']),
+            'e' => ['id' => (int) $a['id'], 'priest' => $a['priest'] ?? '', 'from_time' => agrid_time($a['from_time']), 'to_time' => agrid_time($a['to_time']),
+                'labor' => $a['labor'] ?? '', 'description' => $a['description'] ?? '', 'virtual' => false]];
     }
-    return $html === '' ? '' : $html . '<script type="application/json" class="g-data">' . json_encode($entries, JSON_HEX_TAG | JSON_HEX_AMP) . '</script>';
+    foreach ($free as $sl) {
+        $items[] = ['cls' => 'f-plan', 'tip' => ['Planned in the source table: drop a priest to assign it'], 'note' => $sl['description'], 'sort' => $sl['from_time'],
+            'e' => ['id' => 0, 'priest' => '', 'from_time' => $sl['from_time'], 'to_time' => $sl['to_time'], 'labor' => $sl['labor'], 'description' => $sl['description'], 'virtual' => true]];
+    }
+    usort($items, fn($x, $y) => [$x['sort'] === '' ? 1 : 0, $x['sort']] <=> [$y['sort'] === '' ? 1 : 0, $y['sort']]);
+    $html = '';
+    $entries = [];
+    foreach ($items as $i => $it) {
+        $has = $it['e']['priest'] !== '';
+        $html .= '<div class="g-entry ' . $it['cls'] . '"' . ($has ? ' draggable="true"' : '') . ' data-i="' . $i . '" title="' . e(implode(' · ', $it['tip'])) . '">'
+            . '<span class="g-priest">' . ($has ? e($it['e']['priest']) : '<em>' . ($it['e']['virtual'] ? 'unassigned' : 'no priest') . '</em>') . '</span>'
+            . ($it['note'] ? '<span class="g-note">' . e($it['note']) . '</span>' : '')
+            . '</div>';
+        $entries[] = $it['e'];
+    }
+    return $html . '<script type="application/json" class="g-data">' . json_encode($entries, JSON_HEX_TAG | JSON_HEX_AMP) . '</script>';
 }
 
 // ── Save one cell ─────────────────────────────────────────────────────────
@@ -127,6 +207,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') ==
     $existing = $pdo->prepare('SELECT id FROM activities WHERE zone_id = ? AND activity_date = ? AND centre = ? AND activity = ?');
     $existing->execute([$zoneId, $date, $centre, $activity]);
     $existingIds = array_map('intval', $existing->fetchAll(PDO::FETCH_COLUMN));
+    if (!$existingIds && !isset(agrid_slots($pdo, $zoneId, $date, $weekStart, $centres, $types)[$centre . "\0" . $activity])) {
+        $reply(['error' => 'This activity is not scheduled at this centre on this day.'], 422);
+    }
     $time = fn($v) => preg_match('/^\d\d:\d\d(:\d\d)?$/', (string) $v) ? substr((string) $v, 0, 5) . ':00' : null;
 
     $pdo->beginTransaction();
@@ -172,6 +255,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') ==
 
 $celebration = liturgical_day_text($pdo, $date);
 $byCell = agrid_load($pdo, $zoneId, $date, $scopeCentreName);
+$slotsByCell = $centres && $types ? agrid_slots($pdo, $zoneId, $date, $weekStart, $centres, $types) : [];
 $total = array_sum(array_map('count', $byCell));
 $prev = (new DateTimeImmutable($date))->modify('-1 day')->format('Y-m-d');
 $next = (new DateTimeImmutable($date))->modify('+1 day')->format('Y-m-d');
@@ -204,10 +288,11 @@ require __DIR__ . '/../includes/layout_top.php';
   .g-table tbody tr:hover td { background: var(--tint-stripe); }
   .g-table td.g-cell { cursor: pointer; height: 44px; min-width: 130px; }
   .g-table td.g-cell:hover { outline: 2px solid var(--brand); outline-offset: -2px; }
-  .g-table td.g-cell:empty::after { content: '+'; color: var(--tint-border); font-size: 16px; }
+  .g-table td.g-cell.g-off, .g-table tbody tr:hover td.g-cell.g-off { cursor: not-allowed; background: repeating-linear-gradient(45deg, #f4f4f4, #f4f4f4 6px, #ebebeb 6px, #ebebeb 12px); }
+  .g-table td.g-cell.g-off:hover { outline: none; }
   .g-entry { font-size: calc(var(--tbl-fs, 13px) - 1px); line-height: 1.3; padding: 2px 5px; margin-bottom: 3px; border-radius: 3px; border-left: 4px solid #4a9a55; background: #e6f4e8; }
-  .g-entry .g-time { display: block; color: #666; font-size: calc(var(--tbl-fs, 13px) - 2px); }
   .g-entry .g-note { display: block; color: #666; font-size: calc(var(--tbl-fs, 13px) - 2px); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+  .g-entry.f-plan { background: #fff; border: 1px dashed #999; border-left: 4px solid #bbb; color: #888; }
   .g-entry.f-none { background: #eee; border-color: #888; }
   .g-entry.f-absent { background: #fbd5d5; border-color: #c0392b; }
   .g-entry.f-multi { background: #cdeeee; border-color: #1b8f8f; }
@@ -274,12 +359,14 @@ require __DIR__ . '/../includes/layout_top.php';
 
 <div class="g-legend" id="g-legend">
   <span style="background:#e6f4e8;border-color:#4a9a55">Assigned</span>
+  <span style="background:#fff;border-color:#bbb">Unassigned (planned)</span>
   <span style="background:#eee;border-color:#888">No priest</span>
   <span style="background:#fbd5d5;border-color:#c0392b">Priest absent</span>
   <span style="background:#cdeeee;border-color:#1b8f8f">Priest in multi-day</span>
   <span style="background:#ffe6b3;border-color:#d08a00">Bilocation</span>
   <span style="background:#e3d3f7;border-color:#7a3fc0">Over mass limit</span>
   <span style="background:#d3e6fb;border-color:#3a7bc8">Duplicate</span>
+  <span style="background:repeating-linear-gradient(45deg,#f4f4f4,#f4f4f4 4px,#e4e4e4 4px,#e4e4e4 8px);border-color:#ccc">Not scheduled</span>
   <span style="margin-left:auto;border:0;"><?= $total ?> activit<?= $total === 1 ? 'y' : 'ies' ?> on this day · click a cell to edit</span>
 </div>
 
@@ -299,7 +386,8 @@ require __DIR__ . '/../includes/layout_top.php';
       <tr data-centre="<?= e($c['name']) ?>">
         <th class="g-centre"><?= e($c['name']) ?></th>
         <?php foreach ($types as $t): ?>
-          <td class="g-cell"><?= agrid_cell($byCell[$c['name'] . "\0" . $t] ?? []) ?></td>
+          <?php $cellHtml = agrid_cell($byCell[$c['name'] . "\0" . $t] ?? [], $slotsByCell[$c['name'] . "\0" . $t] ?? []); ?>
+          <td class="g-cell<?= $cellHtml === '' ? ' g-off' : '' ?>"<?= $cellHtml === '' ? ' title="Not scheduled at this centre on this day"' : '' ?>><?= $cellHtml ?></td>
         <?php endforeach; ?>
       </tr>
       <?php endforeach; ?>
@@ -339,6 +427,7 @@ require __DIR__ . '/../includes/layout_top.php';
     var d = document.createElement('div');
     d.className = 'g-erow';
     d.dataset.id = en.id || 0;
+    if (en.virtual) d.dataset.virtual = '1';
     d.innerHTML = '<div><label>Priest</label><select class="r-priest">' + opts(priests, en.priest, '— none —') + '</select></div>'
       + '<div><label>From</label><input type="time" class="r-from"></div>'
       + '<div><label>To</label><input type="time" class="r-to"></div>'
@@ -353,7 +442,7 @@ require __DIR__ . '/../includes/layout_top.php';
   }
   document.getElementById('g-table').addEventListener('click', function (ev) {
     var td = ev.target.closest('td.g-cell');
-    if (!td) return;
+    if (!td || td.classList.contains('g-off')) return;
     cur = cellInfo(td);
     document.getElementById('g-h').textContent = cur.type + ' — ' + cur.centre;
     document.getElementById('g-sub').textContent = new Date(date + 'T00:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + '. Remove every line and save to clear the cell.';
@@ -367,7 +456,10 @@ require __DIR__ . '/../includes/layout_top.php';
   document.getElementById('g-add').addEventListener('click', function () { addRow(); });
   document.getElementById('g-cancel').addEventListener('click', function () { dlg.close(); });
   dlg.addEventListener('click', function (ev) { if (ev.target === dlg) dlg.close(); });
-  // Drag a priest chip onto a cell: fills the first entry without a priest, else adds a new entry.
+  // Drag a priest chip (or an assigned entry) onto a cell to set the priest of that
+  // activity; the times come from the source and are already in the cell. Dropping on a
+  // specific entry sets that one; otherwise the first unassigned one (or the only one).
+  // Dragging an entry moves its priest (the source entry becomes unassigned); Alt/Option copies it.
   var dragged = null;
   document.getElementById('g-palette').addEventListener('dragstart', function (ev) {
     var c = ev.target.closest('.g-chip');
@@ -377,18 +469,21 @@ require __DIR__ . '/../includes/layout_top.php';
     ev.dataTransfer.effectAllowed = 'copy';
   });
   var tbl = document.getElementById('g-table');
-  // Drag an entry onto another cell to move it there (hold Alt/Option to copy it).
   tbl.addEventListener('dragstart', function (ev) {
     var en = ev.target.closest('.g-entry');
     if (!en) return;
-    var td = en.closest('td.g-cell');
-    dragged = { from: td, idx: +en.dataset.i };
-    ev.dataTransfer.setData('text/plain', en.textContent);
+    var td = en.closest('td.g-cell'), src = cellList(td)[+en.dataset.i];
+    dragged = { from: td, idx: +en.dataset.i, priest: src ? src.priest : '' };
+    ev.dataTransfer.setData('text/plain', dragged.priest);
     ev.dataTransfer.effectAllowed = 'copyMove';
   });
   function cellList(td) { var d = td.querySelector('.g-data'); return d ? JSON.parse(d.textContent) : []; }
-  tbl.addEventListener('dragover', function (ev) {
+  function dropCell(ev) {
     var td = ev.target.closest('td.g-cell');
+    return td && !td.classList.contains('g-off') ? td : null;
+  }
+  tbl.addEventListener('dragover', function (ev) {
+    var td = dropCell(ev);
     if (!td || dragged === null) return;
     ev.preventDefault();
     ev.dataTransfer.dropEffect = dragged.from && !ev.altKey ? 'move' : 'copy';
@@ -400,34 +495,35 @@ require __DIR__ . '/../includes/layout_top.php';
     if (td && !td.contains(ev.relatedTarget)) td.classList.remove('g-over');
   });
   tbl.addEventListener('drop', function (ev) {
-    var td = ev.target.closest('td.g-cell');
+    var td = dropCell(ev);
     if (!td || dragged === null) return;
     ev.preventDefault();
     td.classList.remove('g-over');
-    var d = dragged;
+    var d = dragged, entEl = ev.target.closest('.g-entry');
     dragged = null;
-    var info = cellInfo(td), list = cellList(td);
-    if (d.from) {
-      if (d.from === td) return;
-      var src = cellList(d.from), moved = src[d.idx];
-      if (!moved) return;
-      list.push({ id: 0, priest: moved.priest, from_time: moved.from_time, to_time: moved.to_time, labor: moved.labor, description: moved.description });
-      var done = send(info, list, !ev.altKey);
-      if (!ev.altKey) {
-        // Target first, so a failure never loses the entry; then drop it from the source.
-        done = done.then(function () { src.splice(d.idx, 1); return send(cellInfo(d.from), src); });
-      }
-      done.catch(function (e) { alert(e.message); });
-      return;
+    if (d.from === td && !entEl) return;
+    var info = cellInfo(td), list = cellList(td), target;
+    if (entEl) target = list[+entEl.dataset.i];
+    else target = list.filter(function (e) { return !e.priest; })[0] || (list.length === 1 ? list[0] : null);
+    if (!target) { alert('Every activity here already has a priest: drop on the one you want to change.'); return; }
+    if (!d.priest || target.priest === d.priest) return;
+    var old = target.priest, move = !!d.from && !ev.altKey, sameCell = d.from === td;
+    target.priest = d.priest;
+    if (move && sameCell) list[d.idx].priest = old; // swap within the cell
+    var done = send(info, list, move && !sameCell);
+    if (move && !sameCell) {
+      // Target first, so a failure never loses the priest; then free the source entry.
+      var src = cellList(d.from);
+      src[d.idx].priest = '';
+      done = done.then(function () { return send(cellInfo(d.from), src); });
     }
-    var blank = list.filter(function (e) { return !e.priest; })[0];
-    if (blank) blank.priest = d.priest;
-    else list.push({ id: 0, priest: d.priest, from_time: '', to_time: '', labor: '', description: '' });
-    send(info, list).catch(function (e) { alert(e.message); });
+    done.catch(function (e) { alert(e.message); });
   });
   document.addEventListener('dragend', function () { dragged = null; Array.prototype.forEach.call(document.querySelectorAll('.g-over'), function (x) { x.classList.remove('g-over'); }); });
 
   function send(info, entries, skipRefresh) {
+    // A planned slot nobody was assigned to isn't an activity yet: leave it out.
+    entries = entries.filter(function (e) { return !(e.virtual && !e.priest); });
     var body = new URLSearchParams({ action: 'cell_save', zone_id: zoneId, date: date, centre: info.centre, activity: info.type, entries: JSON.stringify(entries) });
     return fetch(location.pathname, { method: 'POST', body: body, headers: { Accept: 'application/json' } })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'Save failed'); return j; }); })
@@ -440,7 +536,7 @@ require __DIR__ . '/../includes/layout_top.php';
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();
     var entries = Array.prototype.map.call(rows.children, function (d) {
-      return { id: +d.dataset.id, priest: d.querySelector('.r-priest').value, from_time: d.querySelector('.r-from').value,
+      return { id: +d.dataset.id, virtual: !!d.dataset.virtual, priest: d.querySelector('.r-priest').value, from_time: d.querySelector('.r-from').value,
         to_time: d.querySelector('.r-to').value, labor: d.querySelector('.r-labor').value, description: d.querySelector('.r-desc').value };
     });
     send(cur, entries)
