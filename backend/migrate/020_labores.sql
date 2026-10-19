@@ -39,13 +39,6 @@ PREPARE stmt FROM @add;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- Starting colours for the sections the app shipped with (only where unset).
-UPDATE sections SET colour = '#FFB74D' WHERE name = 'sf'  AND colour IS NULL;
-UPDATE sections SET colour = '#64B5F6' WHERE name = 'sv'  AND colour IS NULL;
-UPDATE sections SET colour = '#81C784' WHERE name = 'c-m' AND colour IS NULL;
-UPDATE sections SET colour = '#FFF176' WHERE name = 'c-w' AND colour IS NULL;
-UPDATE sections SET colour = '#F06292' WHERE name = 'p-m' AND colour IS NULL;
-UPDATE sections SET colour = '#BA68C8' WHERE name = 'p-w' AND colour IS NULL;
 
 DROP TABLE IF EXISTS labors;
 
