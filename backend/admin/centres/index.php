@@ -19,6 +19,38 @@ $deleteOne = function (int $id) use ($pdo): ?string {
     return null;
 };
 
+// The labores a centre can run, as the most specific entries: each sub-labor, and
+// each labor that has none. [labor id => [name, [[id, name, ticked-able]...]]]
+$laborTree = [];
+foreach ($pdo->query('SELECT id, name FROM labores WHERE parent_id IS NULL ORDER BY name') as $l) {
+    $laborTree[(int) $l['id']] = ['name' => $l['name'], 'subs' => []];
+}
+foreach ($pdo->query('SELECT id, name, parent_id FROM labores WHERE parent_id IS NOT NULL ORDER BY name') as $c) {
+    if (isset($laborTree[(int) $c['parent_id']])) {
+        $laborTree[(int) $c['parent_id']]['subs'][(int) $c['id']] = $c['name'];
+    }
+}
+$pickable = []; // ids a centre can be given
+foreach ($laborTree as $lid => $l) {
+    if ($l['subs']) {
+        foreach ($l['subs'] as $sid => $_) {
+            $pickable[$sid] = true;
+        }
+    } else {
+        $pickable[$lid] = true;
+    }
+}
+
+// Replaces the labores of a centre with the posted ones.
+$saveLabores = function (int $centreId) use ($pdo, $pickable): void {
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) ($_POST['labor_ids'] ?? [])), fn($i) => isset($pickable[$i]))));
+    $pdo->prepare('DELETE FROM centre_labores WHERE centre_id = ?')->execute([$centreId]);
+    $insert = $pdo->prepare('INSERT INTO centre_labores (centre_id, labor_id) VALUES (?, ?)');
+    foreach ($ids as $i) {
+        $insert->execute([$centreId, $i]);
+    }
+};
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $action = $_POST['action'] ?? '';
 
@@ -29,6 +61,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         flash($err === null ? 'success' : 'error', $err ?? 'Centre deleted.');
     } else {
         $name = trim($_POST['name'] ?? '');
+        $fullName = mb_substr(trim($_POST['full_name'] ?? ''), 0, 255) ?: null;
         $zoneId = (int) ($_POST['zone_id'] ?? 0);
         $section = trim($_POST['section'] ?? '') ?: null;
 
@@ -53,12 +86,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     }
                 }
                 $pdo->beginTransaction();
-                $pdo->prepare('UPDATE centres SET name = ?, zone_id = ?, section = ? WHERE id = ?')
-                    ->execute([$name, $zoneId, $section, (int) $id]);
+                $pdo->prepare('UPDATE centres SET name = ?, full_name = ?, zone_id = ?, section = ? WHERE id = ?')
+                    ->execute([$name, $fullName, $zoneId, $section, (int) $id]);
                 if ($old) {
                     $pdo->prepare('UPDATE source SET centre = ?, section = ? WHERE zone_id = ? AND centre = ?')
                         ->execute([$name, $section, $old['zone_id'], $old['name']]);
                 }
+                $saveLabores((int) $id);
                 $pdo->commit();
                 // An activity's section comes from its centre, so keep the
                 // activities currently pointing at this centre in step.
@@ -69,8 +103,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 }
                 flash('success', 'Centre updated.');
             } else {
-                $pdo->prepare('INSERT INTO centres (name, zone_id, section) VALUES (?, ?, ?)')
-                    ->execute([$name, $zoneId, $section]);
+                $pdo->beginTransaction();
+                $pdo->prepare('INSERT INTO centres (name, full_name, zone_id, section) VALUES (?, ?, ?, ?)')
+                    ->execute([$name, $fullName, $zoneId, $section]);
+                $saveLabores((int) $pdo->lastInsertId());
+                $pdo->commit();
                 flash('success', 'Centre created.');
             }
         }
@@ -87,6 +124,18 @@ if ($editId) {
     $editing = $stmt->fetch();
 }
 
+$editingLabores = [];
+if ($editing) {
+    $stmt = $pdo->prepare('SELECT labor_id FROM centre_labores WHERE centre_id = ?');
+    $stmt->execute([$editing['id']]);
+    $editingLabores = array_flip(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)));
+}
+// centre id => "sm: agd, club · sg" for the list.
+$centreLabores = [];
+foreach ($pdo->query('SELECT cl.centre_id, l.name, p.name AS parent FROM centre_labores cl JOIN labores l ON l.id = cl.labor_id LEFT JOIN labores p ON p.id = l.parent_id ORDER BY COALESCE(p.name, l.name), l.name') as $r) {
+    $top = $r['parent'] ?? $r['name'];
+    $centreLabores[(int) $r['centre_id']][$top][] = $r['parent'] !== null ? $r['name'] : null;
+}
 $zones = $pdo->query('SELECT * FROM zones ORDER BY name')->fetchAll();
 $centres = $pdo->query(
     'SELECT c.*, z.name AS zone_name FROM centres c JOIN zones z ON z.id = c.zone_id ORDER BY z.name, c.name'
@@ -107,6 +156,10 @@ require __DIR__ . '/../includes/layout_top.php';
         <input type="text" id="name" name="name" value="<?= e($editing['name'] ?? '') ?>" required>
       </div>
       <div>
+        <label for="full_name">Full name</label>
+        <input type="text" id="full_name" name="full_name" maxlength="255" value="<?= e($editing['full_name'] ?? '') ?>">
+      </div>
+      <div>
         <label for="zone_id">Zone</label>
         <select id="zone_id" name="zone_id" required>
           <option value="">Select a zone</option>
@@ -119,8 +172,24 @@ require __DIR__ . '/../includes/layout_top.php';
       </div>
       <div>
         <label for="section">Section</label>
-        <input type="text" id="section" name="section" list="sections" value="<?= e($editing['section'] ?? '') ?>" placeholder="e.g. sf, sv, c-m">
+        <?php render_select('section', 'section', lookup_names($pdo, 'sections'), $editing['section'] ?? null, 'None'); ?>
       </div>
+    </div>
+    <div class="labores-pick">
+      <label>Labores</label>
+      <?php if (!$laborTree): ?>
+        <p class="table-hint">No labores yet. Add them under <a href="/admin/labores/index.php">Labores</a>.</p>
+      <?php endif; ?>
+      <?php foreach ($laborTree as $lid => $l): ?>
+        <div class="labor-group"><strong><?= e($l['name']) ?></strong>
+          <?php if ($l['subs']): foreach ($l['subs'] as $sid => $sname): ?>
+            <label class="inline"><input type="checkbox" name="labor_ids[]" value="<?= $sid ?>" <?= isset($editingLabores[$sid]) ? 'checked' : '' ?>> <?= e($sname) ?></label>
+          <?php endforeach; else: ?>
+            <label class="inline"><input type="checkbox" name="labor_ids[]" value="<?= $lid ?>" <?= isset($editingLabores[$lid]) ? 'checked' : '' ?>> (whole labor)</label>
+          <?php endif; ?>
+        </div>
+      <?php endforeach; ?>
+      <p class="table-hint">A centre only offers the labores ticked here; with none ticked it offers none.</p>
     </div>
     <div class="btn-row">
       <button type="submit"><?= $editing ? 'Save changes' : 'Create centre' ?></button>
@@ -128,16 +197,30 @@ require __DIR__ . '/../includes/layout_top.php';
     </div>
   </form>
 </div>
-<?php render_datalist('sections', lookup_names($pdo, 'sections')); ?>
+<style>
+  .labores-pick { margin: 10px 0; }
+  .labor-group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 4px 0; }
+  .labor-group strong { min-width: 60px; }
+  .labor-group label.inline { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; margin: 0; }
+</style>
 
 <table>
-  <thead><tr><th>Name</th><th>Zone</th><th>Section</th><th></th></tr></thead>
+  <thead><tr><th>Name</th><th>Full name</th><th>Zone</th><th>Section</th><th>Labores</th><th></th></tr></thead>
   <tbody>
   <?php foreach ($centres as $centre): ?>
     <tr>
       <td><?= e($centre['name']) ?></td>
+      <td><?= e($centre['full_name'] ?? '') ?: '—' ?></td>
       <td><?= e($centre['zone_name']) ?></td>
       <td><?= e($centre['section']) ?></td>
+      <td><?php
+        $parts = [];
+        foreach ($centreLabores[(int) $centre['id']] ?? [] as $top => $subs) {
+            $subs = array_filter($subs);
+            $parts[] = $subs ? $top . ': ' . implode(', ', $subs) : $top;
+        }
+        echo e(implode(' · ', $parts)) ?: '—';
+      ?></td>
       <td class="actions">
         <?= icon_edit('/admin/centres/index.php?edit=' . (int) $centre['id']) ?>
         <form class="inline" method="post" onsubmit="return confirm('Delete this centre?');">

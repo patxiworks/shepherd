@@ -110,7 +110,7 @@ function mday_filter_options(PDO $pdo, ?int $zoneId): array
     $sectionOptions = lookup_names($pdo, 'sections');
     // Priests of the selected zone (every zone's, in "All zones"), by name.
     $priestOptions = array_values(array_unique(array_column(priests_by_zone($pdo, $zoneId), 'name')));
-    $groupOptions = lookup_names($pdo, 'labors');
+    $groupOptions = labor_options($pdo);
     return compact('venueOptions', 'activityOptions', 'sectionOptions', 'groupOptions', 'priestOptions');
 }
 

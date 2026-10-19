@@ -45,10 +45,13 @@ function multiday_lookups(PDO $pdo): array
     foreach (priests_by_zone($pdo) as $p) {
         $lk['priests'][(int) $p['zone_id']][$lc($p['name'])] = $p['name'];
     }
-    foreach ([['types', 'activity_types'], ['sections', 'sections'], ['labors', 'labors']] as [$key, $table]) {
+    foreach ([['types', 'activity_types'], ['sections', 'sections']] as [$key, $table]) {
         foreach ($pdo->query("SELECT name FROM $table") as $t) {
             $lk[$key][$lc($t['name'])] = $t['name'];
         }
+    }
+    foreach (labor_options($pdo) as $text) {
+        $lk['labors'][$lc($text)] = $text;
     }
     return $lk;
 }

@@ -190,7 +190,7 @@ function recompute_activity_calendar(PDO $pdo, string $weekStart): void
 
 // Lookup tables behind the admin dropdowns (see schema.sql). The table
 // name is interpolated into SQL, so it must be one of these.
-const PASTORES_LOOKUP_TABLES = ['priests', 'sections', 'labors', 'activity_types'];
+const PASTORES_LOOKUP_TABLES = ['priests', 'sections', 'activity_types'];
 
 // The priests of each zone as [zone_id, name] rows, ordered by name: those
 // whose home zone it is (priests.zone_id) plus those who also serve there
@@ -215,6 +215,74 @@ function lookup_names(PDO $pdo, string $table): array
         throw new InvalidArgumentException("Unknown lookup table: $table");
     }
     return $pdo->query("SELECT name FROM $table ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
+}
+
+// Labores: a labor (labores.parent_id NULL) and its sub-labores. What activities,
+// source rows etc. store in their `labor` text column is the labor's name, followed
+// by the sub-labor's when it has one: "sm agd". A labor without sub-labores is
+// stored on its own: "sg".
+function labor_text(string $labor, ?string $sub = null): string
+{
+    return $sub === null || $sub === '' ? $labor : $labor . ' ' . $sub;
+}
+
+// Every valid labor text, sorted: one entry per sub-labor, plus the labores that
+// have no sub-labores.
+function labor_options(PDO $pdo): array
+{
+    $out = [];
+    foreach ($pdo->query('SELECT p.name AS labor, c.name AS sub FROM labores p LEFT JOIN labores c ON c.parent_id = p.id WHERE p.parent_id IS NULL ORDER BY p.name, c.name') as $r) {
+        $out[] = labor_text($r['labor'], $r['sub']);
+    }
+    return $out;
+}
+
+// The labor texts a centre may use: only those of the labores assigned to it
+// (centre_labores). A centre with none assigned may use none. $zoneId + $centre
+// name the centre.
+function centre_labor_options(PDO $pdo, int $zoneId, ?string $centre): array
+{
+    return centre_labor_map($pdo, $zoneId)[$centre ?? ''] ?? [];
+}
+
+// The labor texts each centre may use, for centres that have labores assigned
+// (centres without any are left out: they may use none). Keyed by centre name for one
+// zone, or by "zone_id|centre name" when $zoneId is null.
+function centre_labor_map(PDO $pdo, ?int $zoneId = null): array
+{
+    $sql = 'SELECT c.zone_id, c.name AS centre, l.name AS lname, p.name AS pname
+            FROM centre_labores cl
+            JOIN centres c ON c.id = cl.centre_id
+            JOIN labores l ON l.id = cl.labor_id
+            LEFT JOIN labores p ON p.id = l.parent_id' . ($zoneId !== null ? ' WHERE c.zone_id = ?' : '') . '
+            ORDER BY c.name, p.name, l.name';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($zoneId !== null ? [$zoneId] : []);
+    $map = [];
+    foreach ($stmt as $r) {
+        $key = $zoneId !== null ? $r['centre'] : $r['zone_id'] . '|' . $r['centre'];
+        // A sub-labor has a parent: "parent sub". A top-level labor stands alone.
+        $map[$key][] = $r['pname'] !== null ? labor_text($r['pname'], $r['lname']) : $r['lname'];
+    }
+    return $map;
+}
+
+// Why $labor can't be used at $centre, or null if it can (or is empty). A labor
+// that has sub-labores must be picked with one of them ("sm" alone is refused,
+// "sm agd" is fine). Legacy values already stored on a row are the caller's to
+// leave alone: only call this for a value that is being set.
+function labor_problem(PDO $pdo, int $zoneId, ?string $centre, ?string $labor): ?string
+{
+    if ($labor === null || $labor === '') {
+        return null;
+    }
+    if (!in_array($labor, labor_options($pdo), true)) {
+        return "Labor \"$labor\" isn't in Admin > Labores (a labor that has sub-labores needs one, e.g. \"sm agd\")";
+    }
+    if ($centre !== null && $centre !== '' && !in_array($labor, centre_labor_options($pdo, $zoneId, $centre), true)) {
+        return "Labor \"$labor\" isn't one of the labores of centre \"$centre\" (tick them on the centre under Admin > Centres)";
+    }
+    return null;
 }
 
 // Renders a <select>. $options is a list of values, or value => label.

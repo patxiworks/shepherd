@@ -341,7 +341,7 @@ window.pastoresInitToolbar = function () {
           <a href="/admin/zones/index.php">Zones</a>
           <a href="/admin/centres/index.php">Centres</a>
           <a href="/admin/sections/index.php">Sections</a>
-          <a href="/admin/labors/index.php">Labors</a>
+          <a href="/admin/labores/index.php">Labores</a>
           <a href="/admin/activity_types/index.php">Activity types</a>
         </div>
       </div>

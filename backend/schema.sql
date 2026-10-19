@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS centres (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   zone_id INT UNSIGNED NOT NULL,
   name VARCHAR(150) NOT NULL,
+  full_name VARCHAR(255) NULL,
   section VARCHAR(20) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uniq_centre_zone (zone_id, name),
@@ -61,7 +62,7 @@ CREATE TABLE IF NOT EXISTS activities (
   centre VARCHAR(150) NULL,
   activity VARCHAR(255) NULL,
   section VARCHAR(20) NULL,
-  labor VARCHAR(30) NULL,
+  labor VARCHAR(61) NULL,
   from_time TIME NULL,
   to_time TIME NULL,
   duration TIME NULL,
@@ -93,7 +94,7 @@ CREATE TABLE IF NOT EXISTS source (
   centre VARCHAR(150) NULL,
   activity VARCHAR(255) NULL,
   section VARCHAR(20) NULL,
-  labor VARCHAR(30) NULL,
+  labor VARCHAR(61) NULL,
   from_time TIME NULL,
   to_time TIME NULL,
   duration TIME NULL,
@@ -131,7 +132,7 @@ CREATE TABLE IF NOT EXISTS absences (
 -- ---------------------------------------------------------------------
 -- priests / sections / labors / activity_types: lookup lists behind the dropdowns on the
 -- admin Activities form. Managed (super admin only) under Admin > Priests,
--- Sections and Labors. activities.priest/section/labor store the *name*
+-- Sections and Labores. activities.priest/section/labor store the *name*
 -- (not an id), same as `centre`, so the frontend's JSON contract is
 -- unchanged; renaming an entry in the admin cascades to existing rows.
 -- ---------------------------------------------------------------------
@@ -140,6 +141,8 @@ CREATE TABLE IF NOT EXISTS absences (
 CREATE TABLE IF NOT EXISTS priests (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(150) NOT NULL UNIQUE,
+  full_name VARCHAR(255) NULL,
+  initials VARCHAR(20) NULL,
   zone_id INT UNSIGNED NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_priests_zone FOREIGN KEY (zone_id) REFERENCES zones(id) ON DELETE CASCADE
@@ -160,13 +163,28 @@ CREATE TABLE IF NOT EXISTS priest_zones (
 CREATE TABLE IF NOT EXISTS sections (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(20) NOT NULL UNIQUE,
+  colour VARCHAR(7) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS labors (
+-- labores: a labor (parent_id NULL) or one of its sub-labores. centre_labores:
+-- the labores a centre runs (the most specific entry: a sub-labor, or a labor
+-- without sub-labores). activities/source.labor store the text "labor sublabor".
+CREATE TABLE IF NOT EXISTS labores (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(30) NOT NULL UNIQUE,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  name VARCHAR(30) NOT NULL,
+  parent_id INT UNSIGNED NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_labor_parent (parent_id, name),
+  CONSTRAINT fk_labores_parent FOREIGN KEY (parent_id) REFERENCES labores(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS centre_labores (
+  centre_id INT UNSIGNED NOT NULL,
+  labor_id INT UNSIGNED NOT NULL,
+  PRIMARY KEY (centre_id, labor_id),
+  CONSTRAINT fk_centre_labores_centre FOREIGN KEY (centre_id) REFERENCES centres(id) ON DELETE CASCADE,
+  CONSTRAINT fk_centre_labores_labor FOREIGN KEY (labor_id) REFERENCES labores(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- activity_types: the list behind the Activity dropdown (Mass, Conf, ...).
@@ -182,9 +200,7 @@ CREATE TABLE IF NOT EXISTS activity_types (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Keep in sync with src/lib/section-colors.ts in the Next.js app.
-INSERT IGNORE INTO sections (name) VALUES ('sf'), ('sv'), ('c-m'), ('c-w'), ('p-m'), ('p-w');
-INSERT IGNORE INTO labors (name) VALUES ('sm'), ('sg'), ('sr'), ('sm agd'), ('sr club'), ('seminarians'), ('priests');
+INSERT IGNORE INTO sections (name, colour) VALUES ('sf', '#FFB74D'), ('sv', '#64B5F6'), ('c-m', '#81C784'), ('c-w', '#FFF176'), ('p-m', '#F06292'), ('p-w', '#BA68C8');
 
 -- Multi-day activity types, ported from the standalone "Painted Calendar"
 -- venue-booking tool (see migrate/015_multiday_activities.sql).
@@ -222,7 +238,7 @@ CREATE TABLE IF NOT EXISTS multiday_activities (
   centre VARCHAR(150) NULL,
   activity VARCHAR(255) NULL,
   section VARCHAR(20) NULL,
-  labor VARCHAR(30) NULL,
+  labor VARCHAR(61) NULL,
   priest VARCHAR(150) NULL,
   start_date DATE NOT NULL,
   start_time TIME NULL,

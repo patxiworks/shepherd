@@ -1,6 +1,6 @@
 <?php
 // Import for the tables under the admin "Structure" menu: zones, centres,
-// sections, labors and activity types. The rows come from the same readers as
+// sections and activity types. The rows come from the same readers as
 // the Activities/Source importers (CSV, XLSX, Google Sheets: see
 // activity_io.php). Import only ever ADDS: a row whose key already exists is
 // skipped and nothing existing is changed, so importing a file twice is safe.
@@ -10,7 +10,6 @@ const STRUCTURE_IMPORT_TABLES = [
     'zones' => ['Zones', ['name'], 'name'],
     'centres' => ['Centres', ['zone', 'name', 'section'], 'zone (must already exist), name, section (optional; must already exist in Sections)'],
     'sections' => ['Sections', ['name'], 'name'],
-    'labors' => ['Labors', ['name'], 'name'],
     'activity_types' => ['Activity types', ['name', 'is_multiday'], 'name, multi-day (optional: yes/no, 1/0)'],
 ];
 
@@ -62,7 +61,7 @@ function import_structure(PDO $pdo, string $table, array $rows): array
         throw new ImportException('Too many rows (limit ' . ACTIVITY_IO_MAX_ROWS . ' per import).');
     }
 
-    $maxLen = ['zones' => 100, 'centres' => 150, 'sections' => 20, 'labors' => 30, 'activity_types' => 255][$table];
+    $maxLen = ['zones' => 100, 'centres' => 150, 'sections' => 20, 'activity_types' => 255][$table];
     $cell = function (array $row, string $key) use ($col): string {
         return isset($col[$key]) ? trim(import_text((string) ($row[$col[$key]] ?? ''))) : '';
     };

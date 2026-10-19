@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import type { AccordionGroupData, GroupItem } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getLaborColor } from '@/lib/section-colors';
 
 interface GridAccordionItemContentProps {
   item: AccordionGroupData;
@@ -44,7 +43,6 @@ export function GridAccordionItemContent({ item, groupBy, mass, userRole }: Grid
         <TableBody>
           {item.items.map((activityItem, index) => {
             const cells = getCellData(activityItem);
-            const rowColor = getLaborColor(activityItem.labor);
 
             return (
               <TableRow 

@@ -425,7 +425,7 @@ $allPriests = priests_by_zone($pdo, $isZoneScoped ? (int) $admin['zone_id'] : nu
 $formPriests = array_column(array_filter($allPriests, fn($r) => (int) $r['zone_id'] === $formZoneId), 'name');
 $activityOptions = $pdo->query("SELECT name FROM activity_types WHERE is_multiday = 1 ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
 $sectionOptions = lookup_names($pdo, 'sections');
-$laborOptions = lookup_names($pdo, 'labors');
+$laborOptions = labor_options($pdo);
 
 $toTimeInput = fn(?string $t) => $t ? substr($t, 0, 5) : '';
 $showDateFilter = fn(string $d) => date('d/m/Y', strtotime($d));

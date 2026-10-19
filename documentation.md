@@ -91,15 +91,18 @@ PHP API directly.
 - `AccordionGroupData` / `GroupItem` — the derived shape used to render
   the accordion, grouped by date/centre/activity.
 
-### Section/labor colour coding
+### Section colour coding
 
-[`src/lib/section-colors.ts`](src/lib/section-colors.ts) hardcodes the
-known `section` values (`sf`, `sv`, `c-m`, `c-w`, `p-m`, `p-w`) and
-`labor` values (`sm`, `sg`, `sr`, `sm agd`, `sr club`, `seminarians`,
-`priests`) to colours. The lists of valid sections/labors now live in the
-`sections`/`labors` database tables (managed in the admin panel), but the
-*colours* are still hardcoded here — so when you add a section or labor in
-the admin, add a matching colour in this file too.
+Section colours are set in the admin (Structure → Sections: each section has a
+colour picker, stored in `sections.colour`) and served by
+[`backend/api/sections.php`](backend/api/sections.php) as
+`{ "sections": { "sf": "#FFB74D", ... } }`. The Next.js app reads them through
+[`src/app/api/sections/route.ts`](src/app/api/sections/route.ts), which proxies
+the URL in the `SECTIONS_API_URL` environment variable (unset → `{}`), and
+applies them with `setSectionColors()` whenever it fetches fresh data.
+[`src/lib/section-colors.ts`](src/lib/section-colors.ts) only holds the
+**fallback** colours used until then (and for a section with no colour).
+Labores have no colours.
 
 ### Local dev
 
@@ -138,7 +141,7 @@ instead of editing a spreadsheet.
 
 ```
 zones (id, name, last_update)
-  └─ centres (id, zone_id, name, section)
+  └─ centres (id, zone_id, name, full_name, section)
   └─ users (id, zone_id, name, centre, section, passcode_hash, role)  -- the ZoneUser login accounts
   └─ activities (id, zone_id, unit, week, day, weekday, activity_date,
                  centre, activity, section, labor, from_time, to_time,
@@ -167,10 +170,12 @@ liturgical_calendar (cal_date, celebration, class, liturgical_rank, color,
                              -- Settings by the PHP port of ROMCAL
                              -- (backend/includes/romcal/); see README
 
-priests (id, name, zone_id)  -- lookup lists behind the Activities form
+priests (id, name, full_name, initials, zone_id)  -- lookup lists behind the Activities form
   └─ priest_zones (priest_id, zone_id)  -- extra zones a priest also serves in;
-sections (id, name)          -- activities.priest/section/labor/activity
-labors (id, name)            -- store the *name*, not an id
+sections (id, name, colour)  -- activities.priest/section/labor/activity
+labores (id, name, parent_id) -- store the *name*, not an id. A labor has
+                             -- parent_id NULL; its sub-labores point at it
+  └─ centre_labores (centre_id, labor_id)  -- the labores each centre runs
 activity_types (id, name, is_multiday)  -- is_multiday = 1: a multi-day programme type
 
 admin_users (id, username, password_hash, role, zone_id, centre_id)  -- PHP admin-panel logins, separate from `users` above
@@ -186,9 +191,10 @@ them:
 | Auth | zone + passcode | username + password |
 | Scope model | flat (`role` string like `admin`/`ctr`, used only for frontend UI branching) | structured RBAC (`super`/`zone`/`centre`, see below) |
 
-`priests`, `sections`, `labors` and `activity_types` are lookup tables that feed the
+`priests`, `sections` and `activity_types` are lookup tables that feed the
 Activities form (`sections` only feeds the Centres/Users forms now — see
-below). Sections and labors are global; each priest has a home zone
+below), and `labores` is the labor/sub-labor tree (next section).
+Sections and labores are global; each priest has a home zone
 (`priests.zone_id`) and can also serve in other zones (`priest_zones`, e.g. a
 temporary transfer — "Also serves in" on the Priests page: a type-to-search field that adds zones as removable chips). The priests "of" a
 zone are those whose home it is plus those who list it, and that is what the
@@ -198,9 +204,49 @@ transferred priest shows up under both zones. Ending a transfer means
 unticking the zone, which is refused while that zone's source rows still use
 the priest. Priest names stay unique across zones (one person, one entry). Like
 `centre`, `activities.priest/section/labor` hold the name as text rather
-than a foreign key, so the frontend JSON is unchanged. Renaming an entry in
+than a foreign key, so the frontend JSON is unchanged. For labor that text is
+the labor's name followed by the sub-labor's — `sm agd` — or just the name for a
+labor without sub-labores (`labor_text()` in `functions.php`; the columns are
+`VARCHAR(61)`). Renaming an entry in
 the admin cascades to the existing rows that use it; deleting one leaves
 existing rows alone (the edit form still shows their current value).
+
+**Full names.** Centres have an optional `full_name` and priests an optional
+`full_name` and `initials` (migration `021_full_names.sql`), edited on their
+admin forms and shown as columns in the lists. They are display-only: `name`
+stays the short name that activities, source etc. store, and the Structure
+import doesn't read them.
+
+### Labores
+
+Admin → Structure → **Labores** (`admin/labores/index.php`, super admin) manages
+a two-level tree in the `labores` table: a labor (e.g. `sm`) with its
+sub-labores (`agd`, `club`, …). One table, `parent_id` NULL for a labor. The page
+lists each labor with its sub-labores as chips (rename ✎ / delete ×, "+ sub-labor"
+adds one). Renaming a labor or sub-labor rewrites the `labor` text in
+`activities`, `source` and `multiday_activities`; deleting is refused while
+`source` uses it (a labor's check includes its sub-labores) and removes the
+labor's sub-labores with it.
+
+**Which labores a centre runs** is `centre_labores`, set on the Centres form as
+a checkbox panel grouped by labor (and shown as a "Labores" column, e.g.
+`sm: agd, club · sg`). The tick is on the most specific entry: each
+sub-labor, or the labor itself when it has none ("whole labor"). Adding the first
+sub-labor to a labor drops the centres' bare ticks of it (the flash message
+says how many centres need re-ticking).
+
+**Rule (strict):** a labor with sub-labores is always chosen with one of them —
+`sm` alone is not valid, `sm agd` is (`labor_options()` lists only valid texts).
+A centre offers **only** the labores ticked on its record: with none ticked, its Labor
+dropdowns are empty and a labor can't be saved for it.
+The Source and Activities forms, the Source inline editor and the Activities
+Grid offer only the centre's texts and the server refuses others
+(`labor_problem()`, `source_resolve()`, the grid's cell save); a value a row
+already has is left alone. The Activities/Multi-day importers check the
+global list only (not per centre). The old flat `labors` table was dropped by
+`migrate/020_labores.sql` without carrying its values over, and there is no
+Labors import (Structure import covers Zones, Centres, Sections and Activity
+types). Section names and colours are edited on the Sections page.
 
 `centre` in `activities`/`users` is a **free-text string**, not a foreign
 key to `centres.id` — it has to match a centre's `name` exactly. This
@@ -329,7 +375,7 @@ stripe and the hover tint.
 **Top nav** (`layout_top.php`, role-aware, built from `$_SESSION['admin_role']`):
 a super admin gets four click-to-open dropdowns (`.nav-drop`, toggled by the
 shared script in `layout_bottom.php`), in order — **Structure** (Zones,
-Centres, Sections, Labors, Activity types), **People** (Users, Priests,
+Centres, Sections, Labores, Activity types), **People** (Users, Priests,
 Admins), **Records** (Source, Absences) and **Activities** (Regular →
 Activities List, Multi-day → Multi-day Activities List) — plus **Settings**
 as a plain top-level link.
@@ -569,7 +615,10 @@ identity/value are never colour or angle alone.
 - *Centre* and *Priest* are dropdowns of the selected zone's centres/priests
   (re-filtered in the browser when a super admin changes the Zone).
 - *Activity* and *Labor* are dropdowns fed from the `activity_types` and
-  `labors` tables (Admin → Activity types / Labors, super admin).
+  `labores` tables (Admin → Activity types / Labores, super admin). The Labor
+  dropdown offers only the labores of the chosen centre (re-filled in the
+  browser when the centre changes; see "Labores" below), and saving a labor the
+  centre doesn't run is refused (`labor_problem()`).
 - **Unit and Frequency were removed from the admin form and table.** The
   `activities.unit` / `mfrequency` columns and the API output are untouched,
   and existing values are preserved when an activity is saved.
@@ -883,7 +932,8 @@ from Activities:
 - **Source only holds values that exist in the lookup tables.** `centre`,
   `priest`, `activity` and `labor` are text (as in activities), but they must
   be entries of `centres` (of the row's zone), `priests` (of the row's zone),
-  `activity_types` and `labors`; the section is always the centre's. This is
+  `activity_types` and the labores (the labor must also be one of the centre's
+  labores when it has any assigned); the section is always the centre's. This is
   enforced in code, not by foreign keys (`source_resolve()` /
   `source_lookups()` in `source_io.php`): the New/Edit form, the inline editor
   and the import all reject an unknown value with a message saying where to
@@ -1230,12 +1280,12 @@ database) and no dark-mode toggle (it uses the admin theme colours).
 ### Import of Structure tables (Settings → Import data)
 
 Super admin. One card on the Settings page imports into any table of the Structure menu —
-Zones, Centres, Sections, Labors, Activity types — from a CSV or XLSX upload or a Google
+Zones, Centres, Sections, Activity types — from a CSV or XLSX upload or a Google
 Sheets link (same readers as the Activities/Source importers in
 [`backend/includes/activity_io.php`](backend/includes/activity_io.php); sheet must be shared
 "Anyone with the link can view"). Code: [`backend/includes/structure_import.php`](backend/includes/structure_import.php).
 First row = header, columns in any order: Zones `name`; Centres `zone`, `name`, `section`
-(optional); Sections `name`; Labors `name`; Activity types `name`, `is_multiday` (optional,
+(optional); Sections `name`; Activity types `name`, `is_multiday` (optional,
 yes/no/1/0). Import **only adds**: rows whose key already exists (name; zone + name for
 centres, case-insensitive) are skipped and nothing existing is changed. A centre's zone
 and section must already exist, so import Zones/Sections first. Invalid rows (empty or
@@ -1342,8 +1392,8 @@ contracts were deliberately kept identical.
 | Change the admin home's Priests load summary panel (load rule, alerts, weights) | [`backend/includes/pastoral_dashboard.php`](backend/includes/pastoral_dashboard.php) |
 | Change the admin theme colours (sky blue default / liturgical season) | [`backend/includes/theme.php`](backend/includes/theme.php); the choice is in Admin → Settings → Theme |
 | Change which day the week starts on | Admin panel → Settings (super admin); also renumbers `activities.weekday` and `source.day` |
-| Add/rename/move a priest, or add a section, labor or activity type | Admin panel → Priests / Sections / Labors / Activity types (super admin). A centre's section is set on the Centres page. |
-| Add a section/labor *colour* | [`src/lib/section-colors.ts`](src/lib/section-colors.ts) |
+| Add/rename/move a priest, or add a section, labor or activity type | Admin panel → Priests / Sections / Labores / Activity types (super admin). A centre's section and labores are set on the Centres page. |
+| Change a section's *colour* | Admin panel → Sections (colour picker). Fallbacks for the public app: [`src/lib/section-colors.ts`](src/lib/section-colors.ts) |
 | Change what a `zone`/`centre` admin can access | `admin_require_role()` calls and `*_in_scope()` functions in `backend/admin/<entity>/index.php` |
 | Add a new admin access level or field | [`backend/schema.sql`](backend/schema.sql) `admin_users` table + [`backend/includes/auth.php`](backend/includes/auth.php) + [`backend/admin/admins/index.php`](backend/admin/admins/index.php) |
 | Change how the multi-day Roll forward shifts dates or places Free/Maintenance placeholders | [`backend/includes/multiday_rollforward.php`](backend/includes/multiday_rollforward.php) (`mday_roll_plan()`, `mday_roll_apply()`; the form/preview are in `index.php`) |

@@ -440,8 +440,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $id = $_POST['id'] ?? '';
         $fields = activity_fields($pdo, $admin, $scopeCentreName, $zoneId, $id !== '' ? (int) $id : null, $_POST, $weekStart);
 
+        // A labor that is being set must be one the centre runs (a value the row already has is left alone).
+        $oldLabor = null;
+        if ($id !== '') {
+            $stmt = $pdo->prepare('SELECT labor FROM activities WHERE id = ?');
+            $stmt->execute([(int) $id]);
+            $oldLabor = $stmt->fetchColumn() ?: null;
+        }
+        $laborError = $fields['labor'] !== $oldLabor ? labor_problem($pdo, $zoneId, $fields['centre'], $fields['labor']) : null;
+
         if (!$zoneId) {
             flash('error', 'Zone is required.');
+        } elseif ($laborError) {
+            flash('error', $laborError . '.');
         } elseif ($id !== '' && !activity_in_scope($pdo, (int) $id, $admin, $scopeCentreName)) {
             flash('error', 'You do not have access to that activity.');
         } else {
@@ -539,13 +550,14 @@ if ($admin['role'] === 'super') {
 // (super admins can switch zones in the form); the server renders the
 // initial zone's list so the form is right before any JS runs.
 $zoneScope = $admin['role'] === 'super' ? '' : 'WHERE zone_id = ' . (int) $admin['zone_id'];
+$centreLabors = centre_labor_map($pdo); // "zone_id|centre" => labor texts, for centres that have labores assigned
 $allCentres = $pdo->query("SELECT zone_id, name, section FROM centres $zoneScope ORDER BY name")->fetchAll();
 $allPriests = priests_by_zone($pdo, $admin['role'] === 'super' ? null : (int) $admin['zone_id']); // home zone or also serving there
 $formZoneId = (int) ($editing['zone_id'] ?? $filterZone);
 $inFormZone = fn(array $rows) => array_values(array_filter($rows, fn($r) => (int) $r['zone_id'] === $formZoneId));
 $formCentres = array_column($inFormZone($allCentres), 'name');
 $formPriests = array_column($inFormZone($allPriests), 'name');
-$laborOptions = lookup_names($pdo, 'labors');
+$laborOptions = labor_options($pdo);
 $sectionOptions = lookup_names($pdo, 'sections');
 $activityOptions = lookup_names($pdo, 'activity_types');
 
@@ -892,7 +904,7 @@ require __DIR__ . '/../includes/layout_top.php';
     <div class="row">
       <div>
         <label for="labor">Labor</label>
-        <?php render_select('labor', 'labor', $laborOptions, $editing['labor'] ?? null, 'Select a labor'); ?>
+        <?php render_select('labor', 'labor', $editing ? centre_labor_options($pdo, (int) $editing['zone_id'], $editing['centre']) : [], $editing['labor'] ?? null, 'Select a labor'); ?>
       </div>
       <div>
         <label for="priest">Priest</label>
@@ -1423,6 +1435,7 @@ if ($dayValue !== '' && absences_available($pdo)) {
   var centres = <?= json_encode($allCentres) ?>;           // {zone_id, name, section}
   var priests = <?= json_encode($allPriests) ?>;           // {zone_id, name}
   var labors = <?= json_encode($laborOptions) ?>;
+  var centreLabors = <?= json_encode($centreLabors) ?>;  // "zone|centre" => labor texts (centres with labores assigned)
   var activityTypes = <?= json_encode($activityOptions) ?>;
   var fixedCentre = <?= json_encode($admin['role'] === 'centre' ? $scopeCentreName : null) ?>;
   var dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -1475,13 +1488,27 @@ if ($dayValue !== '' && absences_available($pdo)) {
     });
   }
 
+  // Offer the labores of the chosen centre (every labor when it has none assigned).
+  var laborSel = document.getElementById('labor');
+  function refillLabors() {
+    var name = centreSel ? centreSel.value : fixedCentre;
+    var list = ((name && centreLabors[formZone() + '|' + name]) || []).slice(); // only the centre's own labores
+    var keep = laborSel.value;
+    if (keep && list.indexOf(keep) < 0) list.push(keep); // a stored value that's no longer valid stays selectable
+    laborSel.innerHTML = '';
+    laborSel.add(new Option('Select a labor', ''));
+    list.forEach(function (l) { laborSel.add(new Option(l, l, false, l === keep)); });
+  }
+
   dateInput.addEventListener('input', showDateHint);
-  if (centreSel) centreSel.addEventListener('change', showSectionHint);
+  if (centreSel) centreSel.addEventListener('change', function () { showSectionHint(); refillLabors(); });
+  refillLabors();
   if (zoneSel) {
     zoneSel.addEventListener('change', function () {
       if (centreSel) refill(centreSel, centres, 'Select a centre');
       refill(priestSel, priests, 'Select a priest');
       showSectionHint();
+      refillLabors();
     });
   }
 
@@ -1498,7 +1525,7 @@ if ($dayValue !== '' && absences_available($pdo)) {
     var list = type === 'centre' ? centres.filter(function (c) { return c.zone_id == zone; }).map(function (c) { return c.name; })
       : type === 'priest' ? priests.filter(function (p) { return p.zone_id == zone; }).map(function (p) { return p.name; })
       : type === 'activity' ? activityTypes.slice()
-      : labors.slice();
+      : []; // the table has no Labor cell; the form offers the centre's own labores
     if (current && list.indexOf(current) < 0) list.push(current); // keep values that are no longer in the list
     return list;
   }

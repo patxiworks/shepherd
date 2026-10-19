@@ -14,7 +14,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Loader2, XIcon, CalendarIcon, RefreshCw, WifiOff } from 'lucide-react';
 import { parse, parseISO, format as formatDate } from 'date-fns';
 import { format as formatDateFnsTz, toZonedTime } from 'date-fns-tz';
-import { getSectionColor, getLaborColor } from '@/lib/section-colors';
+import { getSectionColor, setSectionColors } from '@/lib/section-colors';
 
 const sortAccordionGroups = (a: AccordionGroupData, b: AccordionGroupData, groupBy: 'centre' | 'activity' | 'date'): number => {
     if (groupBy === 'date') {
@@ -93,6 +93,11 @@ export default function HomePage() {
             localStorage.setItem('zoneUser', JSON.stringify(updatedUser));
             setUserRole(updatedUser.role);
         }
+
+        try {
+            const colourResponse = await fetch('/api/sections');
+            if (colourResponse.ok) setSectionColors((await colourResponse.json()).sections || {});
+        } catch { /* keep the default colours */ }
 
         setAllActivities(data.activities || []);
         setMassesData(data.masses || {});
@@ -713,15 +718,7 @@ export default function HomePage() {
                       <SelectContent>
                           {labors.map(labor => (
                               <SelectItem key={labor} value={labor}>
-                                  <div className="flex items-center gap-2">
-                                  {labor !== 'All Labor' && (
-                                      <div 
-                                      className="h-4 w-4 rounded-full"
-                                      style={{ backgroundColor: getLaborColor(labor) }}
-                                      />
-                                  )}
                                   <span>{labor}</span>
-                                  </div>
                               </SelectItem>
                           ))}
                       </SelectContent>

@@ -29,7 +29,7 @@ function lookup_save_extra_zones(PDO $pdo, string $table, int $id, array $zoneId
 }
 
 // Shared list + create/rename/delete page for the name-only lookup tables
-// that feed the Activities dropdowns (priests, sections, labors). Super
+// that feed the Activities dropdowns (priests, sections, activity types). Super
 // admin only. Each admin/<entity>/index.php is a thin wrapper around this.
 //
 // $cfg keys:
@@ -44,6 +44,8 @@ function lookup_save_extra_zones(PDO $pdo, string $table, int $id, array $zoneId
 //   multiday optional bool (activity_types only): the form gets a "Multi-day
 //            programme" checkbox saved to the is_multiday column (needs
 //            migration 015), and the list shows it.
+//   colour   optional bool (sections only): the form gets a colour picker saved to
+//            the colour column (needs migration 020) and the list shows it.
 //   used_in  list of [table, column] pairs that store this name as free
 //            text. Renaming an entry is cascaded to these; the "In use"
 //            count on the list is computed from them too. An entry that
@@ -66,6 +68,8 @@ function lookup_admin_page(array $cfg): void
     $url = '/admin/' . $table . '/index.php';
     $hasZone = !empty($cfg['zone']);
     $hasMultiday = !empty($cfg['multiday']);
+    $hasColour = !empty($cfg['colour']);
+    $isPriests = $table === 'priests'; // priests also have a full name and initials (migration 021)
 
     // Deleting an entry the source table still uses is refused (shared by Delete and bulk delete).
     $deleteOne = function (int $id) use ($pdo, $table, $cfg): ?string {
@@ -93,6 +97,9 @@ function lookup_admin_page(array $cfg): void
             $name = trim($_POST['name'] ?? '');
             $zoneId = (int) ($_POST['zone_id'] ?? 0);
             $isMultiday = isset($_POST['is_multiday']) ? 1 : 0;
+            $fullName = mb_substr(trim($_POST['full_name'] ?? ''), 0, 255) ?: null;
+            $initials = mb_substr(trim($_POST['initials'] ?? ''), 0, 20) ?: null;
+            $colour = preg_match('/^#[0-9a-fA-F]{6}$/', $_POST['colour'] ?? '') ? strtoupper($_POST['colour']) : null;
             // Other zones the entry also serves in (never its home zone).
             $extraZones = array_values(array_unique(array_filter(array_map('intval', (array) ($_POST['extra_zones'] ?? [])), fn($z) => $z && $z !== $zoneId)));
             if ($name === '' || ($hasZone && !$zoneId)) {
@@ -129,7 +136,9 @@ function lookup_admin_page(array $cfg): void
                             }
                         }
                         if ($hasZone) {
-                            $pdo->prepare("UPDATE $table SET name = ?, zone_id = ? WHERE id = ?")->execute([$name, $zoneId, (int) $id]);
+                            $pdo->prepare("UPDATE $table SET name = ?, full_name = ?, initials = ?, zone_id = ? WHERE id = ?")->execute([$name, $fullName, $initials, $zoneId, (int) $id]);
+                        } elseif ($hasColour) {
+                            $pdo->prepare("UPDATE $table SET name = ?, colour = ? WHERE id = ?")->execute([$name, $colour, (int) $id]);
                         } elseif ($hasMultiday) {
                             $pdo->prepare("UPDATE $table SET name = ?, is_multiday = ? WHERE id = ?")->execute([$name, $isMultiday, (int) $id]);
                         } else {
@@ -137,6 +146,10 @@ function lookup_admin_page(array $cfg): void
                         }
                         if ($hasZone) {
                             lookup_save_extra_zones($pdo, $table, (int) $id, $extraZones);
+                        }
+                        if ($hasColour) {
+                            // A colour change shows up in the public app too.
+                            $pdo->exec('UPDATE zones SET last_update = UTC_TIMESTAMP()');
                         }
                         if ($oldName !== false && $oldName !== $name) {
                             foreach ($cfg['used_in'] as [$t, $col]) {
@@ -151,9 +164,11 @@ function lookup_admin_page(array $cfg): void
                     } else {
                         if ($hasZone) {
                             $pdo->beginTransaction();
-                            $pdo->prepare("INSERT INTO $table (name, zone_id) VALUES (?, ?)")->execute([$name, $zoneId]);
+                            $pdo->prepare("INSERT INTO $table (name, full_name, initials, zone_id) VALUES (?, ?, ?, ?)")->execute([$name, $fullName, $initials, $zoneId]);
                             lookup_save_extra_zones($pdo, $table, (int) $pdo->lastInsertId(), $extraZones);
                             $pdo->commit();
+                        } elseif ($hasColour) {
+                            $pdo->prepare("INSERT INTO $table (name, colour) VALUES (?, ?)")->execute([$name, $colour]);
                         } elseif ($hasMultiday) {
                             $pdo->prepare("INSERT INTO $table (name, is_multiday) VALUES (?, ?)")->execute([$name, $isMultiday]);
                         } else {
@@ -219,6 +234,22 @@ function lookup_admin_page(array $cfg): void
         <label for="name">Name</label>
         <input type="text" id="name" name="name" value="<?= e($editing['name'] ?? '') ?>" required>
       </div>
+      <?php if ($isPriests): ?>
+      <div>
+        <label for="full_name">Full name</label>
+        <input type="text" id="full_name" name="full_name" maxlength="255" value="<?= e($editing['full_name'] ?? '') ?>">
+      </div>
+      <div>
+        <label for="initials">Initials</label>
+        <input type="text" id="initials" name="initials" maxlength="20" value="<?= e($editing['initials'] ?? '') ?>">
+      </div>
+      <?php endif; ?>
+      <?php if ($hasColour): ?>
+      <div>
+        <label for="colour">Colour</label>
+        <input type="color" id="colour" name="colour" value="<?= e($editing['colour'] ?? '#E0E0E0') ?>">
+      </div>
+      <?php endif; ?>
       <?php if ($hasZone): ?>
       <div>
         <label for="zone_id">Zone</label>
@@ -323,11 +354,13 @@ function lookup_admin_page(array $cfg): void
 </div>
 
 <table>
-  <thead><tr><th>Name</th><?php if ($hasZone): ?><th>Zone</th><th>Also serves in</th><?php endif; ?><?php if ($hasMultiday): ?><th>Multi-day</th><?php endif; ?><th>In use</th><th></th></tr></thead>
+  <thead><tr><th>Name</th><?php if ($isPriests): ?><th>Full name</th><th>Initials</th><?php endif; ?><?php if ($hasColour): ?><th>Colour</th><?php endif; ?><?php if ($hasZone): ?><th>Zone</th><th>Also serves in</th><?php endif; ?><?php if ($hasMultiday): ?><th>Multi-day</th><?php endif; ?><th>In use</th><th></th></tr></thead>
   <tbody>
   <?php foreach ($rows as $row): ?>
     <tr>
       <td><?= e($row['name']) ?></td>
+      <?php if ($isPriests): ?><td><?= e($row['full_name'] ?? '') ?: '—' ?></td><td><?= e($row['initials'] ?? '') ?: '—' ?></td><?php endif; ?>
+      <?php if ($hasColour): ?><td><span style="display:inline-block;width:18px;height:18px;border-radius:4px;vertical-align:middle;border:1px solid #0002;background:<?= e($row['colour'] ?: '#E0E0E0') ?>"></span> <?= e($row['colour'] ?: '—') ?></td><?php endif; ?>
       <?php if ($hasZone): ?><td><?= e($row['zone_name'] ?? '—') ?></td><td><?= e(implode(', ', $extras[(int) $row['id']] ?? [])) ?: '—' ?></td><?php endif; ?>
       <?php if ($hasMultiday): ?><td data-sort="<?= (int) $row['is_multiday'] ?>"><?= $row['is_multiday'] ? 'Yes' : '' ?></td><?php endif; ?>
       <td><?= (int) $row['in_use'] ?></td>
@@ -342,7 +375,7 @@ function lookup_admin_page(array $cfg): void
     </tr>
   <?php endforeach; ?>
   <?php if (!$rows): ?>
-    <tr><td colspan="<?= ($hasZone ? 5 : 3) + ($hasMultiday ? 1 : 0) ?>" style="text-align:center;color:#888;">Nothing here yet.</td></tr>
+    <tr><td colspan="<?= ($hasZone ? 5 : 3) + ($hasMultiday ? 1 : 0) + ($hasColour ? 1 : 0) + ($isPriests ? 2 : 0) ?>" style="text-align:center;color:#888;">Nothing here yet.</td></tr>
   <?php endif; ?>
   </tbody>
 </table>

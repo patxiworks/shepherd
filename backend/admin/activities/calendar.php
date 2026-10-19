@@ -232,7 +232,7 @@ if ($admin['role'] !== 'centre') {
     $centreOptions = $centreStmt->fetchAll(PDO::FETCH_COLUMN);
 }
 $sectionOptions = lookup_names($pdo, 'sections');
-$groupOptions = lookup_names($pdo, 'labors');
+$groupOptions = labor_options($pdo);
 $activityOptions = lookup_names($pdo, 'activity_types');
 $priestOptions = array_values(array_unique(array_column(priests_by_zone($pdo, $zoneId), 'name')));
 

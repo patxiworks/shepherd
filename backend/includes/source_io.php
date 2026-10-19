@@ -19,7 +19,7 @@ const SOURCE_IO_IMPORT_COLUMNS = [...SOURCE_IO_COLUMNS, 'unit'];
 function source_lookups(PDO $pdo): array
 {
     $lc = fn(string $s) => mb_strtolower($s);
-    $lk = ['zones' => [], 'zone_names' => [], 'centres' => [], 'priests' => [], 'types' => [], 'labors' => []];
+    $lk = ['zones' => [], 'zone_names' => [], 'centres' => [], 'priests' => [], 'types' => [], 'labors' => [], 'centre_labores' => []];
     foreach ($pdo->query('SELECT id, name FROM zones') as $z) {
         $lk['zones'][$lc($z['name'])] = (int) $z['id'];
         $lk['zone_names'][(int) $z['id']] = $z['name'];
@@ -30,10 +30,16 @@ function source_lookups(PDO $pdo): array
     foreach (priests_by_zone($pdo) as $p) {
         $lk['priests'][(int) $p['zone_id']][$lc($p['name'])] = $p['name'];
     }
-    foreach ([['types', 'activity_types'], ['labors', 'labors']] as [$key, $table]) {
-        foreach ($pdo->query("SELECT name FROM $table") as $t) {
-            $lk[$key][$lc($t['name'])] = $t['name'];
-        }
+    foreach ($pdo->query('SELECT name FROM activity_types') as $t) {
+        $lk['types'][$lc($t['name'])] = $t['name'];
+    }
+    foreach (labor_options($pdo) as $text) {
+        $lk['labors'][$lc($text)] = $text;
+    }
+    // The labor texts of the centres that have labores assigned (see centre_labor_map()).
+    foreach (centre_labor_map($pdo) as $key => $texts) {
+        [$zid, $cname] = explode('|', $key, 2);
+        $lk['centre_labores'][(int) $zid][$lc($cname)] = array_map($lc, $texts);
     }
     return $lk;
 }
@@ -67,6 +73,12 @@ function source_resolve(array $lk, int $zoneId, array $in): array
     }
     $values['activity'] = $find('activity', $in['activity'] ?? null, $lk['types'], '');
     $values['labor'] = $find('labor', $in['labor'] ?? null, $lk['labors'], '');
+    // A centre only takes the labores assigned to it (none, if none are).
+    $allowed = $values['centre'] !== null ? ($lk['centre_labores'][$zoneId][mb_strtolower($values['centre'])] ?? []) : null;
+    if ($values['labor'] !== null && $allowed !== null && !in_array(mb_strtolower($values['labor']), $allowed, true)) {
+        $problems[] = ['labor', $values['labor'], "labor \"{$values['labor']}\" isn't one of the labores of centre \"{$values['centre']}\""];
+        $values['labor'] = null;
+    }
     $values['priest'] = $find('priest', $in['priest'] ?? null, $lk['priests'][$zoneId] ?? [], $inZone);
     $values['alt_priest'] = $find('alt_priest', $in['alt_priest'] ?? null, $lk['priests'][$zoneId] ?? [], $inZone);
     return [$values, $problems];

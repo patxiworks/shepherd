@@ -41,7 +41,7 @@ $centreStmt->execute($scopeCentreName !== null ? [$zoneId, $scopeCentreName] : [
 $centres = $centreStmt->fetchAll();
 $types = $pdo->query('SELECT name FROM activity_types WHERE is_multiday = 0 ORDER BY name')->fetchAll(PDO::FETCH_COLUMN);
 $priestOptions = array_values(array_unique(array_column(priests_by_zone($pdo, $zoneId), 'name')));
-$laborOptions = lookup_names($pdo, 'labors');
+$laborOptions = labor_options($pdo);
 
 $dateIn = (string) ($_GET['date'] ?? $_POST['date'] ?? '');
 $date = date_parts($dateIn) ? $dateIn : date('Y-m-d');
@@ -210,6 +210,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') ==
         $reply(['error' => 'Bad request.'], 400);
     }
     $parts = date_parts($date, $weekStart);
+    $centreLaborOptions = centre_labor_options($pdo, $zoneId, $centre);
     $existing = $pdo->prepare('SELECT id FROM activities WHERE zone_id = ? AND activity_date = ? AND centre = ? AND activity = ?');
     $existing->execute([$zoneId, $date, $centre, $activity]);
     $existingIds = array_map('intval', $existing->fetchAll(PDO::FETCH_COLUMN));
@@ -227,8 +228,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') ==
                 throw new InvalidArgumentException("$priest is not one of this zone's priests.");
             }
             $labor = trim((string) ($en['labor'] ?? '')) ?: null;
-            if ($labor !== null && !in_array($labor, $laborOptions, true)) {
-                throw new InvalidArgumentException("Unknown group: $labor.");
+            if ($labor !== null && !in_array($labor, $centreLaborOptions, true)) {
+                throw new InvalidArgumentException("$labor is not one of the labores of $centre.");
             }
             $from = $time($en['from_time'] ?? '');
             $to = $time($en['to_time'] ?? '');
@@ -418,6 +419,7 @@ require __DIR__ . '/../includes/layout_top.php';
 <script>
 (function () {
   var priests = <?= json_encode($priestOptions) ?>, labors = <?= json_encode($laborOptions) ?>;
+  var centreLabors = <?= json_encode(centre_labor_map($pdo, $zoneId)) ?>; // centre => labor texts, for centres with labores assigned
   var zoneId = <?= (int) $zoneId ?>, date = <?= json_encode($date) ?>;
   var dlg = document.getElementById('g-dlg'), form = document.getElementById('g-form'), rows = document.getElementById('g-rows'), err = document.getElementById('g-err');
   var cur = null;
@@ -437,7 +439,7 @@ require __DIR__ . '/../includes/layout_top.php';
     d.innerHTML = '<div><label>Priest</label><select class="r-priest">' + opts(priests, en.priest, '— none —') + '</select></div>'
       + '<div><label>From</label><input type="time" class="r-from"></div>'
       + '<div><label>To</label><input type="time" class="r-to"></div>'
-      + '<div><label>Group</label><select class="r-labor">' + opts(labors, en.labor, '—') + '</select></div>'
+      + '<div><label>Labor</label><select class="r-labor">' + opts((cur && centreLabors[cur.centre]) || [], en.labor, '—') + '</select></div>'
       + '<button type="button" class="g-del" title="Remove">×</button>'
       + '<div class="g-desc"><label>Note</label><input type="text" class="r-desc" maxlength="500"></div>';
     d.querySelector('.r-from').value = en.from_time || '';

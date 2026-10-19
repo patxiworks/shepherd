@@ -51,7 +51,7 @@ full schema (it's a plain `ALTER TABLE`, safe on an existing database):
 mysql -u USER -p DBNAME < migrate/002_admin_roles.sql
 ```
 
-Likewise, to add the priests/sections/labors lookup tables (used by the
+Likewise, to add the priests/sections/labores lookup tables (used by the
 dropdowns on the admin Activities form) to an existing database, apply
 `migrate/003_lookup_tables.sql`. It seeds the lists from values already in
 use and backfills `activities.weekday`/`week`; it is safe to re-run:
@@ -149,7 +149,7 @@ Columns: `cal_date`, `celebration`, `class` (A–E), `liturgical_rank`, `color`,
 `admin_users.role` is one of:
 
 - **`super`** — sees and manages everything: zones, centres, users,
-  activities, the source table, the priests/sections/labors lists,
+  activities, the source table, the priests/sections/labores lists,
   and other admin accounts (`/admin/admins/`).
 - **`zone`** (`zone_id` set) — scoped to one zone: can manage that zone's
   users and activities. Cannot see the Zones, Centres, or Admins sections —

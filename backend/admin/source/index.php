@@ -107,7 +107,10 @@ function source_fields(PDO $pdo, int $zoneId, ?int $id, array $in): array
             $legacyCentre = $legacyCentre || $field === 'centre';
             continue;
         }
-        throw new InvalidArgumentException(ucfirst($message) . '. Add it under Admin > ' . ['centre' => 'Centres', 'activity' => 'Activity types', 'labor' => 'Labors', 'priest' => 'Priests', 'alt_priest' => 'Priests'][$field] . ' first.');
+        if ($field === 'labor') {
+            throw new InvalidArgumentException(ucfirst($message) . '. Labores are set under Admin > Labores, and the ones a centre runs under Admin > Centres. A labor that has sub-labores is picked with one of them, e.g. "sm agd".');
+        }
+        throw new InvalidArgumentException(ucfirst($message) . '. Add it under Admin > ' . ['centre' => 'Centres', 'activity' => 'Activity types', 'priest' => 'Priests', 'alt_priest' => 'Priests'][$field] . ' first.');
     }
     if ($legacyCentre) {
         // Centre isn't in the centres list (legacy row kept above): leave the section as it was.
@@ -290,13 +293,14 @@ $filterZone = isset($filters['zone']) ? (int) $filters['zone'] : null; // null =
 // zone (the form's Zone can be changed); the server renders the initial
 // zone's list (the filtered or edited zone, if any) so the form is right
 // before any JS runs.
+$centreLabors = centre_labor_map($pdo); // "zone_id|centre" => labor texts, for centres that have labores assigned
 $allCentres = $pdo->query('SELECT zone_id, name, section FROM centres ORDER BY name')->fetchAll();
 $allPriests = priests_by_zone($pdo); // home zone or also serving there
 $formZoneId = (int) ($editing['zone_id'] ?? $filterZone ?? 0);
 $inFormZone = fn(array $rows) => array_values(array_filter($rows, fn($r) => (int) $r['zone_id'] === $formZoneId));
 $formCentres = array_column($inFormZone($allCentres), 'name');
 $formPriests = array_column($inFormZone($allPriests), 'name');
-$laborOptions = lookup_names($pdo, 'labors');
+$laborOptions = labor_options($pdo);
 $sectionOptions = lookup_names($pdo, 'sections');
 $activityOptions = lookup_names($pdo, 'activity_types');
 
@@ -432,7 +436,7 @@ require __DIR__ . '/../includes/layout_top.php';
     <div class="row">
       <div>
         <label for="labor">Labor</label>
-        <?php render_select('labor', 'labor', $laborOptions, $editing['labor'] ?? null, 'Select a labor'); ?>
+        <?php render_select('labor', 'labor', $editing ? centre_labor_options($pdo, (int) $editing['zone_id'], $editing['centre']) : [], $editing['labor'] ?? null, 'Select a labor'); ?>
       </div>
       <div>
         <label for="priest">Priest</label>
@@ -628,6 +632,12 @@ require __DIR__ . '/../includes/layout_top.php';
   var centres = <?= json_encode($allCentres) ?>;           // {zone_id, name, section}
   var priests = <?= json_encode($allPriests) ?>;           // {zone_id, name}
   var labors = <?= json_encode($laborOptions) ?>;
+  var centreLabors = <?= json_encode($centreLabors) ?>;  // "zone|centre" => labor texts (centres that have labores assigned)
+
+  // The labor texts a centre may use: only the ones assigned to it (none if none are).
+  function laborsFor(zone, centre) {
+    return (centre && centreLabors[zone + '|' + centre]) || [];
+  }
   var activityTypes = <?= json_encode($activityOptions) ?>;
   var weekdayNames = <?= json_encode($weekdayNames) ?>;    // {1: 'Sunday', ...} per the week start setting
 
@@ -660,13 +670,24 @@ require __DIR__ . '/../includes/layout_top.php';
     });
   }
 
-  centreSel.addEventListener('change', showSectionHint);
+  var laborSel = document.getElementById('labor');
+  function refillLabors() {
+    var keep = laborSel.value;
+    laborSel.innerHTML = '';
+    laborSel.add(new Option('Select a labor', ''));
+    var list = laborsFor(formZone(), centreSel.value).slice();
+    if (keep && list.indexOf(keep) < 0) list.push(keep); // a legacy value stays selectable
+    list.forEach(function (l) { laborSel.add(new Option(l, l, false, l === keep)); });
+  }
+  centreSel.addEventListener('change', function () { showSectionHint(); refillLabors(); });
+  refillLabors();
   if (zoneSel) {
     zoneSel.addEventListener('change', function () {
       if (centreSel) refill(centreSel, centres, 'Select a centre');
       refill(priestSel, priests, 'Select a priest');
       refill(altPriestSel, priests, 'Select a priest');
       showSectionHint();
+      refillLabors();
     });
   }
 
@@ -679,11 +700,12 @@ require __DIR__ . '/../includes/layout_top.php';
   var dirty = false;
   var url = '/admin/source/index.php';
 
-  function optionsFor(type, zone, current) {
+  function optionsFor(type, zone, current, tr) {
     var list = type === 'centre' ? centres.filter(function (c) { return c.zone_id == zone; }).map(function (c) { return c.name; })
       : type === 'priest' ? priests.filter(function (p) { return p.zone_id == zone; }).map(function (p) { return p.name; })
       : type === 'activity' ? activityTypes.slice()
-      : labors.slice();
+      : laborsFor(zone, (tr.querySelector('[name=centre]') || {}).value || tr.querySelector('td[data-field=centre]').getAttribute('data-value'));
+    list = list.slice();
     if (current && list.indexOf(current) < 0) list.push(current); // keep values that are no longer in the list
     return list;
   }
@@ -701,7 +723,7 @@ require __DIR__ . '/../includes/layout_top.php';
     } else if (type === 'centre' || type === 'priest' || type === 'labor' || type === 'activity') {
       el = document.createElement('select');
       el.add(new Option('', ''));
-      optionsFor(type, zone, value).forEach(function (o) { el.add(new Option(o, o)); });
+      optionsFor(type, zone, value, td.parentNode).forEach(function (o) { el.add(new Option(o, o)); });
     } else {
       el = document.createElement('input');
       el.type = type;
@@ -718,6 +740,19 @@ require __DIR__ . '/../includes/layout_top.php';
     var centre = tr.querySelector('[name=centre]');
     var section = centre ? sectionOf(tr.getAttribute('data-zone'), centre.value) : '';
     if (section) tr.querySelector('[data-derived=section]').textContent = section;
+    // Offer the labores of the chosen centre; keep the choice if it is still among them.
+    var labor = tr.querySelector('[name=labor]');
+    if (centre && labor) {
+      var keep = labor.value, list = laborsFor(tr.getAttribute('data-zone'), centre.value).slice();
+      if (keep && list.indexOf(keep) < 0 && !tr._laborCentre) list.push(keep);
+      if (tr._laborCentre !== centre.value) {
+        tr._laborCentre = centre.value;
+        labor.innerHTML = '';
+        labor.add(new Option('', ''));
+        list.forEach(function (o) { labor.add(new Option(o, o)); });
+        labor.value = keep;
+      }
+    }
   }
 
   function startEdit(tr, focusTd) {

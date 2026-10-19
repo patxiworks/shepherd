@@ -408,7 +408,7 @@ function import_activities(PDO $pdo, array $rows, array $admin, ?string $scopeCe
     $global = fn(string $table) => array_column(
         array_map(fn($n) => [mb_strtolower($n), $n], $pdo->query("SELECT name FROM $table")->fetchAll(PDO::FETCH_COLUMN)), 1, 0
     );
-    $labors = $global('labors');
+    $labors = array_column(array_map(fn($n) => [mb_strtolower($n), $n], labor_options($pdo)), 1, 0);
     $types = $global('activity_types');
     $sections = $global('sections');
 

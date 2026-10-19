@@ -1,5 +1,6 @@
-
-
+// Section colours. These defaults are used until the colours set in the admin
+// (Structure > Sections) have been fetched from /api/sections, and for sections
+// that have none there.
 export const sectionColors: { [key: string]: string } = {
   sf: '#FFB74D', // Bright Orange
   sv: '#64B5F6', // Bright Blue
@@ -10,22 +11,13 @@ export const sectionColors: { [key: string]: string } = {
   default: '#E0E0E0', // A slightly darker gray for contrast
 };
 
-export const laborColors: { [key: string]: string } = {
-  sm: '#4DD0E1',   // Bright Cyan
-  sg: '#FF8A65',   // Bright Coral
-  sr: '#AED581', // Bright Light Green
-  'sm agd': '#DCE775', // Bright Lime
-  'sr club': '#9575CD', // Bright Deep Purple
-  seminarians: '#E57373', // Bright Red
-  priests: '#7986CB', // Bright Indigo
-  default: '#FAFAFA', // Off-white
+// Replaces the section colours with the ones from the admin (name -> #rrggbb).
+export const setSectionColors = (colors: { [key: string]: string }): void => {
+  for (const [name, colour] of Object.entries(colors)) {
+    if (/^#[0-9a-fA-F]{6}$/.test(colour)) sectionColors[name] = colour;
+  }
 };
-
 
 export const getSectionColor = (section: string): string => {
   return sectionColors[section] || sectionColors.default;
-};
-
-export const getLaborColor = (labor: string): string => {
-  return laborColors[labor] || laborColors.default;
 };
