@@ -36,7 +36,7 @@ if ($admin['role'] === 'super') {
 }
 
 // Centres of the zone (a centre admin: only theirs) and the regular activity types.
-$centreStmt = $pdo->prepare('SELECT name, section FROM centres WHERE zone_id = ?' . ($scopeCentreName !== null ? ' AND name = ?' : '') . ' ORDER BY name');
+$centreStmt = $pdo->prepare('SELECT name, section, has_vigils FROM centres WHERE zone_id = ?' . ($scopeCentreName !== null ? ' AND name = ?' : '') . ' ORDER BY name');
 $centreStmt->execute($scopeCentreName !== null ? [$zoneId, $scopeCentreName] : [$zoneId]);
 $centres = $centreStmt->fetchAll();
 $types = $pdo->query('SELECT name FROM activity_types WHERE is_multiday = 0 ORDER BY name')->fetchAll(PDO::FETCH_COLUMN);
@@ -81,14 +81,23 @@ function agrid_time(?string $t): string
 // ['from_time', 'to_time', 'labor', 'description'] (HH:MM), one per distinct time pair.
 // Source rows are matched by week + day like Add from source; on class A dates
 // Med / Ben, and on Vigil dates Vigil, take the centre's usual times, as the
-// automatic rows do. A cell with no slot (and no activity yet) is "not scheduled".
+// automatic rows do (a centre marked as having no vigils gets no Vigil slot). A cell with no slot (and no activity yet) is "not scheduled".
 function agrid_slots(PDO $pdo, int $zoneId, string $date, string $weekStart, array $centres, array $types): array
 {
     $parts = date_parts($date, $weekStart);
     $stmt = $pdo->prepare('SELECT centre, activity, labor, from_time, to_time, description FROM source WHERE zone_id = ? AND week = ? AND day = ? ORDER BY from_time, id');
     $stmt->execute([$zoneId, $parts['week'], $parts['weekday']]);
+    $noVigils = []; // centres without vigils get no Vigil slot
+    foreach ($centres as $c) {
+        if (isset($c['has_vigils']) && !(int) $c['has_vigils']) {
+            $noVigils[mb_strtolower($c['name'])] = true;
+        }
+    }
     $slots = [];
     foreach ($stmt as $r) {
+        if (strcasecmp((string) $r['activity'], PASTORES_VIGIL_ACTIVITY) === 0 && isset($noVigils[mb_strtolower((string) $r['centre'])])) {
+            continue;
+        }
         $slot = ['from_time' => agrid_time($r['from_time']), 'to_time' => agrid_time($r['to_time']), 'labor' => $r['labor'] ?? '', 'description' => $r['description'] ?? ''];
         $key = $r['centre'] . "\0" . $r['activity'];
         foreach ($slots[$key] ?? [] as $have) {
@@ -119,6 +128,9 @@ function agrid_slots(PDO $pdo, int $zoneId, string $date, string $weekStart, arr
                 continue; // centres without a section never get automatic rows
             }
             foreach ($auto as $act) {
+                if ($act === PASTORES_VIGIL_ACTIVITY && isset($noVigils[mb_strtolower($c['name'])])) {
+                    continue;
+                }
                 $key = $c['name'] . "\0" . $act;
                 $t = !isset($slots[$key]) && in_array($act, $types, true) ? source_times_for($lookup, $c['name'], $act, $parts['weekday']) : null;
                 if ($t) {

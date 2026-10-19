@@ -64,6 +64,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $fullName = mb_substr(trim($_POST['full_name'] ?? ''), 0, 255) ?: null;
         $zoneId = (int) ($_POST['zone_id'] ?? 0);
         $section = trim($_POST['section'] ?? '') ?: null;
+        $hasVigils = isset($_POST['has_vigils']) ? 1 : 0;
 
         if ($name === '' || !$zoneId) {
             flash('error', 'Name and zone are required.');
@@ -86,8 +87,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     }
                 }
                 $pdo->beginTransaction();
-                $pdo->prepare('UPDATE centres SET name = ?, full_name = ?, zone_id = ?, section = ? WHERE id = ?')
-                    ->execute([$name, $fullName, $zoneId, $section, (int) $id]);
+                $pdo->prepare('UPDATE centres SET name = ?, full_name = ?, zone_id = ?, section = ?, has_vigils = ? WHERE id = ?')
+                    ->execute([$name, $fullName, $zoneId, $section, $hasVigils, (int) $id]);
                 if ($old) {
                     $pdo->prepare('UPDATE source SET centre = ?, section = ? WHERE zone_id = ? AND centre = ?')
                         ->execute([$name, $section, $old['zone_id'], $old['name']]);
@@ -104,8 +105,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 flash('success', 'Centre updated.');
             } else {
                 $pdo->beginTransaction();
-                $pdo->prepare('INSERT INTO centres (name, full_name, zone_id, section) VALUES (?, ?, ?, ?)')
-                    ->execute([$name, $fullName, $zoneId, $section]);
+                $pdo->prepare('INSERT INTO centres (name, full_name, zone_id, section, has_vigils) VALUES (?, ?, ?, ?, ?)')
+                    ->execute([$name, $fullName, $zoneId, $section, $hasVigils]);
                 $saveLabores((int) $pdo->lastInsertId());
                 $pdo->commit();
                 flash('success', 'Centre created.');
@@ -174,6 +175,10 @@ require __DIR__ . '/../includes/layout_top.php';
         <label for="section">Section</label>
         <?php render_select('section', 'section', lookup_names($pdo, 'sections'), $editing['section'] ?? null, 'None'); ?>
       </div>
+      <div>
+        <label for="has_vigils">Vigils</label>
+        <label class="inline"><input type="checkbox" id="has_vigils" name="has_vigils" value="1" <?= ($editing['has_vigils'] ?? 1) ? 'checked' : '' ?>> Has vigils</label>
+      </div>
     </div>
     <div class="labores-pick">
       <label>Labores</label>
@@ -205,7 +210,7 @@ require __DIR__ . '/../includes/layout_top.php';
 </style>
 
 <table>
-  <thead><tr><th>Name</th><th>Full name</th><th>Zone</th><th>Section</th><th>Labores</th><th></th></tr></thead>
+  <thead><tr><th>Name</th><th>Full name</th><th>Zone</th><th>Section</th><th>Vigils</th><th>Labores</th><th></th></tr></thead>
   <tbody>
   <?php foreach ($centres as $centre): ?>
     <tr>
@@ -213,6 +218,7 @@ require __DIR__ . '/../includes/layout_top.php';
       <td><?= e($centre['full_name'] ?? '') ?: '—' ?></td>
       <td><?= e($centre['zone_name']) ?></td>
       <td><?= e($centre['section']) ?></td>
+      <td><?= !empty($centre['has_vigils']) ? 'Yes' : 'No' ?></td>
       <td><?php
         $parts = [];
         foreach ($centreLabores[(int) $centre['id']] ?? [] as $top => $subs) {

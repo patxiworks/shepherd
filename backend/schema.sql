@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS centres (
   name VARCHAR(150) NOT NULL,
   full_name VARCHAR(255) NULL,
   section VARCHAR(20) NULL,
+  has_vigils TINYINT(1) NOT NULL DEFAULT 1,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uniq_centre_zone (zone_id, name),
   CONSTRAINT fk_centres_zone FOREIGN KEY (zone_id) REFERENCES zones(id) ON DELETE CASCADE

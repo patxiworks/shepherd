@@ -141,7 +141,7 @@ instead of editing a spreadsheet.
 
 ```
 zones (id, name, last_update)
-  └─ centres (id, zone_id, name, full_name, section)
+  └─ centres (id, zone_id, name, full_name, section, has_vigils)
   └─ users (id, zone_id, name, centre, section, passcode_hash, role)  -- the ZoneUser login accounts
   └─ activities (id, zone_id, unit, week, day, weekday, activity_date,
                  centre, activity, section, labor, from_time, to_time,
@@ -210,6 +210,15 @@ labor without sub-labores (`labor_text()` in `functions.php`; the columns are
 `VARCHAR(61)`). Renaming an entry in
 the admin cascades to the existing rows that use it; deleting one leaves
 existing rows alone (the edit form still shows their current value).
+
+**Vigils per centre.** `centres.has_vigils` (migration `022_centre_has_vigils.sql`,
+default 1 so existing centres behave as before) is the "Has vigils" checkbox on the
+Centres form (and a Vigils Yes/No column). A centre without vigils gets no Vigil
+activities when pulling from source: *Add from source* skips its `Vigil` source rows
+and adds no automatic Vigil row for it, the *New activity* form's automatic Vigils skip
+it, and the Grid shows no Vigil slot for it (see "Vigil" below). Vigil activities
+already in `activities`, or entered by hand, are not touched. The Structure import
+doesn't read the field (new centres get the default, 1).
 
 **Full names.** Centres have an optional `full_name` and priests an optional
 `full_name` and `initials` (migration `021_full_names.sql`), edited on their
@@ -439,7 +448,7 @@ liturgical celebration is shown as "Celebration [Rank | Class]. Notes" from the 
 table (nothing if it is empty for that date). **Which cells exist, and their times.** The grid is driven by the Source table:
 a cell is *available* when source has rows for that zone, centre and activity on the
 date (same week + day matching as Add from source), or, for Med/Ben on class A dates and
-Vigil on Vigil dates, when source gives that centre usual times (`source_time_lookup()` /
+Vigil on Vigil dates (not for a centre without vigils), when source gives that centre usual times (`source_time_lookup()` /
 `source_times_for()`), or when the cell already has stored activities. Every other cell is
 **disabled** (plain light grey `#f0f0f0`, "Not scheduled", not clickable, no drop; the server refuses saves
 to it). Each planned source slot (distinct from/to pair; two Masses = two slots) not yet
@@ -733,7 +742,7 @@ identity/value are never colour or angle alone.
   Friday, that is the last day of the previous month, e.g. 30/04/2026) is a Vigil
   day. When activities are added — the *New activity* form or *Add from source* —
   and such a date **has activities in the zone**, every centre of the zone
-  **that has a section** (`centres` table; only the admin's own centre for a centre
+  **that has a section and has vigils** (`centres` table, `has_vigils = 1`; only the admin's own centre for a centre
   admin) that has no
   `Vigil` that day gets one with only zone, date, centre, activity `Vigil`, the
   derived week/day/weekday/section and the start/end times from source (below).
@@ -743,6 +752,8 @@ identity/value are never colour or angle alone.
   - *Add from source:* checked for every date in the range, after the source rows
     and the class A rows are in, so a Vigil date with no source rows still gets its
     Vigils if activities already exist on it; the message says "Vigil: added N …".
+  - *Centres without vigils* (`centres.has_vigils = 0`): Add from source also leaves out
+    the `Vigil` rows of the source table for those centres, so they have no Vigil on any date.
   - A date with **no** activities in the zone gets nothing (the rule is "whenever
     the date is among those in the activities list"). Centres that already have a
     Vigil that day (from source, by hand or an earlier run) are skipped, so
@@ -1332,9 +1343,9 @@ real production data has already been migrated into the local MAMP
 database during backend development — see `backend/README.md` before
 re-running this against any database you don't want duplicated rows in.
 
-SQL migrations `002`–`018` in `backend/migrate/` are incremental schema
+SQL migrations `002`–`022` in `backend/migrate/` are incremental schema
 changes for databases created before the change (all safe to re-run). The
-latest is `018_drop_masses.sql` (drops the `masses` table). Apply any that an environment (e.g.
+latest is `022_centre_has_vigils.sql` (adds `centres.has_vigils`; applied to the local MAMP database). Apply any that an environment (e.g.
 production) is missing before using the feature they belong to:
 
 - `009_liturgical_calendar.sql` — Settings → Generate calendar; without it the

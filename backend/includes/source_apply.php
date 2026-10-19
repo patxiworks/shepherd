@@ -86,7 +86,8 @@ function source_times_for(array $lookup, string $centre, string $activity, int $
 // stay blank, and so do the times if source has none for the centre.
 //
 // Vigil: on each date in the range that is the Thursday before the first Friday
-// of a month and has activities in the zone, every centre without a Vigil gets
+// of a month and has activities in the zone, every centre with vigils (centres.has_vigils)
+// and without a Vigil gets
 // one (see vigil.php; only $centre for a centre-scoped admin), whether or not
 // the date has source rows, with the times source gives that centre's Vigil.
 //
@@ -127,8 +128,19 @@ function apply_source_to_activities(PDO $pdo, int $zoneId, string $from, string 
     }
     $stmt = $pdo->prepare($sql . ' ORDER BY from_time, id');
     $stmt->execute($args);
+    // Centres marked as having no vigils (centres.has_vigils = 0): their Vigil
+    // source rows are not pulled.
+    $noVigils = [];
+    $nv = $pdo->prepare('SELECT name FROM centres WHERE zone_id = ? AND has_vigils = 0');
+    $nv->execute([$zoneId]);
+    foreach ($nv->fetchAll(PDO::FETCH_COLUMN) as $name) {
+        $noVigils[mb_strtolower((string) $name)] = true;
+    }
     $bySlot = []; // "week-day" => source rows
     foreach ($stmt as $row) {
+        if (strcasecmp((string) $row['activity'], PASTORES_VIGIL_ACTIVITY) === 0 && isset($noVigils[mb_strtolower((string) $row['centre'])])) {
+            continue;
+        }
         $bySlot[$row['week'] . '-' . $row['day']][] = $row;
     }
 

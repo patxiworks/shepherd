@@ -2,8 +2,9 @@
 // Vigil activities on the admin Activities page. The Thursday before the first
 // Friday of each month is a Vigil day: when activities are added (the New
 // activity form, or Add from source) and that date has activities in the zone,
-// every centre of the zone that has a section and doesn't have a Vigil that day
-// gets one (centres without a section never get automatic Med / Ben / Vigil rows).
+// every centre of the zone that has a section, is marked as having vigils
+// (centres.has_vigils) and doesn't have a Vigil that day gets one (centres without
+// a section never get automatic Med / Ben / Vigil rows).
 //
 // These rows have the zone, date, centre, activity, the fields the form always
 // derives (week, day, weekday, section) and the start / end times source gives
@@ -26,7 +27,7 @@ function is_vigil_date(string $date): bool
 
 // For a Vigil date on which the zone has at least one activity, adds a blank
 // Vigil for each centre of the zone that has none that day ($centre limits it
-// to one centre, for a centre-scoped admin). Returns how many were added.
+// to one centre, for a centre-scoped admin; centres without vigils are skipped). Returns how many were added.
 // Doesn't start a transaction, so it can run inside one.
 //
 // With $sourceTimes (from source_time_lookup(), as the New activity form and
@@ -44,7 +45,7 @@ function add_vigil_activities(PDO $pdo, int $zoneId, string $date, string $weekS
         return 0; // the date isn't in the activities list
     }
 
-    $stmt = $pdo->prepare('SELECT name, section FROM centres WHERE zone_id = ? AND section IS NOT NULL AND section <> \'\'' . ($centre !== null ? ' AND name = ?' : '') . ' ORDER BY name');
+    $stmt = $pdo->prepare('SELECT name, section FROM centres WHERE zone_id = ? AND section IS NOT NULL AND section <> \'\' AND has_vigils = 1' . ($centre !== null ? ' AND name = ?' : '') . ' ORDER BY name');
     $stmt->execute($centre !== null ? [$zoneId, $centre] : [$zoneId]);
     $centres = $stmt->fetchAll();
 
