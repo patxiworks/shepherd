@@ -8,8 +8,9 @@ require __DIR__ . '/../../includes/multiday_activities.php';
 $mday = multiday_activities_available(pastores_db());
 lookup_admin_page([
     'table' => 'activity_types',
-    'plural' => 'Activity types',
-    'singular' => 'activity type',
+    'plural' => 'Activities',
+    'singular' => 'activity',
+    'rank' => true,
     'multiday' => $mday,
     'used_in' => array_merge(
         [['activities', 'activity'], ['source', 'activity'], ['absences', 'activity']],

@@ -10,7 +10,7 @@ const STRUCTURE_IMPORT_TABLES = [
     'zones' => ['Zones', ['name'], 'name'],
     'centres' => ['Centres', ['zone', 'name', 'section'], 'zone (must already exist), name, section (optional; must already exist in Sections)'],
     'sections' => ['Sections', ['name'], 'name'],
-    'activity_types' => ['Activity types', ['name', 'is_multiday'], 'name, multi-day (optional: yes/no, 1/0)'],
+    'activity_types' => ['Activities', ['name', 'is_multiday'], 'name, multi-day (optional: yes/no, 1/0)'],
 ];
 
 // A header cell -> the column it stands for in $table, or null. "Centre" in a

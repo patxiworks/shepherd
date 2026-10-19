@@ -106,7 +106,7 @@ function mday_filter_options(PDO $pdo, ?int $zoneId): array
         $venueOptStmt = $pdo->query('SELECT DISTINCT name FROM centres ORDER BY name');
     }
     $venueOptions = $venueOptStmt->fetchAll(PDO::FETCH_COLUMN);
-    $activityOptions = $pdo->query("SELECT name FROM activity_types WHERE is_multiday = 1 ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
+    $activityOptions = $pdo->query("SELECT name FROM activity_types WHERE is_multiday = 1 ORDER BY " . activity_type_order_sql())->fetchAll(PDO::FETCH_COLUMN);
     $sectionOptions = lookup_names($pdo, 'sections');
     // Priests of the selected zone (every zone's, in "All zones"), by name.
     $priestOptions = array_values(array_unique(array_column(priests_by_zone($pdo, $zoneId), 'name')));

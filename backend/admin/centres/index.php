@@ -210,7 +210,7 @@ require __DIR__ . '/../includes/layout_top.php';
 </style>
 
 <table>
-  <thead><tr><th>Name</th><th>Full name</th><th>Zone</th><th>Section</th><th>Vigils</th><th>Labores</th><th></th></tr></thead>
+  <thead><tr><th>Name</th><th>Full name</th><th>Zone</th><th>Section</th><th>Labores</th><th>Vigils</th><th></th></tr></thead>
   <tbody>
   <?php foreach ($centres as $centre): ?>
     <tr>
@@ -218,7 +218,6 @@ require __DIR__ . '/../includes/layout_top.php';
       <td><?= e($centre['full_name'] ?? '') ?: '—' ?></td>
       <td><?= e($centre['zone_name']) ?></td>
       <td><?= e($centre['section']) ?></td>
-      <td><?= !empty($centre['has_vigils']) ? 'Yes' : 'No' ?></td>
       <td><?php
         $parts = [];
         foreach ($centreLabores[(int) $centre['id']] ?? [] as $top => $subs) {
@@ -227,6 +226,7 @@ require __DIR__ . '/../includes/layout_top.php';
         }
         echo e(implode(' · ', $parts)) ?: '—';
       ?></td>
+      <td><?= !empty($centre['has_vigils']) ? 'Yes' : 'No' ?></td>
       <td class="actions">
         <?= icon_edit('/admin/centres/index.php?edit=' . (int) $centre['id']) ?>
         <form class="inline" method="post" onsubmit="return confirm('Delete this centre?');">

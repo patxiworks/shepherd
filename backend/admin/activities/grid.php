@@ -39,7 +39,7 @@ if ($admin['role'] === 'super') {
 $centreStmt = $pdo->prepare('SELECT name, section, has_vigils FROM centres WHERE zone_id = ?' . ($scopeCentreName !== null ? ' AND name = ?' : '') . ' ORDER BY name');
 $centreStmt->execute($scopeCentreName !== null ? [$zoneId, $scopeCentreName] : [$zoneId]);
 $centres = $centreStmt->fetchAll();
-$types = $pdo->query('SELECT name FROM activity_types WHERE is_multiday = 0 ORDER BY name')->fetchAll(PDO::FETCH_COLUMN);
+$types = $pdo->query('SELECT name FROM activity_types WHERE is_multiday = 0 ORDER BY ' . activity_type_order_sql())->fetchAll(PDO::FETCH_COLUMN);
 $priestOptions = array_values(array_unique(array_column(priests_by_zone($pdo, $zoneId), 'name')));
 $laborOptions = labor_options($pdo);
 

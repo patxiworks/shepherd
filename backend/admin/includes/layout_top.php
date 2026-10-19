@@ -127,6 +127,8 @@ $themeBrand = theme_brand(pastores_db());
   .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 5px; color: var(--brand); vertical-align: middle; }
   .icon-btn svg { width: 16px; height: 16px; }
   .icon-btn:hover, .icon-btn:focus-visible { background: var(--tint-soft); }
+  button.icon-btn { background: transparent; padding: 0; }
+  button.icon-btn:disabled { cursor: default; }
   .icon-btn.delete { color: #E91E63; }
   .icon-btn.delete:hover, .icon-btn.delete:focus-visible { background: #fdecea; }
   .flash { padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; }
@@ -342,7 +344,7 @@ window.pastoresInitToolbar = function () {
           <a href="/admin/centres/index.php">Centres</a>
           <a href="/admin/sections/index.php">Sections</a>
           <a href="/admin/labores/index.php">Labores</a>
-          <a href="/admin/activity_types/index.php">Activity types</a>
+          <a href="/admin/activity_types/index.php">Activities</a>
         </div>
       </div>
       <div class="nav-drop">
@@ -361,19 +363,19 @@ window.pastoresInitToolbar = function () {
         </div>
       </div>
       <div class="nav-drop">
-        <button type="button" class="nav-drop-btn">Activities</button>
+        <button type="button" class="nav-drop-btn">Coordination</button>
         <div class="nav-drop-menu">
-          <a href="/admin/activities/index.php">Regular</a>
+          <a href="/admin/activities/index.php">Daily</a>
           <a href="/admin/multiday_activities/index.php">Multi-day</a>
         </div>
       </div>
       <a href="/admin/settings/index.php">Settings</a>
     <?php elseif ($navRole === 'zone'): ?>
-      <a href="/admin/activities/index.php">Activities</a>
+      <a href="/admin/activities/index.php">Coordination</a>
       <a href="/admin/absences/index.php">Absences</a>
     <?php else: ?>
       <a href="/admin/users/index.php">Users</a>
-      <a href="/admin/activities/index.php">Activities</a>
+      <a href="/admin/activities/index.php">Coordination</a>
     <?php endif; ?>
     </nav>
   </div>

@@ -209,12 +209,20 @@ function priests_by_zone(PDO $pdo, ?int $zoneId = null): array
     return $stmt->fetchAll();
 }
 
+// ORDER BY for activity_types: the rank set on the admin page, then the name
+// (types not ranked yet share the default rank and so sort by name).
+function activity_type_order_sql(): string
+{
+    return 'sort_order, name';
+}
+
 function lookup_names(PDO $pdo, string $table): array
 {
     if (!in_array($table, PASTORES_LOOKUP_TABLES, true)) {
         throw new InvalidArgumentException("Unknown lookup table: $table");
     }
-    return $pdo->query("SELECT name FROM $table ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
+    $order = $table === 'activity_types' ? activity_type_order_sql() : 'name';
+    return $pdo->query("SELECT name FROM $table ORDER BY $order")->fetchAll(PDO::FETCH_COLUMN);
 }
 
 // Labores: a labor (labores.parent_id NULL) and its sub-labores. What activities,

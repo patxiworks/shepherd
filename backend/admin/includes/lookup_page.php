@@ -44,6 +44,8 @@ function lookup_save_extra_zones(PDO $pdo, string $table, int $id, array $zoneId
 //   multiday optional bool (activity_types only): the form gets a "Multi-day
 //            programme" checkbox saved to the is_multiday column (needs
 //            migration 015), and the list shows it.
+//   rank     optional bool (activity_types only): rows are listed by their rank
+//            (sort_order, needs migration 023) with up / down arrows to move one.
 //   colour   optional bool (sections only): the form gets a colour picker saved to
 //            the colour column (needs migration 020) and the list shows it.
 //   used_in  list of [table, column] pairs that store this name as free
@@ -69,6 +71,7 @@ function lookup_admin_page(array $cfg): void
     $hasZone = !empty($cfg['zone']);
     $hasMultiday = !empty($cfg['multiday']);
     $hasColour = !empty($cfg['colour']);
+    $hasRank = !empty($cfg['rank']) && $table === 'activity_types';
     $isPriests = $table === 'priests'; // priests also have a full name and initials (migration 021)
 
     // Deleting an entry the source table still uses is refused (shared by Delete and bulk delete).
@@ -88,7 +91,41 @@ function lookup_admin_page(array $cfg): void
         $action = $_POST['action'] ?? '';
         $id = $_POST['id'] ?? '';
 
-        if ($action === 'bulk_delete') {
+        if ($action === 'reorder' && $hasRank) {
+            // The whole list in its new order (drag and drop): ids[] must be exactly the existing ids.
+            $ids = array_values(array_unique(array_map('intval', (array) ($_POST['ids'] ?? []))));
+            $have = array_map('intval', $pdo->query('SELECT id FROM activity_types')->fetchAll(PDO::FETCH_COLUMN));
+            $ok = count($ids) === count($have) && !array_diff($have, $ids);
+            if ($ok) {
+                $pdo->beginTransaction();
+                $set = $pdo->prepare('UPDATE activity_types SET sort_order = ? WHERE id = ?');
+                foreach ($ids as $n => $rowId) {
+                    $set->execute([$n + 1, $rowId]);
+                }
+                $pdo->commit();
+            }
+            header('Content-Type: application/json');
+            http_response_code($ok ? 200 : 409);
+            echo json_encode(['ok' => $ok, 'error' => $ok ? null : 'The list changed meanwhile. Reload the page and try again.']);
+            exit;
+        }
+        if ($action === 'move' && $hasRank) {
+            // Swap the row with its neighbour, renumbering every rank 1..N so ties
+            // (types added since the last move share the default rank) are settled.
+            $dir = ($_POST['dir'] ?? '') === 'up' ? -1 : 1;
+            $pdo->beginTransaction();
+            $ids = array_map('intval', $pdo->query('SELECT id FROM activity_types ORDER BY ' . activity_type_order_sql())->fetchAll(PDO::FETCH_COLUMN));
+            $i = array_search((int) $id, $ids, true);
+            if ($i !== false && isset($ids[$i + $dir])) {
+                [$ids[$i], $ids[$i + $dir]] = [$ids[$i + $dir], $ids[$i]];
+            }
+            $set = $pdo->prepare('UPDATE activity_types SET sort_order = ? WHERE id = ?');
+            foreach ($ids as $n => $rowId) {
+                $set->execute([$n + 1, $rowId]);
+            }
+            $pdo->commit();
+            // The order of the Grid's columns changes, which the frontend doesn't read, so no last_update bump.
+        } elseif ($action === 'bulk_delete') {
             bulk_run($deleteOne, $cfg['singular'], $cfg['singular'] . 's');
         } elseif ($action === 'delete') {
             $err = $deleteOne((int) $id);
@@ -203,7 +240,7 @@ function lookup_admin_page(array $cfg): void
     $zones = $hasZone ? $pdo->query('SELECT id, name FROM zones ORDER BY name')->fetchAll() : [];
     $rows = $hasZone
         ? $pdo->query("SELECT t.*, z.name AS zone_name FROM $table t LEFT JOIN zones z ON z.id = t.zone_id ORDER BY z.name, t.name")->fetchAll()
-        : $pdo->query("SELECT * FROM $table ORDER BY name")->fetchAll();
+        : $pdo->query("SELECT * FROM $table ORDER BY " . ($hasRank ? activity_type_order_sql() : 'name'))->fetchAll();
     $extras = []; // priest id => [zone ids] / names
     if ($hasZone && $table === 'priests') {
         foreach ($pdo->query('SELECT pz.priest_id, z.id, z.name FROM priest_zones pz JOIN zones z ON z.id = pz.zone_id ORDER BY z.name') as $x) {
@@ -353,11 +390,83 @@ function lookup_admin_page(array $cfg): void
   </form>
 </div>
 
-<table>
-  <thead><tr><th>Name</th><?php if ($isPriests): ?><th>Full name</th><th>Initials</th><?php endif; ?><?php if ($hasColour): ?><th>Colour</th><?php endif; ?><?php if ($hasZone): ?><th>Zone</th><th>Also serves in</th><?php endif; ?><?php if ($hasMultiday): ?><th>Multi-day</th><?php endif; ?><th>In use</th><th></th></tr></thead>
+<?php if ($hasRank): ?>
+<p class="table-hint">Drag a row by its handle (or use the arrows) to rank the activities: the lists and the Grid's columns follow this order.</p>
+<style>
+  .rank-grip { display: inline-flex; width: 22px; height: 22px; vertical-align: middle; color: #999; cursor: grab; touch-action: none; user-select: none; }
+  .rank-grip:hover { color: var(--brand); }
+  .rank-grip svg { width: 100%; height: 100%; }
+  tr.rank-dragging td { background: var(--tint-soft) !important; opacity: .85; }
+  body.rank-busy, body.rank-busy * { cursor: grabbing !important; }
+  .rank-n { display: inline-block; min-width: 22px; }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function () { // the table comes after this script
+  var table = document.getElementById('rank-table'), body = table && table.tBodies[0];
+  if (!body) return;
+  var drag = null;
+  function renumber() {
+    Array.prototype.forEach.call(body.rows, function (r, i) { var n = r.querySelector('.rank-n'); if (n) n.textContent = i + 1; });
+  }
+  body.addEventListener('pointerdown', function (ev) {
+    var grip = ev.target.closest('.rank-grip');
+    if (!grip || (ev.button !== undefined && ev.button !== 0)) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    var row = grip.closest('tr');
+    drag = { row: row, before: Array.prototype.map.call(body.rows, function (r) { return r.querySelector('[data-id]').getAttribute('data-id'); }).join(',') };
+    row.classList.add('rank-dragging');
+    document.body.classList.add('rank-busy');
+    grip.setPointerCapture && grip.setPointerCapture(ev.pointerId);
+  }, true);
+  body.addEventListener('pointermove', function (ev) {
+    if (!drag) return;
+    var over = document.elementFromPoint(ev.clientX, ev.clientY), tr = over && over.closest && over.closest('tr');
+    if (!tr || tr === drag.row || tr.parentNode !== body) return;
+    var box = tr.getBoundingClientRect(), below = ev.clientY > box.top + box.height / 2;
+    // Dragging down past a row puts the dragged row after it, dragging up puts it before.
+    if (below && tr.nextSibling !== drag.row) body.insertBefore(drag.row, tr.nextSibling);
+    else if (!below && tr.previousSibling !== drag.row) body.insertBefore(drag.row, tr);
+    renumber();
+    // keep the row under the pointer in view near the edges of the screen
+    if (ev.clientY < 60) window.scrollBy(0, -12); else if (ev.clientY > window.innerHeight - 60) window.scrollBy(0, 12);
+  });
+  function finish() {
+    if (!drag) return;
+    var d = drag; drag = null;
+    d.row.classList.remove('rank-dragging');
+    document.body.classList.remove('rank-busy');
+    var ids = Array.prototype.map.call(body.rows, function (r) { return r.querySelector('[data-id]').getAttribute('data-id'); });
+    if (ids.join(',') === d.before) return;
+    var fd = new FormData();
+    fd.append('action', 'reorder');
+    ids.forEach(function (id) { fd.append('ids[]', id); });
+    fetch(location.pathname, { method: 'POST', body: fd, credentials: 'same-origin' })
+      .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
+      .then(function (j) { if (!j.ok) { alert(j.error || 'Could not save the new order.'); location.reload(); } })
+      .catch(function () { alert('Could not save the new order.'); location.reload(); });
+  }
+  body.addEventListener('pointerup', finish);
+  body.addEventListener('pointercancel', finish);
+});
+</script>
+<?php endif; ?>
+<table<?= $hasRank ? ' data-no-sort id="rank-table"' : '' ?>>
+  <thead><tr><?php if ($hasRank): ?><th>Rank</th><?php endif; ?><th>Name</th><?php if ($isPriests): ?><th>Full name</th><th>Initials</th><?php endif; ?><?php if ($hasColour): ?><th>Colour</th><?php endif; ?><?php if ($hasZone): ?><th>Zone</th><th>Also serves in</th><?php endif; ?><?php if ($hasMultiday): ?><th>Multi-day</th><?php endif; ?><th>In use</th><th></th></tr></thead>
   <tbody>
-  <?php foreach ($rows as $row): ?>
+  <?php foreach ($rows as $n => $row): ?>
     <tr>
+      <?php if ($hasRank): ?>
+      <td style="white-space:nowrap;" data-id="<?= (int) $row['id'] ?>">
+        <span class="rank-grip" title="Drag to reorder" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>
+        <span class="rank-n"><?= $n + 1 ?></span>
+        <form class="inline" method="post">
+          <input type="hidden" name="action" value="move"><input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+          <button type="submit" name="dir" value="up" class="icon-btn" title="Move up" aria-label="Move <?= e($row['name']) ?> up"<?= $n === 0 ? ' disabled style="opacity:.3"' : '' ?>><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+          <button type="submit" name="dir" value="down" class="icon-btn" title="Move down" aria-label="Move <?= e($row['name']) ?> down"<?= $n === count($rows) - 1 ? ' disabled style="opacity:.3"' : '' ?>><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+        </form>
+      </td>
+      <?php endif; ?>
       <td><?= e($row['name']) ?></td>
       <?php if ($isPriests): ?><td><?= e($row['full_name'] ?? '') ?: '—' ?></td><td><?= e($row['initials'] ?? '') ?: '—' ?></td><?php endif; ?>
       <?php if ($hasColour): ?><td><span style="display:inline-block;width:18px;height:18px;border-radius:4px;vertical-align:middle;border:1px solid #0002;background:<?= e($row['colour'] ?: '#E0E0E0') ?>"></span> <?= e($row['colour'] ?: '—') ?></td><?php endif; ?>
@@ -375,7 +484,7 @@ function lookup_admin_page(array $cfg): void
     </tr>
   <?php endforeach; ?>
   <?php if (!$rows): ?>
-    <tr><td colspan="<?= ($hasZone ? 5 : 3) + ($hasMultiday ? 1 : 0) + ($hasColour ? 1 : 0) + ($isPriests ? 2 : 0) ?>" style="text-align:center;color:#888;">Nothing here yet.</td></tr>
+    <tr><td colspan="<?= ($hasZone ? 5 : 3) + ($hasRank ? 1 : 0) + ($hasMultiday ? 1 : 0) + ($hasColour ? 1 : 0) + ($isPriests ? 2 : 0) ?>" style="text-align:center;color:#888;">Nothing here yet.</td></tr>
   <?php endif; ?>
   </tbody>
 </table>

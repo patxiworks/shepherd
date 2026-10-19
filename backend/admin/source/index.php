@@ -110,7 +110,7 @@ function source_fields(PDO $pdo, int $zoneId, ?int $id, array $in): array
         if ($field === 'labor') {
             throw new InvalidArgumentException(ucfirst($message) . '. Labores are set under Admin > Labores, and the ones a centre runs under Admin > Centres. A labor that has sub-labores is picked with one of them, e.g. "sm agd".');
         }
-        throw new InvalidArgumentException(ucfirst($message) . '. Add it under Admin > ' . ['centre' => 'Centres', 'activity' => 'Activity types', 'priest' => 'Priests', 'alt_priest' => 'Priests'][$field] . ' first.');
+        throw new InvalidArgumentException(ucfirst($message) . '. Add it under Admin > ' . ['centre' => 'Centres', 'activity' => 'Activities', 'priest' => 'Priests', 'alt_priest' => 'Priests'][$field] . ' first.');
     }
     if ($legacyCentre) {
         // Centre isn't in the centres list (legacy row kept above): leave the section as it was.

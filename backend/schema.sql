@@ -193,11 +193,13 @@ CREATE TABLE IF NOT EXISTS centre_labores (
 -- is_multiday: marks a type as an inherently multi-day venue programme
 -- (retreat, course, camp — see multiday_activities below) rather than a
 -- regular single-day activity. It's a flag on the type, not derived from
--- the name at read time.
+-- the name at read time. sort_order: the rank set with the arrows on the
+-- admin page; lists and the Grid's columns follow it (activity_type_order_sql()).
 CREATE TABLE IF NOT EXISTS activity_types (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL UNIQUE,
   is_multiday TINYINT(1) NOT NULL DEFAULT 0,
+  sort_order INT NOT NULL DEFAULT 1000000,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

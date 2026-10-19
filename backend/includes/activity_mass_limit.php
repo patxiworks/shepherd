@@ -6,7 +6,7 @@
 // (table badge, filter, save warning, Add from source report).
 //
 //   - a mass is an activity named PASTORES_MASS_ACTIVITY (the "Mass" entry of
-//     Admin > Activity types; compared case-insensitively)
+//     Admin > Structure > Activities; compared case-insensitively)
 //   - the priest is matched by name across zones (one person), so masses in
 //     several zones on the same day add up
 //   - every mass of that priest on that day is flagged, since there is no way

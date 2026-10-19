@@ -423,7 +423,7 @@ $formZoneId = (int) ($editing['zone_id'] ?? ($filterZone ?: ($zones[0]['id'] ?? 
 $formCentres = array_column(array_filter($allCentres, fn($r) => (int) $r['zone_id'] === $formZoneId), 'name');
 $allPriests = priests_by_zone($pdo, $isZoneScoped ? (int) $admin['zone_id'] : null);
 $formPriests = array_column(array_filter($allPriests, fn($r) => (int) $r['zone_id'] === $formZoneId), 'name');
-$activityOptions = $pdo->query("SELECT name FROM activity_types WHERE is_multiday = 1 ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
+$activityOptions = $pdo->query("SELECT name FROM activity_types WHERE is_multiday = 1 ORDER BY " . activity_type_order_sql())->fetchAll(PDO::FETCH_COLUMN);
 $sectionOptions = lookup_names($pdo, 'sections');
 $laborOptions = labor_options($pdo);
 

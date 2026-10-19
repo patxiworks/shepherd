@@ -176,7 +176,8 @@ sections (id, name, colour)  -- activities.priest/section/labor/activity
 labores (id, name, parent_id) -- store the *name*, not an id. A labor has
                              -- parent_id NULL; its sub-labores point at it
   └─ centre_labores (centre_id, labor_id)  -- the labores each centre runs
-activity_types (id, name, is_multiday)  -- is_multiday = 1: a multi-day programme type
+activity_types (id, name, is_multiday, sort_order)  -- is_multiday = 1: a multi-day programme type;
+                             -- sort_order = the rank set with the arrows on Admin > Structure > Activities
 
 admin_users (id, username, password_hash, role, zone_id, centre_id)  -- PHP admin-panel logins, separate from `users` above
 ```
@@ -213,7 +214,7 @@ existing rows alone (the edit form still shows their current value).
 
 **Vigils per centre.** `centres.has_vigils` (migration `022_centre_has_vigils.sql`,
 default 1 so existing centres behave as before) is the "Has vigils" checkbox on the
-Centres form (and a Vigils Yes/No column). A centre without vigils gets no Vigil
+Centres form (and a Vigils Yes/No column after Labores). A centre without vigils gets no Vigil
 activities when pulling from source: *Add from source* skips its `Vigil` source rows
 and adds no automatic Vigil row for it, the *New activity* form's automatic Vigils skip
 it, and the Grid shows no Vigil slot for it (see "Vigil" below). Vigil activities
@@ -384,12 +385,14 @@ stripe and the hover tint.
 **Top nav** (`layout_top.php`, role-aware, built from `$_SESSION['admin_role']`):
 a super admin gets four click-to-open dropdowns (`.nav-drop`, toggled by the
 shared script in `layout_bottom.php`), in order — **Structure** (Zones,
-Centres, Sections, Labores, Activity types), **People** (Users, Priests,
-Admins), **Records** (Source, Absences) and **Activities** (Regular →
+Centres, Sections, Labores, Activities — the page for the `activity_types` table, whose
+rows are ranked by dragging a row's handle (pointer events, so touch works) or with up/down arrows — drag posts `action=reorder` with the full id list, the arrows `action=move`; the lists and the Grid's columns follow that rank,
+`activity_type_order_sql()`), **People** (Users, Priests,
+Admins), **Records** (Source, Absences) and **Coordination** (Daily →
 Activities List, Multi-day → Multi-day Activities List) — plus **Settings**
 as a plain top-level link.
-A zone admin gets two plain links, **Activities** and **Absences**; a centre
-admin gets **Users** and **Activities**. There is no Masses page: the `masses` table, its admin page and `api/masses.php`
+A zone admin gets two plain links, **Coordination** (the Activities list) and **Absences**; a centre
+admin gets **Users** and **Coordination**. There is no Masses page: the `masses` table, its admin page and `api/masses.php`
 were removed (migration `018`).
 
 **Activities tabs.** (The tab strip, shared with Multi-day, is `nav.tabs` in `layout_top.php`: the tabs sit on a 2px brand-coloured base line.) The Activities section has tabs **List** (the table below,
@@ -624,7 +627,7 @@ identity/value are never colour or angle alone.
 - *Centre* and *Priest* are dropdowns of the selected zone's centres/priests
   (re-filtered in the browser when a super admin changes the Zone).
 - *Activity* and *Labor* are dropdowns fed from the `activity_types` and
-  `labores` tables (Admin → Activity types / Labores, super admin). The Labor
+  `labores` tables (Admin → Structure → Activities / Labores, super admin). The Labor
   dropdown offers only the labores of the chosen centre (re-filled in the
   browser when the centre changes; see "Labores" below), and saving a labor the
   centre doesn't run is refused (`labor_problem()`).
@@ -999,7 +1002,7 @@ that run across several days at a centre, ported from a standalone
 "Painted Calendar" HTML tool that had no backend of its own. Kept in its own
 table (`multiday_activities`), not `activities`, so the day-to-day Activities
 view never needs to filter these out. The three pages are tabs of one section
-(List / Calendar / Dashboard), linked from the top nav's Activities dropdown ("Multi-day") and with a
+(List / Calendar / Dashboard), linked from the top nav's Coordination dropdown ("Multi-day") and with a
 count on the dashboard (guarded by `multiday_activities_available()` in
 [`backend/includes/multiday_activities.php`](backend/includes/multiday_activities.php),
 like `absences_available()`, so the dashboard still loads before migration
@@ -1011,7 +1014,7 @@ Priests page is used (the Priests page counts/cascades on `multiday_activities.p
   the *type*, not derived from the name (a name like `Mass St. Josemaria` is
   one day; `crt` spans several) — and seeds the 13 activity types the original
   tool used with it set to 1. It is edited with the **Multi-day programme**
-  checkbox on Admin → Activity types (the list has a Multi-day column; the
+  checkbox on Admin → Structure → Activities (the list has a Multi-day column; the
   checkbox is an option of the shared `lookup_admin_page()`, only shown once
   migration `015` is applied). Renaming an activity type also renames it on
   the `multiday_activities` rows that use it. `multiday_activities` holds
@@ -1291,7 +1294,7 @@ database) and no dark-mode toggle (it uses the admin theme colours).
 ### Import of Structure tables (Settings → Import data)
 
 Super admin. One card on the Settings page imports into any table of the Structure menu —
-Zones, Centres, Sections, Activity types — from a CSV or XLSX upload or a Google
+Zones, Centres, Sections, Activities (activity types) — from a CSV or XLSX upload or a Google
 Sheets link (same readers as the Activities/Source importers in
 [`backend/includes/activity_io.php`](backend/includes/activity_io.php); sheet must be shared
 "Anyone with the link can view"). Code: [`backend/includes/structure_import.php`](backend/includes/structure_import.php).
@@ -1343,9 +1346,9 @@ real production data has already been migrated into the local MAMP
 database during backend development — see `backend/README.md` before
 re-running this against any database you don't want duplicated rows in.
 
-SQL migrations `002`–`022` in `backend/migrate/` are incremental schema
+SQL migrations `002`–`023` in `backend/migrate/` are incremental schema
 changes for databases created before the change (all safe to re-run). The
-latest is `022_centre_has_vigils.sql` (adds `centres.has_vigils`; applied to the local MAMP database). Apply any that an environment (e.g.
+latest is `023_activity_type_rank.sql` (adds `activity_types.sort_order`, ranking the existing types alphabetically; applied to the local MAMP database), after `022_centre_has_vigils.sql` (adds `centres.has_vigils`). Apply any that an environment (e.g.
 production) is missing before using the feature they belong to:
 
 - `009_liturgical_calendar.sql` — Settings → Generate calendar; without it the
@@ -1403,7 +1406,7 @@ contracts were deliberately kept identical.
 | Change the admin home's Priests load summary panel (load rule, alerts, weights) | [`backend/includes/pastoral_dashboard.php`](backend/includes/pastoral_dashboard.php) |
 | Change the admin theme colours (sky blue default / liturgical season) | [`backend/includes/theme.php`](backend/includes/theme.php); the choice is in Admin → Settings → Theme |
 | Change which day the week starts on | Admin panel → Settings (super admin); also renumbers `activities.weekday` and `source.day` |
-| Add/rename/move a priest, or add a section, labor or activity type | Admin panel → Priests / Sections / Labores / Activity types (super admin). A centre's section and labores are set on the Centres page. |
+| Add/rename/move a priest, or add a section, labor or activity type | Admin panel → Priests / Sections / Labores / Activities (activity types; super admin; the up/down arrows set their order). A centre's section and labores are set on the Centres page. |
 | Change a section's *colour* | Admin panel → Sections (colour picker). Fallbacks for the public app: [`src/lib/section-colors.ts`](src/lib/section-colors.ts) |
 | Change what a `zone`/`centre` admin can access | `admin_require_role()` calls and `*_in_scope()` functions in `backend/admin/<entity>/index.php` |
 | Add a new admin access level or field | [`backend/schema.sql`](backend/schema.sql) `admin_users` table + [`backend/includes/auth.php`](backend/includes/auth.php) + [`backend/admin/admins/index.php`](backend/admin/admins/index.php) |
@@ -1415,6 +1418,6 @@ contracts were deliberately kept identical.
 | Change the multi-day list's filters, search, CSV export or import columns/validation | [`backend/admin/multiday_activities/index.php`](backend/admin/multiday_activities/index.php) (`mday_filters()`, `mday_where()`, `mday_fields()`) and [`backend/includes/multiday_io.php`](backend/includes/multiday_io.php) |
 | Change the multi-day calendar's painting, tooltip, clash detection or filters | [`backend/admin/multiday_activities/calendar.php`](backend/admin/multiday_activities/calendar.php) (helpers are the `mday_*` functions at the top) |
 | Change the multi-day dashboard's statistics, or the filters shared by the Calendar and Dashboard tabs | [`backend/admin/multiday_activities/dashboard.php`](backend/admin/multiday_activities/dashboard.php) and [`backend/includes/multiday_filters.php`](backend/includes/multiday_filters.php) |
-| Add/edit multi-day activities, or mark an activity type as multi-day | Admin panel → Multi-day Activities (List tab); to make an activity type a multi-day one, tick "Multi-day programme" on Admin panel → Activity types |
+| Add/edit multi-day activities, or mark an activity type as multi-day | Admin panel → Multi-day Activities (List tab); to make an activity type a multi-day one, tick "Multi-day programme" on Admin panel → Activities (Structure) |
 | Run the one-time Sheets → MySQL import | [`backend/migrate/migrate.php`](backend/migrate/migrate.php) |
 | Deploy the backend | [`backend/README.md`](backend/README.md) |
