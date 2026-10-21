@@ -31,7 +31,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             }
             $res = import_structure($pdo, $table, $rows);
             $label = STRUCTURE_IMPORT_TABLES[$table][0];
-            $msg = "$label: added {$res['added']}, already there {$res['skipped']}" . ($res['rejected'] ? ", rejected {$res['rejected']}" : '') . '.';
+            $msg = "$label: added {$res['added']}, " . ($res['updated'] ? "centres that gained labores {$res['updated']}, " : '') . "already there {$res['skipped']}" . ($res['rejected'] ? ", rejected {$res['rejected']}" : '') . '.';
             flash($res['rejected'] ? 'warning' : 'success', $msg);
             $_SESSION['structure_import_errors'] = $res['errors'];
         } catch (ImportException $ex) {
@@ -184,7 +184,7 @@ require __DIR__ . '/../includes/layout_top.php';
     <small class="hint" style="min-height:0;">
       The first row must be a header row; columns can be in any order. The sheet must be shared as "Anyone with the link can view".
       Columns: <?php foreach (STRUCTURE_IMPORT_TABLES as [$label, , $help]): ?><br><strong><?= e($label) ?></strong>: <?= e($help) ?><?php endforeach; ?>
-      <br>Import only adds: rows that already exist are skipped and nothing existing is changed, so importing the same file twice is safe. Add zones and sections before the centres that use them.
+      <br>Import only adds: rows that already exist are skipped and nothing existing is changed, so importing the same file twice is safe. Add zones, sections and labores before the centres that use them.
     </small>
     <?php if ($importErrors): ?>
       <ul class="hint" style="margin:8px 0 0 18px;padding:0;color:#c62828;">

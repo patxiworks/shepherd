@@ -8,8 +8,9 @@
 // table => [label, columns, what the columns mean]
 const STRUCTURE_IMPORT_TABLES = [
     'zones' => ['Zones', ['name'], 'name'],
-    'centres' => ['Centres', ['zone', 'name', 'section'], 'zone (must already exist), name, section (optional; must already exist in Sections)'],
+    'centres' => ['Centres', ['zone', 'name', 'full_name', 'section', 'labores'], 'zone (must already exist), name, full name (optional), section (optional; must already exist in Sections), labores (optional; the labor texts the centre runs, separated by commas, e.g. "sm agd, sm club, sg"; each must already exist in Labores. An existing centre gets the missing ones added)'],
     'sections' => ['Sections', ['name'], 'name'],
+    'labores' => ['Labores', ['name', 'sub'], 'labor, sub-labor (optional: leave it empty for a labor that has none). A labor is created when it is missing, one row per sub-labor, e.g. "sm | agd"'],
     'activity_types' => ['Activities', ['name', 'is_multiday'], 'name, multi-day (optional: yes/no, 1/0)'],
 ];
 
@@ -24,6 +25,15 @@ function structure_import_header(string $header, string $table): ?string
     }
     if ($table === 'centres' && in_array($h, ['section', 'sectionname'], true)) {
         return 'section';
+    }
+    if ($table === 'centres' && in_array($h, ['fullname', 'centrefullname', 'centerfullname'], true)) {
+        return 'full_name';
+    }
+    if ($table === 'centres' && in_array($h, ['labores', 'labors', 'labours', 'labor', 'labour'], true)) {
+        return 'labores';
+    }
+    if ($table === 'labores' && in_array($h, ['sub', 'sublabor', 'sublabour', 'sublabores', 'sublabors', 'sublaborname'], true)) {
+        return 'sub';
     }
     $nameAliases = ['name', 'zone', 'zonename', 'section', 'sectionname', 'labor', 'labour', 'laborname', 'activity', 'activitytype', 'type', 'centre', 'center', 'centrename', 'centername'];
     if (in_array($h, $nameAliases, true)) {
@@ -61,7 +71,7 @@ function import_structure(PDO $pdo, string $table, array $rows): array
         throw new ImportException('Too many rows (limit ' . ACTIVITY_IO_MAX_ROWS . ' per import).');
     }
 
-    $maxLen = ['zones' => 100, 'centres' => 150, 'sections' => 20, 'activity_types' => 255][$table];
+    $maxLen = ['zones' => 100, 'centres' => 150, 'sections' => 20, 'labores' => 30, 'activity_types' => 255][$table];
     $cell = function (array $row, string $key) use ($col): string {
         return isset($col[$key]) ? trim(import_text((string) ($row[$col[$key]] ?? ''))) : '';
     };
@@ -69,6 +79,10 @@ function import_structure(PDO $pdo, string $table, array $rows): array
 
     // Existing keys, compared case-insensitively as MySQL's collation does.
     $existing = [];
+    $centreIds = [];  // zone_id|lc name => centre id
+    $laborIds = [];   // lc labor text => labores id (see below)
+    $topLabor = [];
+    $topIds = [];     // lc labor name => id (labores import)
     $zoneIds = [];
     $sectionNames = [];
     if ($table === 'centres') {
@@ -78,8 +92,31 @@ function import_structure(PDO $pdo, string $table, array $rows): array
         foreach ($pdo->query('SELECT name FROM sections') as $s) {
             $sectionNames[$lower($s['name'])] = $s['name'];
         }
-        foreach ($pdo->query('SELECT zone_id, name FROM centres') as $c) {
+        foreach ($pdo->query('SELECT id, zone_id, name FROM centres') as $c) {
             $existing[$c['zone_id'] . '|' . $lower($c['name'])] = true;
+            $centreIds[$c['zone_id'] . '|' . $lower($c['name'])] = (int) $c['id'];
+        }
+        // "sm agd" / "sg" (a labor without sub-labores) => the labores id a centre is given.
+        foreach ($pdo->query('SELECT l.id, l.name, p.name AS parent FROM labores l LEFT JOIN labores p ON p.id = l.parent_id') as $l) {
+            if ($l['parent'] !== null) {
+                $laborIds[$lower(labor_text($l['parent'], $l['name']))] = (int) $l['id'];
+            } else {
+                $topLabor[(int) $l['id']] = $l['name'];
+            }
+        }
+        $withSubs = array_flip(array_map('intval', $pdo->query('SELECT DISTINCT parent_id FROM labores WHERE parent_id IS NOT NULL')->fetchAll(PDO::FETCH_COLUMN)));
+        foreach ($topLabor as $lid => $lname) {
+            if (!isset($withSubs[$lid])) {
+                $laborIds[$lower($lname)] = $lid;
+            }
+        }
+    } elseif ($table === 'labores') {
+        foreach ($pdo->query('SELECT id, name, parent_id FROM labores') as $l) {
+            if ($l['parent_id'] === null) {
+                $topIds[$lower($l['name'])] = (int) $l['id'];
+            } else {
+                $existing[$l['parent_id'] . '|' . $lower($l['name'])] = true;
+            }
         }
     } else {
         foreach ($pdo->query("SELECT name FROM $table") as $r) {
@@ -88,7 +125,7 @@ function import_structure(PDO $pdo, string $table, array $rows): array
     }
     $hasMultiday = $table === 'activity_types' && (bool) $pdo->query("SHOW COLUMNS FROM activity_types LIKE 'is_multiday'")->fetchColumn();
 
-    $result = ['added' => 0, 'skipped' => 0, 'rejected' => 0, 'errors' => []];
+    $result = ['added' => 0, 'updated' => 0, 'skipped' => 0, 'rejected' => 0, 'errors' => []];
     $reject = function (int $line, string $msg) use (&$result) {
         $result['rejected']++;
         if (count($result['errors']) < 25) {
@@ -128,12 +165,71 @@ function import_structure(PDO $pdo, string $table, array $rows): array
                     }
                     $section = $sectionNames[$lower($section)];
                 }
-                $key = $zoneId . '|' . $lower($name);
-                if (isset($existing[$key])) {
-                    $result['skipped']++;
+                $fullName = $cell($row, 'full_name');
+                if (mb_strlen($fullName, 'UTF-8') > 255) {
+                    $reject($line, 'the full name is longer than 255 characters.');
                     continue;
                 }
-                $pdo->prepare('INSERT INTO centres (zone_id, name, section) VALUES (?, ?, ?)')->execute([$zoneId, $name, $section ?: null]);
+                // The labores column: labor texts separated by commas / semicolons / new lines.
+                $wanted = [];
+                $badLabor = null;
+                foreach (preg_split('/[,;\n]+/', $cell($row, 'labores')) as $text) {
+                    $text = trim(preg_replace('/\s+/', ' ', $text));
+                    if ($text === '') {
+                        continue;
+                    }
+                    if (!isset($laborIds[$lower($text)])) {
+                        $badLabor = $text;
+                        break;
+                    }
+                    $wanted[$laborIds[$lower($text)]] = true;
+                }
+                if ($badLabor !== null) {
+                    $reject($line, "labor \"$badLabor\" does not exist (add it under Labores first; a labor that has sub-labores needs one, e.g. \"sm agd\").");
+                    continue;
+                }
+                $key = $zoneId . '|' . $lower($name);
+                if (isset($existing[$key])) {
+                    // Existing centre: nothing is changed except that missing labores are added.
+                    $gained = 0;
+                    $link = $pdo->prepare('INSERT IGNORE INTO centre_labores (centre_id, labor_id) VALUES (?, ?)');
+                    foreach (array_keys($wanted) as $lid) {
+                        $link->execute([$centreIds[$key], $lid]);
+                        $gained += $link->rowCount();
+                    }
+                    $gained ? $result['updated']++ : $result['skipped']++;
+                    continue;
+                }
+                $pdo->prepare('INSERT INTO centres (zone_id, name, full_name, section) VALUES (?, ?, ?, ?)')->execute([$zoneId, $name, $fullName ?: null, $section ?: null]);
+                $centreIds[$key] = (int) $pdo->lastInsertId();
+                $link = $pdo->prepare('INSERT INTO centre_labores (centre_id, labor_id) VALUES (?, ?)');
+                foreach (array_keys($wanted) as $lid) {
+                    $link->execute([$centreIds[$key], $lid]);
+                }
+            } elseif ($table === 'labores') {
+                // One row per sub-labor ("sm | agd"); an empty sub-labor is a labor without any.
+                $sub = $cell($row, 'sub');
+                if (mb_strlen($sub, 'UTF-8') > 30) {
+                    $reject($line, "\"$sub\" is longer than 30 characters.");
+                    continue;
+                }
+                $made = 0;
+                $topId = $topIds[$lower($name)] ?? null;
+                if ($topId === null) {
+                    $pdo->prepare('INSERT INTO labores (name, parent_id) VALUES (?, NULL)')->execute([$name]);
+                    $topId = (int) $pdo->lastInsertId();
+                    $topIds[$lower($name)] = $topId;
+                    $made++;
+                }
+                if ($sub !== '' && !isset($existing[$topId . '|' . $lower($sub)])) {
+                    $pdo->prepare('INSERT INTO labores (name, parent_id) VALUES (?, ?)')->execute([$sub, $topId]);
+                    $existing[$topId . '|' . $lower($sub)] = true;
+                    // The labor now has sub-labores, so a centre can no longer have it on its own.
+                    $pdo->prepare('DELETE FROM centre_labores WHERE labor_id = ?')->execute([$topId]);
+                    $made++;
+                }
+                $made ? $result['added'] += $made : $result['skipped']++;
+                continue;
             } else {
                 $key = $lower($name);
                 if (isset($existing[$key])) {

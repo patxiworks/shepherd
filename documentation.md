@@ -254,9 +254,9 @@ Grid offer only the centre's texts and the server refuses others
 (`labor_problem()`, `source_resolve()`, the grid's cell save); a value a row
 already has is left alone. The Activities/Multi-day importers check the
 global list only (not per centre). The old flat `labors` table was dropped by
-`migrate/020_labores.sql` without carrying its values over, and there is no
-Labors import (Structure import covers Zones, Centres, Sections and Activity
-types). Section names and colours are edited on the Sections page.
+`migrate/020_labores.sql` without carrying its values over. Labores and a
+centre's labores can be bulk-loaded with the Structure import (see "Import of
+Structure tables"). Section names and colours are edited on the Sections page.
 
 `centre` in `activities`/`users` is a **free-text string**, not a foreign
 key to `centres.id` — it has to match a centre's `name` exactly. This
@@ -1294,15 +1294,25 @@ database) and no dark-mode toggle (it uses the admin theme colours).
 ### Import of Structure tables (Settings → Import data)
 
 Super admin. One card on the Settings page imports into any table of the Structure menu —
-Zones, Centres, Sections, Activities (activity types) — from a CSV or XLSX upload or a Google
+Zones, Centres, Sections, Labores, Activities (activity types) — from a CSV or XLSX upload or a Google
 Sheets link (same readers as the Activities/Source importers in
 [`backend/includes/activity_io.php`](backend/includes/activity_io.php); sheet must be shared
 "Anyone with the link can view"). Code: [`backend/includes/structure_import.php`](backend/includes/structure_import.php).
-First row = header, columns in any order: Zones `name`; Centres `zone`, `name`, `section`
-(optional); Sections `name`; Activity types `name`, `is_multiday` (optional,
+First row = header, columns in any order: Zones `name`; Centres `zone`, `name`, `full name`
+(optional), `section` (optional), `labores` (optional); Sections `name`; Labores `labor`,
+`sub-labor` (optional); Activity types `name`, `is_multiday` (optional,
 yes/no/1/0). Import **only adds**: rows whose key already exists (name; zone + name for
-centres, case-insensitive) are skipped and nothing existing is changed. A centre's zone
-and section must already exist, so import Zones/Sections first. Invalid rows (empty or
+centres, case-insensitive) are skipped and nothing existing is changed — with one exception:
+for a centre that already exists, the labores in its `labores` cell that it doesn't have yet
+are added (its full name and section are left alone), and the report counts it under "centres
+that gained labores". A centre's zone, section and labores must already exist, so import
+Zones, Sections and Labores first.
+**Labores** are one row per sub-labor (`sm | agd`, `sm | club`); an empty sub-labor adds a
+labor that has none (`sg`). A missing labor is created; adding the first sub-labor to a labor
+drops any centre's bare tick of it, as on the Labores page. The centres' **labores** cell
+is a list of labor texts separated by commas, semicolons or new lines (`sm agd, sm club, sg`),
+each exactly as the Labor dropdowns show it: a labor that has sub-labores is given with one
+(`sm` alone is rejected). Invalid rows (empty or
 too-long name, unknown zone/section) are rejected and listed (first 25) under the card;
 the rest are added in one transaction. Result: "added N, already there N, rejected N".
 
