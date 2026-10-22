@@ -435,7 +435,7 @@ The **Grid** tab shows one date (date picker, ‹ › and Today; a super admin a
 zone) as a table with every centre of the zone as a row (a centre admin: only theirs) and
 every *regular* activity type (`activity_types.is_multiday = 0`) as a column; the centre
 column and the header stay in view while scrolling. A cell lists the activities of that
-centre + type on the date (priest, times, note) and **clicking it opens an editor dialog**:
+centre + type on the date (the priest, then underneath it the labor, the description and the times — the same for a priest just dragged in) and **clicking it opens an editor dialog**:
 one line per activity with Priest (the zone's priests), From, To, Group and Note, a
 "+ Add another" button (e.g. two Masses) and × per line; saving with no lines clears the
 cell. Saving posts `action=cell_save` (JSON of the cell's entries) to `grid.php`, which
@@ -590,9 +590,11 @@ identity/value are never colour or angle alone.
   cells inputs; Enter/Save posts `action=inline_save` to the same page,
   which answers with JSON containing the re-rendered row
   (`activity_row_html()`); Esc/Cancel reverts. The table columns are
-  Date, Centre, Activity, Priest, From, To and Description: Day, Wk, Section, Labor
-  and Duration are not shown (they are still stored and derived on save; an inline
-  save keeps the row's existing Labor, which is still editable in the modal form).
+  Date, Priest, Activity, Labor, Description, Centre, From and To: Day, Wk, Section
+  and Duration are not shown (they are still stored and derived on save). Labor is a
+  select offering the row's centre's own labores (refilled when the Centre select
+  changes; a stored value no longer valid stays selectable). Saved column widths
+  (`actColWidths`) are ignored when the column count differs from the saved one.
   **Duration is always computed as To − From** on save (blank if either is empty or
   To isn't later) and has no form field; rows saved before this keep their old value
   until they're next saved. You must save or cancel a changed row
@@ -708,9 +710,11 @@ identity/value are never colour or angle alone.
   of the same zone with the same `week` (which occurrence of that day it is in
   the month) and `day` (its number in the week per the week-start setting),
   e.g. 24/09/2026 is the 4th Thursday = week 4, day 5 (Sunday start). The modal has an
-  **"Overwrite existing activities in this date range"** checkbox (off by default). *Off:* a date
-  that already has activities (the zone's, or the centre admin's centre's) is left as it is, and
-  only dates with none are filled; the message says how many dates were kept. *On:* submitting asks
+  **"Overwrite existing activities in this date range"** checkbox (off by default). *Off:* existing
+  activities (the zone's, or the centre admin's centre's) are never touched; for each date only the source
+  rows they don't already cover are added. An existing activity covers one source row of the same
+  centre and activity: the one with the same From/To, else (times edited since) any remaining one of that
+  centre and activity. The message says how many dates had existing activities kept. *On:* submitting asks
   for confirmation, then on every date that has matching source rows the existing activities are
   **replaced** by them (in one transaction). Either way, dates with no matching rows are
   left untouched. Only the current user's own zone is touched (a super admin,

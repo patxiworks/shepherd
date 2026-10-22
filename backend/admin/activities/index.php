@@ -140,7 +140,7 @@ function activity_fields(PDO $pdo, array $admin, ?string $scopeCentreName, int $
         $section = $stmt->fetchColumn();
     }
 
-    // The table has no Labor cell, so an inline save doesn't post it: keep the stored one.
+    // An inline save posts the Labor cell; if a caller doesn't, keep the stored one.
     $labor = trim($in['labor'] ?? '') ?: null;
     if (!array_key_exists('labor', $in) && $id) {
         $stmt = $pdo->prepare('SELECT labor FROM activities WHERE id = ?');
@@ -223,12 +223,13 @@ function activity_row_html(array $a, string $qs = ''): string
     ?>
 <tr data-id="<?= $id ?>" data-zone="<?= $zone ?>" data-masses="<?= $massCount ?>"<?= $classes !== '' ? ' class="' . $classes . '"' : '' ?>>
   <?= $cell('activity_date', 'date', $a['activity_date'], e($a['activity_date'])) ?>
-  <?= $cell('centre', 'centre', $a['centre'], e($a['centre'])) ?>
-  <?= $cell('activity', 'activity', $a['activity'], $activityText, ' data-sort="' . e($a['activity']) . '"') ?>
   <?= $cell('priest', 'priest', $a['priest'], $priestText, ' data-sort="' . e($a['priest']) . '"') ?>
+  <?= $cell('activity', 'activity', $a['activity'], $activityText, ' data-sort="' . e($a['activity']) . '"') ?>
+  <?= $cell('labor', 'labor', $a['labor'] ?? null, e($a['labor'] ?? '')) ?>
+  <?= $cell('description', 'text', $a['description'], e($a['description']), ' class="desc" title="' . e($a['description']) . '"') ?>
+  <?= $cell('centre', 'centre', $a['centre'], e($a['centre'])) ?>
   <?= $cell('from_time', 'time', $a['from_time'] ? substr($a['from_time'], 0, 5) : '', $t($a['from_time'])) ?>
   <?= $cell('to_time', 'time', $a['to_time'] ? substr($a['to_time'], 0, 5) : '', $t($a['to_time'])) ?>
-  <?= $cell('description', 'text', $a['description'], e($a['description']), ' class="desc" title="' . e($a['description']) . '"') ?>
   <td class="actions">
     <?= icon_edit('/admin/activities/index.php?edit=' . $id . '&zone=' . $zone . ($qs !== '' ? '&' . $qs : '')) ?>
     <form class="inline" method="post" onsubmit="return confirm('Delete this activity?');">
@@ -300,7 +301,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $parts[] = "Added from source: {$r['inserted']} activities on {$r['dates']} dates" . ($r['deleted'] ? " (replacing {$r['deleted']} existing)" : '');
             }
             if ($r['kept_dates']) {
-                $parts[] = "Left {$r['kept_dates']} date" . ($r['kept_dates'] === 1 ? '' : 's') . ' with existing activities untouched (tick "Overwrite existing activities" to replace them)';
+                $parts[] = "Left {$r['kept_dates']} date" . ($r['kept_dates'] === 1 ? '' : 's') . ' with existing activities kept as they are (tick "Overwrite existing activities" to replace them)';
             }
             if ($r['class_a_dates']) {
                 $parts[] = "Class A: added {$r['class_a_added']} Med/Ben activities on {$r['class_a_dates']} class A date" . ($r['class_a_dates'] === 1 ? '' : 's');
@@ -756,6 +757,7 @@ require __DIR__ . '/../includes/layout_top.php';
   table.act-table th.w-date { width: 140px; }
   table.act-table th.w-centre { width: 170px; }
   table.act-table th.w-activity { width: 170px; }
+  table.act-table th.w-labor { width: 130px; }
   table.act-table th.w-priest { width: 200px; }
   table.act-table th.w-time { width: 100px; }
   table.act-table th.w-actions { width: 84px; }
@@ -1309,8 +1311,8 @@ if ($dayValue !== '' && absences_available($pdo)) {
 <div class="table-wrap">
 <table class="act-table" data-bulk-total="<?= $totalMatching ?>" data-bulk-extra="<?= e(json_encode(['qs' => $filterQs, 'zone' => (int) $filterZone])) ?>">
   <thead><tr>
-    <th class="w-date">Date</th><th class="w-centre">Centre</th><th class="w-activity">Activity</th>
-    <th class="w-priest">Priest</th><th class="w-time">From</th><th class="w-time">To</th><th>Description</th><th class="w-actions"></th>
+    <th class="w-date">Date</th><th class="w-priest">Priest</th><th class="w-activity">Activity</th><th class="w-labor">Labor</th>
+    <th>Description</th><th class="w-centre">Centre</th><th class="w-time">From</th><th class="w-time">To</th><th class="w-actions"></th>
   </tr></thead>
   <tbody id="activities-body" data-qs="<?= e($filterQs) ?>">
   <?php foreach ($activities as $a): ?>
@@ -1318,7 +1320,7 @@ if ($dayValue !== '' && absences_available($pdo)) {
 
   <?php endforeach; ?>
   <?php if (!$activities): ?>
-    <tr><td colspan="8" style="text-align:center;color:#888;"><?= $filters ? 'No activities match these filters.' : 'No activities for this zone yet.' ?></td></tr>
+    <tr><td colspan="9" style="text-align:center;color:#888;"><?= $filters ? 'No activities match these filters.' : 'No activities for this zone yet.' ?></td></tr>
   <?php endif; ?>
   </tbody>
 </table>
@@ -1521,11 +1523,12 @@ if ($dayValue !== '' && absences_available($pdo)) {
   var dirty = false;
   var url = '/admin/activities/index.php';
 
-  function optionsFor(type, zone, current) {
+  function optionsFor(type, zone, current, centre) {
     var list = type === 'centre' ? centres.filter(function (c) { return c.zone_id == zone; }).map(function (c) { return c.name; })
       : type === 'priest' ? priests.filter(function (p) { return p.zone_id == zone; }).map(function (p) { return p.name; })
       : type === 'activity' ? activityTypes.slice()
-      : []; // the table has no Labor cell; the form offers the centre's own labores
+      : type === 'labor' ? ((centre && centreLabors[zone + '|' + centre]) || []).slice() // the centre's own labores
+      : [];
     if (current && list.indexOf(current) < 0) list.push(current); // keep values that are no longer in the list
     return list;
   }
@@ -1536,7 +1539,8 @@ if ($dayValue !== '' && absences_available($pdo)) {
     if (type === 'centre' || type === 'priest' || type === 'labor' || type === 'activity') {
       el = document.createElement('select');
       el.add(new Option('', ''));
-      optionsFor(type, zone, value).forEach(function (o) { el.add(new Option(o, o)); });
+      var cTd = td.parentNode.querySelector('[data-field=centre]');
+      optionsFor(type, zone, value, cTd && cTd.getAttribute('data-value')).forEach(function (o) { el.add(new Option(o, o)); });
     } else {
       el = document.createElement('input');
       el.type = type;
@@ -1636,6 +1640,18 @@ if ($dayValue !== '' && absences_available($pdo)) {
       cancelEdit();
     }
     startEdit(tr, ev.target.closest('td'));
+  });
+  tbody.addEventListener('change', function (ev) {
+    // A different centre offers different labores: refill the Labor editor.
+    if (!editing || !ev.target.matches('select[name=centre]')) return;
+    var sel = editing.tr.querySelector('select[name=labor]');
+    if (!sel) return;
+    var keep = sel.value;
+    sel.innerHTML = '';
+    sel.add(new Option('', ''));
+    var list = optionsFor('labor', editing.tr.getAttribute('data-zone'), keep, ev.target.value);
+    list.forEach(function (o) { sel.add(new Option(o, o)); });
+    sel.value = keep;
   });
   tbody.addEventListener('input', function (ev) { if (editing) { dirty = true; updateDerived(editing.tr); } });
   tbody.addEventListener('change', function (ev) { if (editing) { dirty = true; updateDerived(editing.tr); } });

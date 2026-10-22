@@ -193,7 +193,9 @@ function agrid_cell(array $acts, array $slots): string
         }
         $html .= '<div class="g-entry ' . $it['cls'] . '"' . ($has ? ' draggable="true"' : '') . ' data-i="' . $i . '" title="' . e(implode(' · ', $it['tip'])) . '">'
             . '<span class="g-priest">' . ($has ? e($it['e']['priest']) : '<em>no priest</em>') . '</span>'
+            . ($it['e']['labor'] !== '' ? '<span class="g-meta">' . e($it['e']['labor']) . '</span>' : '')
             . ($it['note'] ? '<span class="g-note">' . e($it['note']) . '</span>' : '')
+            . ($it['e']['from_time'] !== '' ? '<span class="g-meta">' . e($it['e']['from_time'] . ($it['e']['to_time'] !== '' ? '–' . $it['e']['to_time'] : '')) . '</span>' : '')
             . '</div>';
         $entries[] = $it['e'];
     }
@@ -312,6 +314,7 @@ require __DIR__ . '/../includes/layout_top.php';
   .g-table td.g-cell.g-off:hover { outline: none; }
   .g-entry { font-size: calc(var(--tbl-fs, 13px) - 1px); line-height: 1.3; padding: 2px 5px; margin-bottom: 3px; border-radius: 3px; border-left: 4px solid #4a9a55; background: #e6f4e8; }
   .g-entry .g-note { display: block; color: #666; font-size: calc(var(--tbl-fs, 13px) - 2px); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+  .g-entry .g-meta { display: block; color: #555; font-size: calc(var(--tbl-fs, 13px) - 2px); white-space: nowrap; }
   .g-entry.f-none { background: #eee; border-color: #888; }
   .g-entry.f-absent { background: #fbd5d5; border-color: #c0392b; }
   .g-entry.f-multi { background: #cdeeee; border-color: #1b8f8f; }

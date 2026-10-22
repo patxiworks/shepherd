@@ -70,7 +70,7 @@ function source_times_for(array $lookup, string $centre, string $activity, int $
     return null;
 }
 
-// Replaces (when $overwrite; otherwise only fills dates that have no activities yet), for every date in $from..$to (yyyy-mm-dd) that has matching
+// Replaces (when $overwrite; otherwise only adds the source rows the date's existing activities don't cover), for every date in $from..$to (yyyy-mm-dd) that has matching
 // source rows, the zone's activities on that date with those rows. Dates
 // with no matching source row are left alone. $centre (a centre-scoped
 // admin's centre) limits both the source rows used and the activities
@@ -95,7 +95,7 @@ function source_times_for(array $lookup, string $centre, string $activity, int $
 // activity_duplicates.php) are only added once; the extra ones are skipped and
 // reported.
 //
-// Returns ['dates' => dates filled from source, 'kept_dates' => dates with source rows left alone because they already had activities (no overwrite), 'deleted' => activities
+// Returns ['dates' => dates filled from source, 'kept_dates' => dates (no overwrite) that already had activities, which were left as they are, 'deleted' => activities
 // replaced, 'inserted' => activities added from source, 'skipped' => identical
 // source rows not added, 'skipped_list' => up to 10 of them as text,
 // 'vigil_added' => Vigil rows added, 'vigil_dates' => dates that got some,
@@ -146,7 +146,7 @@ function apply_source_to_activities(PDO $pdo, int $zoneId, string $from, string 
 
     $deleteSql = 'DELETE FROM activities WHERE zone_id = ? AND activity_date = ?' . ($centre !== null ? ' AND centre = ?' : '');
     $delete = $pdo->prepare($deleteSql);
-    $hasAny = $pdo->prepare('SELECT 1 FROM activities WHERE zone_id = ? AND activity_date = ?' . ($centre !== null ? ' AND centre = ?' : '') . ' LIMIT 1');
+    $hasAny = $pdo->prepare('SELECT centre, activity, from_time, to_time FROM activities WHERE zone_id = ? AND activity_date = ?' . ($centre !== null ? ' AND centre = ?' : ''));
     $insert = $pdo->prepare(
         'INSERT INTO activities (zone_id, week, day, weekday, activity_date, centre, activity, section, labor, from_time, to_time, duration, priest, alt_priest, description)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
@@ -187,16 +187,41 @@ function apply_source_to_activities(PDO $pdo, int $zoneId, string $from, string 
             $parts = date_parts($date, $weekStart);
             $rows = $bySlot[$parts['week'] . '-' . $parts['weekday']] ?? [];
             if ($rows && !$overwrite) {
-                // Not overwriting: a date that already has activities keeps them.
+                // Not overwriting: existing activities stay, and only the source rows
+                // they don't already cover are added. An existing activity covers one
+                // source row of the same centre and activity: first one with the same
+                // times, else (times edited since) any left of that centre and activity.
                 $hasAny->execute($centre !== null ? [$zoneId, $date, $centre] : [$zoneId, $date]);
-                if ($hasAny->fetchColumn()) {
-                    $rows = [];
+                $exist = $hasAny->fetchAll();
+                $ci = fn($v) => mb_strtolower((string) $v);
+                $t5 = fn($v) => substr((string) $v, 0, 5);
+                $left = [];
+                foreach ($exist as $e) {
+                    foreach ($rows as $k => $r) {
+                        if ($ci($r['centre']) === $ci($e['centre']) && $ci($r['activity']) === $ci($e['activity']) && $t5($r['from_time']) === $t5($e['from_time']) && $t5($r['to_time']) === $t5($e['to_time'])) {
+                            unset($rows[$k]);
+                            continue 2;
+                        }
+                    }
+                    $left[] = $e;
+                }
+                foreach ($left as $e) {
+                    foreach ($rows as $k => $r) {
+                        if ($ci($r['centre']) === $ci($e['centre']) && $ci($r['activity']) === $ci($e['activity'])) {
+                            unset($rows[$k]);
+                            break;
+                        }
+                    }
+                }
+                if ($exist) {
                     $result['kept_dates']++;
                 }
             }
             if ($rows) {
-                $delete->execute($centre !== null ? [$zoneId, $date, $centre] : [$zoneId, $date]);
-                $result['deleted'] += $delete->rowCount();
+                if ($overwrite) {
+                    $delete->execute($centre !== null ? [$zoneId, $date, $centre] : [$zoneId, $date]);
+                    $result['deleted'] += $delete->rowCount();
+                }
                 $seen = [];
                 foreach ($rows as $r) {
                     $key = implode('|', array_map(fn($v) => mb_strtolower((string) $v), [$r['centre'], $r['activity'], $r['priest'], $r['from_time'], $r['to_time']]));
